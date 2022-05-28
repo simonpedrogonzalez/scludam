@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Produced with astropy.io.votable version 4.3.1
+     http://www.astropy.org/ -->
+<VOTABLE version="1.4" xmlns="http://www.ivoa.net/xml/VOTable/v1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.ivoa.net/xml/VOTable/v1.3 http://www.ivoa.net/xml/VOTable/VOTable-1.4.xsd">
+ <RESOURCE type="results">
+  <TABLE ID="SimbadScript" name="default">
+   <DESCRIPTION>
+    Simbad script executed on 2021.10.17CEST02:20:07
+   </DESCRIPTION>
+   <FIELD ID="MAIN_ID" arraysize="*" datatype="char" name="MAIN_ID" ucd="meta.id;meta.main" width="22">
+    <DESCRIPTION>
+     Main identifier for an object
+    </DESCRIPTION>
+    <LINK href="http://simbad.u-strasbg.fr/simbad/sim-id?Ident=${MAIN_ID}&amp;NbIdent=1" value="${MAIN_ID}"/>
+   </FIELD>
+   <FIELD ID="RA" arraysize="13" datatype="char" name="RA" precision="8" ucd="pos.eq.ra;meta.main" unit="&quot;h:m:s&quot;" width="13">
+    <DESCRIPTION>
+     Right ascension
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="DEC" arraysize="13" datatype="char" name="DEC" precision="8" ucd="pos.eq.dec;meta.main" unit="&quot;d:m:s&quot;" width="13">
+    <DESCRIPTION>
+     Declination
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RA_PREC" datatype="short" name="RA_PREC" width="2">
+    <DESCRIPTION>
+     Right ascension precision
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="DEC_PREC" datatype="short" name="DEC_PREC" width="2">
+    <DESCRIPTION>
+     Declination precision
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_ERR_MAJA" datatype="float" name="COO_ERR_MAJA" precision="3" ucd="phys.angSize.smajAxis;pos.errorEllipse;pos.eq" unit="mas" width="6">
+    <DESCRIPTION>
+     Coordinate error major axis
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_ERR_MINA" datatype="float" name="COO_ERR_MINA" precision="3" ucd="phys.angSize.sminAxis;pos.errorEllipse;pos.eq" unit="mas" width="6">
+    <DESCRIPTION>
+     Coordinate error minor axis
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_ERR_ANGLE" datatype="short" name="COO_ERR_ANGLE" ucd="pos.posAng;pos.errorEllipse;pos.eq" unit="deg" width="3">
+    <DESCRIPTION>
+     Coordinate error angle
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_QUAL" arraysize="1" datatype="char" name="COO_QUAL" ucd="meta.code.qual;pos.eq" width="1">
+    <DESCRIPTION>
+     Coordinate quality
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_WAVELENGTH" arraysize="1" datatype="char" name="COO_WAVELENGTH" ucd="instr.bandpass;pos.eq" width="1">
+    <DESCRIPTION>
+     Wavelength class for the origin of the coordinates (R,I,V,U,X,G)
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_BIBCODE" arraysize="*" datatype="char" name="COO_BIBCODE" ucd="meta.bib.bibcode;pos.eq" width="19">
+    <DESCRIPTION>
+     Coordinate reference
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RA_2" arraysize="13" datatype="char" name="RA_2" precision="8" ucd="pos.eq.ra;meta.main" unit="&quot;h:m:s&quot;" width="13">
+    <DESCRIPTION>
+     Right ascension
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="DEC_2" arraysize="13" datatype="char" name="DEC_2" precision="8" ucd="pos.eq.dec;meta.main" unit="&quot;d:m:s&quot;" width="13">
+    <DESCRIPTION>
+     Declination
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RA_PREC_2" datatype="short" name="RA_PREC_2" width="2">
+    <DESCRIPTION>
+     Right ascension precision
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="DEC_PREC_2" datatype="short" name="DEC_PREC_2" width="2">
+    <DESCRIPTION>
+     Declination precision
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_ERR_MAJA_2" datatype="float" name="COO_ERR_MAJA_2" precision="3" ucd="phys.angSize.smajAxis;pos.errorEllipse;pos.eq" unit="mas" width="6">
+    <DESCRIPTION>
+     Coordinate error major axis
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_ERR_MINA_2" datatype="float" name="COO_ERR_MINA_2" precision="3" ucd="phys.angSize.sminAxis;pos.errorEllipse;pos.eq" unit="mas" width="6">
+    <DESCRIPTION>
+     Coordinate error minor axis
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_ERR_ANGLE_2" datatype="short" name="COO_ERR_ANGLE_2" ucd="pos.posAng;pos.errorEllipse;pos.eq" unit="deg" width="3">
+    <DESCRIPTION>
+     Coordinate error angle
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_QUAL_2" arraysize="1" datatype="char" name="COO_QUAL_2" ucd="meta.code.qual;pos.eq" width="1">
+    <DESCRIPTION>
+     Coordinate quality
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_WAVELENGTH_2" arraysize="1" datatype="char" name="COO_WAVELENGTH_2" ucd="instr.bandpass;pos.eq" width="1">
+    <DESCRIPTION>
+     Wavelength class for the origin of the coordinates (R,I,V,U,X,G)
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="COO_BIBCODE_2" arraysize="*" datatype="char" name="COO_BIBCODE_2" ucd="meta.bib.bibcode;pos.eq" width="19">
+    <DESCRIPTION>
+     Coordinate reference
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PLX_VALUE" datatype="double" name="PLX_VALUE" precision="3" ucd="pos.parallax.trig" unit="mas" width="9">
+    <DESCRIPTION>
+     Parallax
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PLX_PREC" datatype="short" name="PLX_PREC" width="1">
+    <DESCRIPTION>
+     Parallax precision
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PLX_ERROR" datatype="float" name="PLX_ERROR" ucd="stat.error;pos.parallax.trig" unit="mas">
+    <DESCRIPTION>
+     Parallax error
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PLX_QUAL" arraysize="1" datatype="char" name="PLX_QUAL" ucd="meta.code.qual;pos.parallax.trig" width="1">
+    <DESCRIPTION>
+     Parallax quality
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PLX_BIBCODE" arraysize="*" datatype="char" name="PLX_BIBCODE" ucd="meta.bib.bibcode;pos.parallax.trig" width="19">
+    <DESCRIPTION>
+     Parallax reference
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PMRA" datatype="double" name="PMRA" precision="3" ucd="pos.pm;pos.eq.ra" unit="mas.yr-1" width="9">
+    <DESCRIPTION>
+     Proper motion in RA
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PMDEC" datatype="double" name="PMDEC" precision="3" ucd="pos.pm;pos.eq.dec" unit="mas.yr-1" width="9">
+    <DESCRIPTION>
+     Proper motion in DEC
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PMRA_PREC" datatype="short" name="PMRA_PREC" width="2">
+    <DESCRIPTION>
+     Proper motion in RA precision
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PMDEC_PREC" datatype="short" name="PMDEC_PREC" width="2">
+    <DESCRIPTION>
+     Proper motion in DEC precision
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PM_ERR_MAJA" datatype="float" name="PM_ERR_MAJA" precision="3" ucd="phys.angSize.smajAxis;pos.errorEllipse;pos.pm" unit="mas.yr-1" width="5">
+    <DESCRIPTION>
+     Proper motion error major axis
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PM_ERR_MINA" datatype="float" name="PM_ERR_MINA" precision="3" ucd="phys.angSize.sminAxis;pos.errorEllipse;pos.pm" unit="mas.yr-1" width="5">
+    <DESCRIPTION>
+     Proper motion error minor axis
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PM_ERR_ANGLE" datatype="short" name="PM_ERR_ANGLE" ucd="pos.posAng;pos.errorEllipse;pos.pm" unit="deg" width="3">
+    <DESCRIPTION>
+     Proper motion error angle
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PM_QUAL" arraysize="1" datatype="char" name="PM_QUAL" ucd="meta.code.qual;pos.pm" width="1">
+    <DESCRIPTION>
+     Proper motion quality
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="PM_BIBCODE" arraysize="*" datatype="char" name="PM_BIBCODE" ucd="meta.bib.bibcode;pos.pm" width="19">
+    <DESCRIPTION>
+     Proper motion reference
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RVZ_TYPE" arraysize="1" datatype="char" name="RVZ_TYPE" width="1">
+    <DESCRIPTION>
+     Radial velocity / redshift type
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RVZ_RADVEL" datatype="double" name="RVZ_RADVEL" precision="3" ucd="spect.dopplerVeloc.opt" unit="km.s-1">
+    <DESCRIPTION>
+     Radial Velocity
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RVZ_ERROR" datatype="float" name="RVZ_ERROR" precision="3" ucd="stat.error;spect.dopplerVeloc" unit="km.s-1">
+    <DESCRIPTION>
+     Radial velocity / redshift error
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RVZ_QUAL" arraysize="1" datatype="char" name="RVZ_QUAL" ucd="meta.code.qual;spect.dopplerVeloc" width="1">
+    <DESCRIPTION>
+     Radial velocity / redshift quality
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RVZ_WAVELENGTH" arraysize="1" datatype="char" name="RVZ_WAVELENGTH" ucd="em.wl.central;spect.dopplerVeloc" width="1">
+    <DESCRIPTION>
+     Radial velocity / redshift wavelength class of the observ.
+     (RIVUXG)
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="RVZ_BIBCODE" arraysize="*" datatype="char" name="RVZ_BIBCODE" ucd="meta.bib.bibcode;spect.dopplerVeloc" width="19">
+    <DESCRIPTION>
+     Radial velocity / redshift reference
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="GALDIM_MAJAXIS" datatype="float" name="GALDIM_MAJAXIS" ucd="phys.angSize.smajAxis" unit="arcmin" width="4">
+    <DESCRIPTION>
+     Angular size major axis
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="GALDIM_MINAXIS" datatype="float" name="GALDIM_MINAXIS" ucd="phys.angSize.sminAxis" unit="arcmin" width="4">
+    <DESCRIPTION>
+     Angular size minor axis
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="GALDIM_ANGLE" datatype="short" name="GALDIM_ANGLE" ucd="pos.posAng" unit="deg" width="3">
+    <DESCRIPTION>
+     Galaxy ellipse angle
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="GALDIM_QUAL" arraysize="1" datatype="char" name="GALDIM_QUAL" ucd="meta.code.qual;phys.angSize" width="1">
+    <DESCRIPTION>
+     Galaxy dimension quality
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="GALDIM_WAVELENGTH" arraysize="1" datatype="char" name="GALDIM_WAVELENGTH" ucd="em.wl.central;phys.angSize" width="1">
+    <DESCRIPTION>
+     Gal. dim. wavelength class of the observ. (RIVUXG)
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="GALDIM_BIBCODE" arraysize="*" datatype="char" name="GALDIM_BIBCODE" ucd="meta.bib.bibcode;phys.angSize" width="19">
+    <DESCRIPTION>
+     Galaxy dimension reference
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="Diameter_diameter" datatype="double" name="Diameter_diameter" precision="2" ucd="PHYS.ANGSIZE" width="8">
+    <DESCRIPTION>
+     Diameter value
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="Diameter_Q" arraysize="1" datatype="char" name="Diameter_Q" ucd="META.CODE.QUAL" width="1">
+    <DESCRIPTION>
+     Quality
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="Diameter_unit" arraysize="4" datatype="char" name="Diameter_unit" ucd="META.UNIT" width="4">
+    <DESCRIPTION>
+     Unit (mas/km)
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="Diameter_error" datatype="double" name="Diameter_error" precision="2" ucd="STAT.ERROR" width="8">
+    <DESCRIPTION>
+     Error
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="Diameter_filter" arraysize="8" datatype="char" name="Diameter_filter" ucd="INSTR.FILTER" width="8">
+    <DESCRIPTION>
+     filter or wavelength
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="Diameter_method" arraysize="8" datatype="char" name="Diameter_method" ucd="INSTR.SETUP" width="8">
+    <DESCRIPTION>
+     calculation method
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="Diameter_bibcode" arraysize="19" datatype="char" name="Diameter_bibcode" ucd="META.BIB.BIBCODE" width="19">
+    <DESCRIPTION>
+     Bibcode
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="SCRIPT_NUMBER_ID" datatype="int" name="SCRIPT_NUMBER_ID" precision="1" ucd="meta.number" width="2"/>
+   <DATA>
+    <TABLEDATA>
+     <TR>
+      <TD>IC 2395</TD>
+      <TD>08 42 31.0</TD>
+      <TD>-48 06 00</TD>
+      <TD>5</TD>
+      <TD>5</TD>
+      <TD/>
+      <TD/>
+      <TD>0</TD>
+      <TD>D</TD>
+      <TD/>
+      <TD>2008NewA...13..370T</TD>
+      <TD>08 42 31.0</TD>
+      <TD>-48 06 00</TD>
+      <TD>5</TD>
+      <TD>5</TD>
+      <TD/>
+      <TD/>
+      <TD>0</TD>
+      <TD>D</TD>
+      <TD/>
+      <TD>2008NewA...13..370T</TD>
+      <TD>    1.379</TD>
+      <TD>3</TD>
+      <TD>0.087</TD>
+      <TD>C</TD>
+      <TD>2018A&amp;A...618A..93C</TD>
+      <TD>   -4.464</TD>
+      <TD>    3.293</TD>
+      <TD>3</TD>
+      <TD>3</TD>
+      <TD>0.237</TD>
+      <TD>0.296</TD>
+      <TD>90</TD>
+      <TD>C</TD>
+      <TD>2018A&amp;A...618A..93C</TD>
+      <TD>v</TD>
+      <TD>17.660</TD>
+      <TD>1.720</TD>
+      <TD>B</TD>
+      <TD>O</TD>
+      <TD>2018A&amp;A...619A.155S</TD>
+      <TD/>
+      <TD/>
+      <TD>0</TD>
+      <TD/>
+      <TD/>
+      <TD/>
+      <TD/>
+      <TD/>
+      <TD/>
+      <TD/>
+      <TD/>
+      <TD/>
+      <TD/>
+      <TD>1</TD>
+     </TR>
+    </TABLEDATA>
+   </DATA>
+  </TABLE>
+ </RESOURCE>
+</VOTABLE>

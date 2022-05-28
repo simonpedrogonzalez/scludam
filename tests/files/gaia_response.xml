@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Produced with astropy.io.votable version 4.3.1
+     http://www.astropy.org/ -->
+<VOTABLE version="1.4" xmlns="http://www.ivoa.net/xml/VOTable/v1.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.ivoa.net/xml/VOTable/v1.3 http://www.ivoa.net/xml/VOTable/VOTable-1.4.xsd">
+ <RESOURCE type="results">
+  <TABLE>
+   <FIELD ID="ra" datatype="double" name="ra" ucd="pos.eq.ra;meta.main" unit="deg" utype="Char.SpatialAxis.Coverage.Location.Coord.Position2D.Value2.C1">
+    <DESCRIPTION>
+     Right ascension
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="dec" datatype="double" name="dec" ucd="pos.eq.dec;meta.main" unit="deg" utype="Char.SpatialAxis.Coverage.Location.Coord.Position2D.Value2.C2">
+    <DESCRIPTION>
+     Declination
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="parallax" datatype="double" name="parallax" ucd="pos.parallax.trig" unit="mas">
+    <DESCRIPTION>
+     Parallax
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="pmra" datatype="double" name="pmra" ucd="pos.pm;pos.eq.ra" unit="mas.yr-1">
+    <DESCRIPTION>
+     Proper motion in right ascension direction
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="pmdec" datatype="double" name="pmdec" ucd="pos.pm;pos.eq.dec" unit="mas.yr-1">
+    <DESCRIPTION>
+     Proper motion in declination direction
+    </DESCRIPTION>
+   </FIELD>
+   <FIELD ID="dist" datatype="double" name="dist"/>
+   <DATA>
+    <TABLEDATA>
+     <TR>
+      <TD>130.6274659271372</TD>
+      <TD>-48.09917905206921</TD>
+      <TD>0.7769760369768328</TD>
+      <TD>-9.275583230412119</TD>
+      <TD>-2.3170710609933667</TD>
+      <TD>0.0014093212232431582</TD>
+     </TR>
+     <TR>
+      <TD>130.62912580829916</TD>
+      <TD>-48.098221388531556</TD>
+      <TD>0.26055419976133914</TD>
+      <TD>-5.2876656234328</TD>
+      <TD>7.167618779202627</TD>
+      <TD>0.0017847538833669556</TD>
+     </TR>
+     <TR>
+      <TD>130.62745539926073</TD>
+      <TD>-48.09838367780551</TD>
+      <TD>0.32178905361257304</TD>
+      <TD>-2.294342930019437</TD>
+      <TD>2.8861911269698393</TD>
+      <TD>0.001987495669263213</TD>
+     </TR>
+     <TR>
+      <TD>130.6258748619376</TD>
+      <TD>-48.09832997940612</TD>
+      <TD>0.21007317524953678</TD>
+      <TD>-1.2976179809788364</TD>
+      <TD>2.778797497310169</TD>
+      <TD>0.002768705397220442</TD>
+     </TR>
+     <TR>
+      <TD>130.62471992642566</TD>
+      <TD>-48.09891066337167</TD>
+      <TD>0.4130728870763981</TD>
+      <TD>-3.193523817495721</TD>
+      <TD>3.4058573717702565</TD>
+      <TD>0.0031703755189884863</TD>
+     </TR>
+    </TABLEDATA>
+   </DATA>
+  </TABLE>
+ </RESOURCE>
+</VOTABLE>
