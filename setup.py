@@ -13,7 +13,7 @@ setup(
     version="0.0.1",
     author="Simón Pedro González",
     author_email="simon.pedro.g@gmail.com",
-    description=("star cluster detection and membership estimation"),
+    description="star cluster detection and membership estimation",
     license="GPL-3",
     keywords="star cluster detection membership probabilities",
     url="http://packages.python.org/scludam",

@@ -24,7 +24,6 @@
 # IMPORTS
 # =============================================================================
 
-import inspect
 from numbers import Number
 from typing import List, Tuple, Union
 
@@ -36,7 +35,7 @@ from astropy.table.table import Table
 from astropy.units.quantity import Quantity
 from astroquery.simbad import Simbad
 from astroquery.utils.commons import coord_to_radec, radius_to_unit
-from attr import attrib, attrs
+from attrs import Factory, define
 from beartype import beartype
 
 Coord = Tuple[Number, Number]
@@ -44,7 +43,7 @@ Condition = Tuple[str, str, Union[str, Number]]
 LogicalExpression = Tuple[str, str, str, Union[str, Number]]
 
 
-@attrs(auto_attribs=True)
+@define
 class Conf:
     MAIN_GAIA_TABLE: str = "gaiaedr3.gaia_source"
     MAIN_GAIA_TABLE_RA: str = "ra"
@@ -52,42 +51,7 @@ class Conf:
     ROW_LIMIT: int = -1
 
 
-# DEPRECATED
-def checkargs(function):
-    """Check arguments match their annotated type.
-
-    Parameters
-    ----------
-    function : function
-
-    Returns
-    -------
-    function result
-
-    Raises
-    ------
-    TypeError
-    If argument does not match annotated type.
-    """
-
-    def wrapper(*args, **kwargs):
-        argnames = inspect.getfullargspec(function).args
-        arguments = dict(kwargs)
-        for index, argvalue in enumerate(args):
-            if index < len(argnames):
-                arguments[argnames[index]] = argvalue
-        annotations = function.__annotations__
-        for name, value in arguments.items():
-            annotation = annotations.get(name)
-            if annotation:
-                if not isinstance(value, annotation):
-                    raise TypeError("{} is not of type {}".format(name, annotation))
-        return function(*args, **kwargs)
-
-    return wrapper
-
-
-@attrs(auto_attribs=True)
+@define
 class SimbadResult:
     coords: SkyCoord = None
     table: Table = None
@@ -145,7 +109,7 @@ def simbad_search(
     return SimbadResult(coords=SkyCoord(coord, unit=(u.hourangle, u.deg)), table=table)
 
 
-@attrs(auto_attribs=True)
+@define
 class Query:
     """Query class to retrieve data from remote gaia catalogues.
 
@@ -199,7 +163,7 @@ WHERE 1 = CONTAINS(
     radius: Number
     coords: SkyCoord
     table: str = Conf().MAIN_GAIA_TABLE
-    column_filters: List[LogicalExpression] = attrib(factory=list)
+    column_filters: List[LogicalExpression] = Factory(list)
     row_limit: int = Conf().ROW_LIMIT
     ra_name: str = Conf().MAIN_GAIA_TABLE_RA
     dec_name: str = Conf().MAIN_GAIA_TABLE_DEC
@@ -506,7 +470,7 @@ def query_region(
     return query
 
 
-@attrs(auto_attribs=True)
+@define
 class TableInfo:
     name: str
     description: str
