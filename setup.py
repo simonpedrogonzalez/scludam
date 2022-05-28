@@ -35,7 +35,7 @@ setup(
         "hdbscan==0.8.27",
         "scikit-learn>=0.23.1",
         "scikit-image>=0.18.1",
-        "rpy2>=3.1.0",
+        # "rpy2>=3.1.0",
         "seaborn>=0.11.0",
         "attrs>=21.4.0",
         "beartype>=0.10.0",
