@@ -162,3 +162,5 @@ stylefix.sh
 devinstall.sh
 styleall.sh
 sys
+
+test.sh
