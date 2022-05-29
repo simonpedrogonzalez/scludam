@@ -12,7 +12,7 @@ from astroquery.utils.tap.model.tapcolumn import TapColumn
 from astroquery.utils.tap.model.taptable import TapTableMeta
 from utils import assert_eq_err_message
 
-from scludam import Query, simbad_search, table_info
+from scludam import Query, search_object, search_table
 from scludam.fetcher import Config, SimbadResult
 
 
@@ -56,7 +56,7 @@ def gaia_load_tables():
     return [t1, t2]
 
 
-def simbad_search_mock():
+def search_object_mock():
     coords = SkyCoord(
         "08 42 31.0", "-48 06 00", unit=(u.hourangle, u.deg), frame="icrs"
     )
@@ -120,9 +120,9 @@ def mock_gaia_load_tables(mocker):
 
 
 @pytest.fixture
-def mock_simbad_search(mocker):
+def mock_search_object(mocker):
     return mocker.patch(
-        "scludam.fetcher.simbad_search", return_value=simbad_search_mock()
+        "scludam.fetcher.search_object", return_value=search_object_mock()
     )
 
 
@@ -138,8 +138,8 @@ def mock_gaia_launch_job_async(mocker):
     )
 
 
-def test_simbad_search_valid_id(mock_simbad_query_object):
-    result = simbad_search("ic2395", cols=["coordinates", "parallax"])
+def test_search_object_valid_id(mock_simbad_query_object):
+    result = search_object("ic2395", cols=["coordinates", "parallax"])
     assert result.coords.to_string("hmsdms", precision=2) == SkyCoord(
         ra=130.62916667, dec=-48.1, frame="icrs", unit="deg"
     ).to_string("hmsdms", precision=2)
@@ -177,21 +177,21 @@ def test_simbad_search_valid_id(mock_simbad_query_object):
     )
 
 
-def test_simbad_search_invalid_id(mock_simbad_query_object):
-    empty_result = simbad_search("invalid_identifier")
+def test_search_object_invalid_id(mock_simbad_query_object):
+    empty_result = search_object("invalid_identifier")
     assert empty_result.table is None and empty_result.coords is None
 
 
-def test_table_info_only_names(mock_gaia_load_tables):
-    result = table_info("gaiaedr3", only_names=True)
+def test_search_table_only_names(mock_gaia_load_tables):
+    result = search_table("gaiaedr3", only_names=True)
     assert len(result) == 1
     assert result[0].name == "gaiaedr3.gaia_source"
     assert isinstance(result[0].description, str)
     assert result[0].columns is None
 
 
-def test_table_info_full_table_data(mock_gaia_load_tables):
-    result = table_info("gaiaedr3")
+def test_search_table_full_table_data(mock_gaia_load_tables):
+    result = search_table("gaiaedr3")
     assert isinstance(result[0].columns, Table)
 
 
@@ -244,13 +244,13 @@ class TestQuery:
     def test_where_valid_tuple_adds_where_clause(self):
         correct = "SELECT * FROM table WHERE col1 = 'value'"
         assert (
-            format_query_string(Query("table").where(("col1", "=", "value")).build())
+            format_query_string(Query("table").where(("col1", "=", "'value'")).build())
             == correct
         )
         correct = "SELECT * FROM table WHERE col1 LIKE '%value%'"
         assert (
             format_query_string(
-                Query("table").where(("col1", "LIKE", "%value%")).build()
+                Query("table").where(("col1", "LIKE", "'%value%'")).build()
             )
             == correct
         )
@@ -267,12 +267,12 @@ class TestQuery:
 
     def test_where_invalid_column_raises_error(self):
         with pytest.raises(KeyError) as record:
-            Query("table").select("col1", "col2").where(("col3", "=", "value"))
+            Query("table").select("col1", "col2").where(("col3", "=", "'value'"))
             assert_eq_err_message(record, "Invalid column name: col3")
 
     def test_where_invalid_operator_raises_error(self):
         with pytest.raises(ValueError) as record:
-            Query("table").where(("col1", "invalid", "value"))
+            Query("table").where(("col1", "invalid", "'value'"))
             assert_eq_err_message(record, "Invalid operator: invalid")
 
     def test_where_list_tuple_adds_and_expression(self):
@@ -280,7 +280,7 @@ class TestQuery:
         assert (
             format_query_string(
                 Query("table")
-                .where([("col1", "=", "value"), ("col2", "=", "value2")])
+                .where([("col1", "=", "'value'"), ("col2", "=", "'value2'")])
                 .build()
             )
             == correct
@@ -291,8 +291,8 @@ class TestQuery:
         assert (
             format_query_string(
                 Query("table")
-                .where(("col1", "=", "value"))
-                .where(("col2", "=", "value2"))
+                .where(("col1", "=", "'value'"))
+                .where(("col2", "=", "'value2'"))
                 .build()
             )
             == correct
@@ -301,7 +301,7 @@ class TestQuery:
     def test_where_or(self):
         correct = (
             "SELECT * FROM table WHERE col1 >= 5 AND ("
-            " col2 <= 17 ) AND ( col3 <= 3 OR col4 LIKE 'string' )"
+            "col2 <= 17) AND (col3 <= 3 OR col4 LIKE 'value')"
         )
         assert (
             format_query_string(
@@ -309,22 +309,22 @@ class TestQuery:
                     Query("table")
                     .where(("col1", ">=", 5))
                     .where_or(("col2", "<=", 17))
-                    .where_or([("col3", "<=", 3), ("col4", "LIKE", "string")])
+                    .where_or([("col3", "<=", 3), ("col4", "LIKE", "'value'")])
                     .build()
                 )
             )
             == correct
         )
 
-    def test_where_in_circle(self, mock_simbad_search):
+    def test_where_in_circle(self, mock_search_object):
         correct = (
-            "SELECT *, DISTANCE( POINT('ICRS', ra, dec), POINT('ICRS', 130.6291, -48.1)"
+            f"SELECT *, {Config().MAIN_GAIA_RA}, {Config().MAIN_GAIA_DEC}, DISTANCE( POINT('ICRS', ra, dec), POINT('ICRS', 130.6291, -48.1)"
             ") AS dist FROM table WHERE col1 <= 1 AND 1 = CONTAINS("
             " POINT('ICRS', ra, dec), CIRCLE('ICRS', 130.6291, -48.1, 0.5)) AND col2"
             " >= 5 ORDER BY dist ASC"
         )
         name = "dummy_name"
-        coords = simbad_search_mock().coords
+        coords = search_object_mock().coords
         ra = coords.ra.value
         dec = coords.dec.value
         queries = [
@@ -352,7 +352,27 @@ class TestQuery:
         for q in queries:
             assert format_query_string(q.build()) == correct
 
-    def test_build_count(self, mock_simbad_search):
+    def test_where_astrometric_aen_criterion(self):
+        correct = f"SELECT *, {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE}, {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG} FROM table WHERE ({Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG} <= 2 OR {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE} < 2)"
+        assert format_query_string(
+            Query("table").where_aen_criterion().build()
+        ) == correct
+        correct = f"SELECT *, col1, col2 FROM table WHERE (col2 <= 3 OR col1 < 3)"
+        assert format_query_string(
+            Query("table").where_aen_criterion(3, 3, "col1", "col2").build()
+        ) == correct
+
+    def test_where_arenou_criterion(self):
+        correct = f"SELECT *, {Config().MAIN_GAIA_BP_RP}, {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} FROM table WHERE {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} > 1 + 0.015 * POWER({Config().MAIN_GAIA_BP_RP}, 2) AND {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} < 1.3 + 0.006 * POWER({Config().MAIN_GAIA_BP_RP}, 2)"
+        assert format_query_string(
+            Query("table").where_arenou_criterion().build()
+        ) == correct
+        correct = f"SELECT *, col1, col2 FROM table WHERE col2 > 1 + 0.015 * POWER(col1, 2) AND col2 < 1.3 + 0.006 * POWER(col1, 2)"
+        assert format_query_string(
+            Query("table").where_arenou_criterion("col1", "col2").build()
+        ) == correct
+
+    def test_build_count(self, mock_search_object):
         correct = (
             "SELECT COUNT(*) FROM table WHERE col1 = 'value' AND 1 = CONTAINS("
             " POINT('ICRS', ra, dec), CIRCLE('ICRS', 130.6291, -48.1, 0.5)) AND col2"
@@ -362,7 +382,7 @@ class TestQuery:
             format_query_string(
                 (
                     Query("table")
-                    .where(("col1", "=", "value"))
+                    .where(("col1", "=", "'value'"))
                     .where_in_circle("dummy_name", 0.5)
                     .where(("col2", ">=", 5))
                     .build_count()
@@ -371,7 +391,7 @@ class TestQuery:
             == correct
         )
 
-    def test_get(self, mock_simbad_search, mock_gaia_launch_job_async, mocker):
+    def test_get(self, mock_search_object, mock_gaia_launch_job_async, mocker):
         q = (
             Query("gaiaedr3.gaia_source")
             .select("ra", "dec", "parallax", "pmra", "pmdec")
@@ -389,7 +409,7 @@ class TestQuery:
         )
         assert result is None
 
-    def test_count(self, mock_simbad_search, mock_gaia_launch_job_async, mocker):
+    def test_count(self, mock_search_object, mock_gaia_launch_job_async, mocker):
         q = (
             Query("gaiaedr3.gaia_source")
             .select("ra", "dec", "parallax", "pmra", "pmdec")

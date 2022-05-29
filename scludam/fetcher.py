@@ -37,6 +37,7 @@ from astroquery.simbad import Simbad
 from astroquery.utils.commons import coord_to_radec, radius_to_unit
 from attrs import Factory, define
 from beartype import beartype
+from ordered_set import OrderedSet
 
 Coord = Tuple[Number, Number]
 Condition = Tuple[str, str, Union[str, Number]]
@@ -46,9 +47,13 @@ LogicalExpression = Tuple[str, str, str, Union[str, Number]]
 @define
 class Config:
     MAIN_GAIA_TABLE: str = "gaiaedr3.gaia_source"
-    MAIN_GAIA_TABLE_RA: str = "ra"
-    MAIN_GAIA_TABLE_DEC: str = "dec"
+    MAIN_GAIA_RA: str = "ra"
+    MAIN_GAIA_DEC: str = "dec"
     ROW_LIMIT: int = -1
+    MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE: str = "astrometric_excess_noise"
+    MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG: str = "astrometric_excess_noise_sig"
+    MAIN_GAIA_BP_RP: str = "bp_rp"
+    MAIN_GAIA_BP_RP_EXCESS_FACTOR: str = "phot_bp_rp_excess_factor"
 
 
 config = Config()
@@ -61,7 +66,7 @@ class SimbadResult:
 
 
 @beartype
-def simbad_search(
+def search_object(
     identifier: str,
     cols: List[str] = [
         "coordinates",
@@ -120,7 +125,7 @@ class TableInfo:
 
 
 @beartype
-def table_info(search_query: str = None, only_names: bool = False, **kwargs):
+def search_table(search_query: str = None, only_names: bool = False, **kwargs):
     """List available tables in Gaia catalogues.
 
     Parameters
@@ -187,16 +192,8 @@ def table_info(search_query: str = None, only_names: bool = False, **kwargs):
 
 @define
 class Query:
-    QUERY_TEMPLATE = """SELECT {row_limit}
-{columns}{extra_columns}
-FROM {table_name}
-{conditions}
-{orderby}
-"""
-    COUNT_QUERY_TEMPLATE = """SELECT COUNT(*)
-FROM {table_name}
-{conditions}
-"""
+    QUERY_TEMPLATE = """SELECT {row_limit} {columns} \nFROM {table_name} {conditions} {orderby}"""
+    COUNT_QUERY_TEMPLATE = """SELECT COUNT(*) FROM {table_name} {conditions}"""
     table: str = config.MAIN_GAIA_TABLE
     row_limit: int = config.ROW_LIMIT
     columns: list = Factory(list)
@@ -216,38 +213,32 @@ FROM {table_name}
         return self
 
     @beartype
-    def validate_column(self, column: str):
+    def _validate_column(self, column: str):
         if self.columns:
-            if column not in self.columns:
+            if column not in self.columns and column not in self.extra_columns:
                 raise KeyError(f"Invalid column name: {column}")
 
     @beartype
-    def validate_operator(self, operator: str):
+    def _validate_operator(self, operator: str):
         if operator not in ["<", ">", "=", ">=", "<=", "LIKE", "like"]:
             raise ValueError(f"Invalid operator {operator}")
-
-    @beartype
-    def parse_condition_value(self, value):
-        if isinstance(value, str):
-            value = f"'{value}'"
-        return value
 
     @beartype
     def where(self, condition: Union[Condition, List[Condition]]):
         if isinstance(condition, list):
             for i, cond in enumerate(condition):
                 column, operator, value = cond
-                self.validate_column(column)
-                self.validate_operator(operator)
+                self._validate_column(column)
+                self._validate_operator(operator)
                 self.conditions.append(
-                    ("AND", column, operator, self.parse_condition_value(value))
+                    ("AND", column, operator, value)
                 )
         else:
             column, operator, value = condition
-            self.validate_column(column)
-            self.validate_operator(operator)
+            self._validate_column(column)
+            self._validate_operator(operator)
             self.conditions.append(
-                ("AND", column, operator, self.parse_condition_value(value))
+                ("AND", column, operator, value)
             )
         return self
 
@@ -258,23 +249,23 @@ FROM {table_name}
         else:
             first = condition
         column, operator, value = first
-        self.validate_column(column)
-        self.validate_operator(operator)
+        self._validate_column(column)
+        self._validate_operator(operator)
         self.conditions.append(
-            ("AND (", column, operator, self.parse_condition_value(value))
+            ("AND (", column, operator, value)
         )
 
         if isinstance(condition, list):
             for i, cond in enumerate(condition):
                 column, operator, value = cond
-                self.validate_column(column)
-                self.validate_operator(operator)
+                self._validate_column(column)
+                self._validate_operator(operator)
                 self.conditions.append(
-                    ("OR", column, operator, self.parse_condition_value(value))
+                    ("OR", column, operator, value)
                 )
 
         last = self.conditions.pop(-1)
-        new_last = (last[0], last[1], last[2], str(last[3]) + " )")
+        new_last = (last[0], last[1], last[2], str(last[3]) + ")")
         self.conditions.append(new_last)
         return self
 
@@ -283,13 +274,13 @@ FROM {table_name}
         self,
         coords_or_name: Union[Coord, SkyCoord, str],
         radius: Union[int, float, Quantity],
-        ra_name=config.MAIN_GAIA_TABLE_RA,
-        dec_name=config.MAIN_GAIA_TABLE_DEC,
+        ra_name=config.MAIN_GAIA_RA,
+        dec_name=config.MAIN_GAIA_DEC,
     ):
         if isinstance(radius, Quantity):
             radius = radius_to_unit(radius, unit="deg")
         if isinstance(coords_or_name, str):
-            coords = simbad_search(coords_or_name).coords
+            coords = search_object(coords_or_name).coords
         elif isinstance(coords_or_name, tuple):
             coords = SkyCoord(
                 coords_or_name[0],
@@ -312,6 +303,8 @@ FROM {table_name}
                 f" {dec}, {radius}))",
             )
         )
+        self.extra_columns.append(ra_name)
+        self.extra_columns.append(dec_name)
         self.extra_columns.append(
             f"DISTANCE( POINT('ICRS', {ra_name}, {dec_name}), POINT('ICRS', {ra},"
             f" {dec})) AS dist"
@@ -319,44 +312,65 @@ FROM {table_name}
         self.orderby = "dist ASC"
         return self
 
-    def build_count(self):
-        if self.conditions:
-            conditions = "".join(
-                [
-                    f"\n{logical_op} {expr1} {comp_op} {expr2}"
-                    for logical_op, expr1, comp_op, expr2 in self.conditions
-                ]
-            )
-            conditions = f"\nWHERE {conditions.replace('AND ', '', 1)}"
-        else:
-            conditions = ""
 
+    @beartype
+    def where_aen_criterion(self, aen_value:Number=2, aen_sig_value:Number=2, aen_name:str=config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE, aen_sig_name:str=config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG):
+        self.extra_columns.append(aen_name)
+        self.extra_columns.append(aen_sig_name)
+        return self.where_or([
+            (aen_sig_name, '<=', aen_sig_value),
+            (aen_name, '<', aen_value),
+        ])
+
+
+    @beartype
+    def where_arenou_criterion(self, bp_rp_name:str=config.MAIN_GAIA_BP_RP, bp_rp_ef_name:str=config.MAIN_GAIA_BP_RP_EXCESS_FACTOR):
+        self.extra_columns.append(bp_rp_name)
+        self.extra_columns.append(bp_rp_ef_name)
+        return self.where([
+            (bp_rp_ef_name, '>', f"1 + 0.015 * POWER({bp_rp_name}, 2)"),
+            (bp_rp_ef_name, '<', f"1.3 + 0.006 * POWER({bp_rp_name}, 2)"),
+        ])
+
+
+    def _build_columns(self):
+        if not self.columns:
+            columns = ["*"]
+        else:
+            columns = self.columns
+        if self.extra_columns:
+            columns = list(OrderedSet(columns).union(OrderedSet(self.extra_columns)))
+        columns = ", \n".join(columns)
+        return columns
+
+    def build_count(self):
+        
         query = self.COUNT_QUERY_TEMPLATE.format(
-            table_name=self.table, conditions=conditions
+            table_name=self.table, conditions=self._build_conditions()
         )
         return query
 
-    def build(self):
+    def _build_conditions(self):
         if self.conditions:
             conditions = "".join(
                 [
-                    f"\n{logical_op} {expr1} {comp_op} {expr2}"
+                    f"\n{logical_op}{expr1 if '(' in logical_op else ' ' + expr1} {comp_op} {expr2}"
                     for logical_op, expr1, comp_op, expr2 in self.conditions
                 ]
             )
             conditions = f"\nWHERE {conditions.replace('AND ', '', 1)}"
         else:
             conditions = ""
+        return conditions
 
+    def build(self):
+        
         query = self.QUERY_TEMPLATE.format(
             row_limit=f"TOP {self.row_limit}" if self.row_limit > 0 else "",
-            columns=", ".join(self.columns) if self.columns else "*",
-            extra_columns=", " + "\n, ".join(self.extra_columns)
-            if self.extra_columns
-            else "",
+            columns=self._build_columns(),
             table_name=self.table,
-            conditions=conditions,
-            orderby=f"\n ORDER BY {self.orderby}" if self.orderby else "",
+            conditions=self._build_conditions(),
+            orderby=f" \nORDER BY {self.orderby}" if self.orderby else "",
         )
         return query
 

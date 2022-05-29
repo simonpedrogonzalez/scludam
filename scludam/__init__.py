@@ -4,4 +4,4 @@ Scludam
 Star Cluster Detection and Membership Probability Calculation
 """
 
-from .fetcher import Query, simbad_search, table_info
+from .fetcher import Query, search_object, search_table

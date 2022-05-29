@@ -39,6 +39,7 @@ setup(
         "seaborn>=0.11.0",
         "attrs>=21.4.0",
         "beartype>=0.10.0",
+        "ordered_set>=4.0.2",
         # "statmodels==0.12.2",
         # "unidip==0.1.1"
     ],

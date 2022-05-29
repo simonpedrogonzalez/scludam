@@ -164,3 +164,6 @@ styleall.sh
 sys
 
 test.sh
+
+examples/*.xml
+examples/*.txt
