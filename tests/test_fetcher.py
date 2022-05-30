@@ -318,10 +318,10 @@ class TestQuery:
 
     def test_where_in_circle(self, mock_search_object):
         correct = (
-            f"SELECT *, {Config().MAIN_GAIA_RA}, {Config().MAIN_GAIA_DEC}, DISTANCE( POINT('ICRS', ra, dec), POINT('ICRS', 130.6291, -48.1)"
-            ") AS dist FROM table WHERE col1 <= 1 AND 1 = CONTAINS("
-            " POINT('ICRS', ra, dec), CIRCLE('ICRS', 130.6291, -48.1, 0.5)) AND col2"
-            " >= 5 ORDER BY dist ASC"
+            f"SELECT *, {Config().MAIN_GAIA_RA}, {Config().MAIN_GAIA_DEC}, DISTANCE("
+            " POINT('ICRS', ra, dec), POINT('ICRS', 130.6291, -48.1)) AS dist FROM"
+            " table WHERE col1 <= 1 AND 1 = CONTAINS( POINT('ICRS', ra, dec),"
+            " CIRCLE('ICRS', 130.6291, -48.1, 0.5)) AND col2 >= 5 ORDER BY dist ASC"
         )
         name = "dummy_name"
         coords = search_object_mock().coords
@@ -353,24 +353,46 @@ class TestQuery:
             assert format_query_string(q.build()) == correct
 
     def test_where_astrometric_aen_criterion(self):
-        correct = f"SELECT *, {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE}, {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG} FROM table WHERE ({Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG} <= 2 OR {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE} < 2)"
-        assert format_query_string(
-            Query("table").where_aen_criterion().build()
-        ) == correct
-        correct = f"SELECT *, col1, col2 FROM table WHERE (col2 <= 3 OR col1 < 3)"
-        assert format_query_string(
-            Query("table").where_aen_criterion(3, 3, "col1", "col2").build()
-        ) == correct
+        correct = (
+            f"SELECT *, {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE},"
+            f" {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG} FROM table WHERE"
+            f" ({Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG} <= 2 OR"
+            f" {Config().MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE} < 2)"
+        )
+        assert (
+            format_query_string(Query("table").where_aen_criterion().build()) == correct
+        )
+        correct = "SELECT *, col1, col2 FROM table WHERE (col2 <= 3 OR col1 < 3)"
+        assert (
+            format_query_string(
+                Query("table").where_aen_criterion(3, 3, "col1", "col2").build()
+            )
+            == correct
+        )
 
     def test_where_arenou_criterion(self):
-        correct = f"SELECT *, {Config().MAIN_GAIA_BP_RP}, {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} FROM table WHERE {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} > 1 + 0.015 * POWER({Config().MAIN_GAIA_BP_RP}, 2) AND {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} < 1.3 + 0.006 * POWER({Config().MAIN_GAIA_BP_RP}, 2)"
-        assert format_query_string(
-            Query("table").where_arenou_criterion().build()
-        ) == correct
-        correct = f"SELECT *, col1, col2 FROM table WHERE col2 > 1 + 0.015 * POWER(col1, 2) AND col2 < 1.3 + 0.006 * POWER(col1, 2)"
-        assert format_query_string(
-            Query("table").where_arenou_criterion("col1", "col2").build()
-        ) == correct
+        correct = (
+            f"SELECT *, {Config().MAIN_GAIA_BP_RP},"
+            f" {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} FROM table WHERE"
+            f" {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} > 1 + 0.015 *"
+            f" POWER({Config().MAIN_GAIA_BP_RP}, 2) AND"
+            f" {Config().MAIN_GAIA_BP_RP_EXCESS_FACTOR} < 1.3 + 0.006 *"
+            f" POWER({Config().MAIN_GAIA_BP_RP}, 2)"
+        )
+        assert (
+            format_query_string(Query("table").where_arenou_criterion().build())
+            == correct
+        )
+        correct = (
+            "SELECT *, col1, col2 FROM table WHERE col2 > 1 + 0.015 * POWER(col1, 2)"
+            " AND col2 < 1.3 + 0.006 * POWER(col1, 2)"
+        )
+        assert (
+            format_query_string(
+                Query("table").where_arenou_criterion("col1", "col2").build()
+            )
+            == correct
+        )
 
     def test_build_count(self, mock_search_object):
         correct = (

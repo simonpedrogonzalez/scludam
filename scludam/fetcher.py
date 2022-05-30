@@ -1,5 +1,5 @@
-# <Opencluster, a package for open star cluster probabilities calculations>
-# Copyright (C) 2020  González Simón Pedro
+# scludam, Star CLUster Detection And Membership estimation package
+# Copyright (C) 2022  Simón Pedro González
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,15 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# =============================================================================
-# DOCS
-# =============================================================================
-
-"""Package for membership probability calculation from remote or local data."""
-
-# =============================================================================
-# IMPORTS
-# =============================================================================
+"""Module for remote catalog data fetching."""
 
 from numbers import Number
 from typing import List, Tuple, Union
@@ -46,6 +38,8 @@ LogicalExpression = Tuple[str, str, str, Union[str, Number]]
 
 @define
 class Config:
+    """Class to hold defaults for the query."""
+
     MAIN_GAIA_TABLE: str = "gaiaedr3.gaia_source"
     MAIN_GAIA_RA: str = "ra"
     MAIN_GAIA_DEC: str = "dec"
@@ -61,6 +55,8 @@ config = Config()
 
 @define
 class SimbadResult:
+    """Class to hold the result of a search_object query."""
+
     coords: SkyCoord = None
     table: Table = None
 
@@ -83,24 +79,19 @@ def search_object(
     Parameters
     ----------
     identifier : str
-    fields : list of strings optional, default: ['coordinates',
-    'parallax','propermotions','velocity']
-        Fields to be included in the result.
-    dump_to_file: bool optional, default False
-    output_file: string, optional.
-        Name of the file, default is the object identifier.
+        Simbad identifier.
+    cols : List[str], optional
+        Columns to be included in the result, by default
+        [ "coordinates", "parallax", "propermotions",
+        "velocity", "dimensions", "diameter", ]
 
     Returns
     -------
-    coordinates : astropy.coordinates.SkyCoord
-        Coordinates of object if found, None otherwise
-    result: votable
-        Full result table
+    SimbadResult
+        Object with two fields:
+        - coords: astropy.coordinates.SkyCoord
+        - table: astropy.table.Table
 
-    Warns
-    ------
-    Identifier not found
-        If the identifier has not been found in Simbad Catalogues.
     """
     simbad = Simbad()
     simbad.add_votable_fields(*cols)
@@ -119,6 +110,8 @@ def search_object(
 
 @define
 class TableInfo:
+    """Class to hold the result of a search_table query."""
+
     name: str
     description: str
     columns: Table
@@ -126,22 +119,23 @@ class TableInfo:
 
 @beartype
 def search_table(search_query: str = None, only_names: bool = False, **kwargs):
-    """List available tables in Gaia catalogues.
+    """List available tables in gaia catalogue matching a search query.
 
     Parameters
     ----------
-    only_names: bool, optional, return only table names as list
-        default False
-
-    search_query: str, optional, return only results
-        that match pattern.
+    search_query : str, optional
+        query to match, by default None
+    only_names : bool, optional
+        return only table names and descriptions, by default False
 
     Returns
     -------
-    tables : list of str if only_names=True
-        Available tables names
+    List[TableInfo]
+        List of tables found. For each table, the following fields are available:
+        - name: str
+        - description: str
+        - columns: astropy.table.Table
 
-    tables: vot table if only_names=False
     """
     from astroquery.gaia import Gaia
 
@@ -192,7 +186,34 @@ def search_table(search_query: str = None, only_names: bool = False, **kwargs):
 
 @define
 class Query:
-    QUERY_TEMPLATE = """SELECT {row_limit} {columns} \nFROM {table_name} {conditions} {orderby}"""
+    """Class to hold a ADQL query to be executed.
+
+    Attributes
+    -------
+    table : str
+        Name of the table to be queried, by default given by Config.MAIN_GAIA_TABLE
+    row_limit: int
+        Maximum number of rows to be returned, by default given by Config.ROW_LIMIT
+    conditions: List[LogicalExpression]
+        List of conditions to be applied to the query, by default []
+    columns: List[str]
+        List of columns to be returned, by default [], meaning all.
+    extra_columns: List[str]
+        List of extra columns to be included in the query given by custom
+        conditions, by default []
+    orderby: str
+        Column to be used for ordering.
+
+    Notes:
+    -----
+    It is recommended to not manually set the attributes of this class,
+    except for table: str.
+
+    """
+
+    QUERY_TEMPLATE = (
+        """SELECT {row_limit} {columns} \nFROM {table_name} {conditions} {orderby}"""
+    )
     COUNT_QUERY_TEMPLATE = """SELECT COUNT(*) FROM {table_name} {conditions}"""
     table: str = config.MAIN_GAIA_TABLE
     row_limit: int = config.ROW_LIMIT
@@ -203,12 +224,38 @@ class Query:
 
     @beartype
     def select(self, *args: str):
+        """Add columns to query.
+
+        Parameters
+        ----
+        *args: str
+            Columns to be included in the query.
+
+        Returns
+        -------
+        Query
+            instance of query.
+
+        """
         if "*" not in args:
             self.columns = list(args)
         return self
 
     @beartype
     def top(self, row_limit: int):
+        """Set the number of rows to be returned.
+
+        Parameters
+        ----------
+        row_limit : int
+            number of rows to be returned.
+
+        Returns
+        -------
+        Query
+            instance of query.
+
+        """
         self.row_limit = row_limit
         return self
 
@@ -225,25 +272,50 @@ class Query:
 
     @beartype
     def where(self, condition: Union[Condition, List[Condition]]):
+        """Add a condition to the query.
+
+        Parameters
+        ----------
+        condition : Union[Condition, List[Condition]]
+            Condition or list of Conditions to be added to the query.
+            Each Condition is a tuple of the form
+            (expression1, operator, expression2): (str, str, Union[str, Number])
+
+        Returns
+        -------
+        Query
+            instance of query.
+
+        """
         if isinstance(condition, list):
             for i, cond in enumerate(condition):
                 column, operator, value = cond
                 self._validate_column(column)
                 self._validate_operator(operator)
-                self.conditions.append(
-                    ("AND", column, operator, value)
-                )
+                self.conditions.append(("AND", column, operator, value))
         else:
             column, operator, value = condition
             self._validate_column(column)
             self._validate_operator(operator)
-            self.conditions.append(
-                ("AND", column, operator, value)
-            )
+            self.conditions.append(("AND", column, operator, value))
         return self
 
     @beartype
     def where_or(self, condition: Union[Condition, List[Condition]]):
+        """Add conditions to the query following conjunctive normal form: AND (c1 OR c2
+        OR ...).
+
+        Parameters
+        ----------
+        condition : Union[Condition, List[Condition]]
+            Condition or list of Conditions to be added to the query.
+
+        Returns
+        -------
+        Query
+            instance of query.
+
+        """
         if isinstance(condition, list):
             first = condition.pop(0)
         else:
@@ -251,18 +323,14 @@ class Query:
         column, operator, value = first
         self._validate_column(column)
         self._validate_operator(operator)
-        self.conditions.append(
-            ("AND (", column, operator, value)
-        )
+        self.conditions.append(("AND (", column, operator, value))
 
         if isinstance(condition, list):
             for i, cond in enumerate(condition):
                 column, operator, value = cond
                 self._validate_column(column)
                 self._validate_operator(operator)
-                self.conditions.append(
-                    ("OR", column, operator, value)
-                )
+                self.conditions.append(("OR", column, operator, value))
 
         last = self.conditions.pop(-1)
         new_last = (last[0], last[1], last[2], str(last[3]) + ")")
@@ -274,9 +342,33 @@ class Query:
         self,
         coords_or_name: Union[Coord, SkyCoord, str],
         radius: Union[int, float, Quantity],
-        ra_name=config.MAIN_GAIA_RA,
-        dec_name=config.MAIN_GAIA_DEC,
+        ra_name: str = config.MAIN_GAIA_RA,
+        dec_name: str = config.MAIN_GAIA_DEC,
     ):
+        """Add a condition to the query to select objects within a circle.
+
+        The circle is drawn in the spherical coordinates space (ra, dec). It also adds
+        the dist (distance from the center) column to column list and adds orderby
+        distance to the query.
+
+        Parameters
+        ----------
+        coords_or_name : Union[Coord, SkyCoord, str]
+            Coordinates of the center of the circle or name of the identifier to be
+            searched using search_object.
+        radius : Union[int, float, astropy.units.quantity.Quantity]
+            value of the radius of the circle. If int or float, its taken as degrees.
+        ra_name : str, optional
+            ra column name, by default config.MAIN_GAIA_RA
+        dec_name : str, optional
+            dec column name, by default config.MAIN_GAIA_DEC
+
+        Returns
+        -------
+        Query
+            instance of query.
+
+        """
         if isinstance(radius, Quantity):
             radius = radius_to_unit(radius, unit="deg")
         if isinstance(coords_or_name, str):
@@ -312,26 +404,91 @@ class Query:
         self.orderby = "dist ASC"
         return self
 
-
     @beartype
-    def where_aen_criterion(self, aen_value:Number=2, aen_sig_value:Number=2, aen_name:str=config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE, aen_sig_name:str=config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG):
+    def where_aen_criterion(
+        self,
+        aen_value: Number = 2,
+        aen_sig_value: Number = 2,
+        aen_name: str = config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE,
+        aen_sig_name: str = config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG,
+    ):
+        """Add astrometric excess noise rejection criterion based on GAIA criteria.
+
+        It also adds the aen and aen_sig columns to column list. The criteria is:
+        exclude objects if
+        astrometric_excess_noise_significance > aen_sig_value AND
+        astrometric_excess_noise > aen_value
+
+        Parameters
+        ----------
+        aen_value : Number, optional
+            astrometric excess noise threshold value, by default 2
+        aen_sig_value : Number, optional
+            astrometric excess noise significance threshold value, by default 2
+        aen_name : str, optional
+            column name for astrometric excess noise, by default
+            config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE
+        aen_sig_name : str, optional
+            column name for astrometric escess noise significance, by default
+            config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG
+
+        Returns
+        -------
+        Query
+            instance of query
+
+        References
+        ----------
+        https://gea.esac.esa.int/archive/documentation/GEDR3/Gaia_archive/chap_datamodel/sec_dm_main_tables/ssec_dm_gaia_source.html
+
+        """  # noqa E501
         self.extra_columns.append(aen_name)
         self.extra_columns.append(aen_sig_name)
-        return self.where_or([
-            (aen_sig_name, '<=', aen_sig_value),
-            (aen_name, '<', aen_value),
-        ])
-
+        return self.where_or(
+            [
+                (aen_sig_name, "<=", aen_sig_value),
+                (aen_name, "<", aen_value),
+            ]
+        )
 
     @beartype
-    def where_arenou_criterion(self, bp_rp_name:str=config.MAIN_GAIA_BP_RP, bp_rp_ef_name:str=config.MAIN_GAIA_BP_RP_EXCESS_FACTOR):
+    def where_arenou_criterion(
+        self,
+        bp_rp_name: str = config.MAIN_GAIA_BP_RP,
+        bp_rp_ef_name: str = config.MAIN_GAIA_BP_RP_EXCESS_FACTOR,
+    ):
+        """Add rejection criterion based on Arenou et al. (2018).
+
+        It also adds the bp_rp and bp_rp_ef columns to column list. The criteria is:
+        include objects if 1 + 0.015(BP-RP)^2 < E <1.3 + 0.006(BP-RP)^2
+        where E is photometric BP-RP excess factor.
+
+        Parameters
+        ----------
+        bp_rp_name : str, optional
+            bp_rp column name, by default config.MAIN_GAIA_BP_RP
+        bp_rp_ef_name : str, optional
+            bp_rp excess factor column name, by default
+            config.MAIN_GAIA_BP_RP_EXCESS_FACTOR
+
+        Returns
+        -------
+        Query
+            instance of query
+
+        References
+        ----------
+        Arenou et al. (2018), A&A 616, A17, https://doi.org/10.1051/0004-6361/201833234
+
+        """
         self.extra_columns.append(bp_rp_name)
         self.extra_columns.append(bp_rp_ef_name)
-        return self.where([
-            (bp_rp_ef_name, '>', f"1 + 0.015 * POWER({bp_rp_name}, 2)"),
-            (bp_rp_ef_name, '<', f"1.3 + 0.006 * POWER({bp_rp_name}, 2)"),
-        ])
-
+        return self.where(
+            [
+                (bp_rp_ef_name, ">", f"1 + 0.015 * POWER({bp_rp_name}, 2)"),
+                (bp_rp_ef_name, "<", f"1.3 + 0.006 * POWER({bp_rp_name}, 2)"),
+            ]
+        )
 
     def _build_columns(self):
         if not self.columns:
@@ -344,7 +501,16 @@ class Query:
         return columns
 
     def build_count(self):
-        
+        """Build the count query.
+
+        It allows to preview a query without executing it.
+
+        Returns
+        -------
+        str
+            string query in ADQL.
+
+        """
         query = self.COUNT_QUERY_TEMPLATE.format(
             table_name=self.table, conditions=self._build_conditions()
         )
@@ -354,8 +520,8 @@ class Query:
         if self.conditions:
             conditions = "".join(
                 [
-                    f"\n{logical_op}{expr1 if '(' in logical_op else ' ' + expr1} {comp_op} {expr2}"
-                    for logical_op, expr1, comp_op, expr2 in self.conditions
+                    f"\n{lop}{expr1 if '(' in lop else ' ' + expr1} {cop} {expr2}"
+                    for lop, expr1, cop, expr2 in self.conditions
                 ]
             )
             conditions = f"\nWHERE {conditions.replace('AND ', '', 1)}"
@@ -364,7 +530,14 @@ class Query:
         return conditions
 
     def build(self):
-        
+        """Build the query.
+
+        Returns
+        -------
+        str
+            string query in ADQL.
+
+        """
         query = self.QUERY_TEMPLATE.format(
             row_limit=f"TOP {self.row_limit}" if self.row_limit > 0 else "",
             columns=self._build_columns(),
@@ -375,7 +548,10 @@ class Query:
         return query
 
     def get(self, **kwargs):
-        """Build and perform query.
+        """Execute the query.
+
+        It launches an asynchronous gaia job. It takes some time to execute the
+        query and parse the results.
 
         Parameters
         ----------
@@ -383,16 +559,15 @@ class Query:
         astroquery.gaia.Gaia.launch_job_async
         For example:
         dump_to_file : bool
-            If True, results will be stored in file
-            (default is False).
+            If True, results will be stored in file, false by default.
         output_file : str
-            Name of the output file
+            Name of the output file if dump_to_file is True.
 
         Returns
         -------
-        octable : opencluster.OCTable
-            Instance with query results,
-            None if dump_to_file is True
+        astroquery.table.table.Table
+            table with the results if dump_to_file is False
+
         """
         query = self.build()
 
@@ -408,6 +583,28 @@ class Query:
             return table
 
     def count(self, **kwargs):
+        """Execute the count query.
+
+        It launches an asynchronous gaia job. It takes some time
+        to execute the query and parse the results. It only returns
+        a table with a single count_all column.
+
+        Parameters
+        ----------
+        Parameters that are passed through **kwargs to
+        astroquery.gaia.Gaia.launch_job_async
+        For example:
+        dump_to_file : bool
+            If True, results will be stored in file, false by default.
+        output_file : str
+            Name of the output file if dump_to_file is True.
+
+        Returns
+        -------
+        astroquery.table.table.Table
+            table with the results if dump_to_file is False
+
+        """
         query = self.build_count()
         from astroquery.gaia import Gaia
 
