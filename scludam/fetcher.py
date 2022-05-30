@@ -556,7 +556,7 @@ class Query:
 
         Parameters
         ----------
-        Parameters that are passed through **kwargs to
+        Parameters that are passed through kwargs to
         astroquery.gaia.Gaia.launch_job_async
         For example:
         dump_to_file : bool
@@ -592,7 +592,7 @@ class Query:
 
         Parameters
         ----------
-        Parameters that are passed through **kwargs to
+        Parameters that are passed through kwargs to
         astroquery.gaia.Gaia.launch_job_async
         For example:
         dump_to_file : bool
