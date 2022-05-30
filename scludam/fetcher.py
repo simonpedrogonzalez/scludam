@@ -189,7 +189,7 @@ class Query:
     """Class to hold a ADQL query to be executed.
 
     Attributes
-    -------
+    ----------
     table : str
         Name of the table to be queried, by default given by Config.MAIN_GAIA_TABLE
     row_limit: int
@@ -204,7 +204,7 @@ class Query:
     orderby: str
         Column to be used for ordering.
 
-    Notes:
+    Notes
     -----
     It is recommended to not manually set the attributes of this class,
     except for table: str.
@@ -227,7 +227,7 @@ class Query:
         """Add columns to query.
 
         Parameters
-        ----
+        ----------
         *args: str
             Columns to be included in the query.
 
@@ -302,8 +302,9 @@ class Query:
 
     @beartype
     def where_or(self, condition: Union[Condition, List[Condition]]):
-        """Add conditions to the query following conjunctive normal form: AND (c1 OR c2
-        OR ...).
+        """Add conditions to the query following in CNF.
+
+        CNF is conjunctive normal form: AND (c1 OR c2 OR ...).
 
         Parameters
         ----------

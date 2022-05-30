@@ -161,6 +161,7 @@ gitconfig
 stylefix.sh
 devinstall.sh
 styleall.sh
+docstyle.sh
 sys
 
 test.sh
