@@ -36,6 +36,8 @@ https://github.com/simonpedrogonzalez/scludam
 
    modules
 
+   diagrams
+
 Indices and tables
 ==================
 
