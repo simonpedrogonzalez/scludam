@@ -20,7 +20,7 @@ import pandas as pd
 import math
 import numpy as np
 import pytest
-
+from utils import assert_eq_warn_message
 
 @pytest.fixture
 def three_clusters_sample():
@@ -281,9 +281,11 @@ def is_same_center(center1, center2, bin_shape):
 def test_detect_happy_pass(three_clusters_sample):
     df = three_clusters_sample[["pmra", "pmdec", "log10_parallax"]]
     data = df.values
-    result = CountPeakDetector(
-        bin_shape=[0.5, 0.5, 0.05], min_count=5, min_dif=20
-    ).detect(data)
+    with pytest.warns(UserWarning) as record:
+        result = CountPeakDetector(
+            bin_shape=[0.5, 0.5, 0.05], min_count=5, min_dif=20
+        ).detect(data)
+        assert_eq_warn_message(record, "Histogram has too few bins in some dimensions: bin numbers are [41 42  1]")
     center1 = (7.5, 7, np.log10(5))
     center2 = (4.5, 4, np.log10(5))
     center3 = (0.5, 0, np.log10(5))

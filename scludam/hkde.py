@@ -9,17 +9,17 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from attr import attrs
-from KDEpy import NaiveKDE
-from KDEpy.bw_selection import (
-    improved_sheather_jones,
-    scotts_rule,
-    silvermans_rule,
-)
+# from KDEpy import NaiveKDE
+# from KDEpy.bw_selection import (
+#     improved_sheather_jones,
+#     scotts_rule,
+#     silvermans_rule,
+# )
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from rpy2.robjects import r
 from scipy.stats import gaussian_kde, halfnorm, multivariate_normal
-from statsmodels.nonparametric.bandwidths import bw_scott, bw_silverman
-from statsmodels.nonparametric.kernel_density import KDEMultivariate
+# from statsmodels.nonparametric.bandwidths import bw_scott, bw_silverman
+# from statsmodels.nonparametric.kernel_density import KDEMultivariate
 from statsmodels.stats.correlation_tools import corr_nearest
 from astropy.table.table import Table
 import beartype

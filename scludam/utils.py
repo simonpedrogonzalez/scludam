@@ -10,7 +10,7 @@ def one_hot_encode(labels: np.ndarray):
     # Dinstinct labels must be able to be aranged into a list of consecutive int numbers
     # e.g. [-1, 0, 1, 2] is ok, [-1, 1, 3] is not ok
     # labels min could be 0 or -1 if noise is present
-    labels = np.asarray(labels).astype(np.int)
+    labels = np.asarray(labels).astype(int)
     labels = labels + labels.min() * -1
     one_hot = np.zeros((labels.shape[0], labels.max()+1))
     one_hot[np.arange(labels.shape[0]), labels] = 1

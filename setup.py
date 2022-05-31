@@ -26,22 +26,22 @@ setup(
     ],
     # dependencies
     install_requires=[
-        "numpy>=1.19.3",
+        "numpy>=1.21.6", # "numpy>=1.19.3",
         "matplotlib>=3.4.1",
-        "scipy>=1.4.1",
-        "astropy>=4.2.1",
-        "astroquery>=0.4.1",
-        "pandas>=1.1.4",
+        "scipy>=1.7.3" # "scipy>=1.4.1",
+        "astropy>=5.1" # "astropy>=4.2.1",
+        "astroquery>=0.4.7" # "astroquery>=0.4.1",
+        "pandas>=1.4.2" # "pandas>=1.1.4",
         "hdbscan==0.8.27",
-        "scikit-learn>=0.23.1",
+        "scikit-learn>=1.0.2", # "scikit-learn>=0.23.1",
         "scikit-image>=0.18.1",
-        # "rpy2>=3.1.0",
+        "rpy2>=3.5.2", # "rpy2>=3.1.0",
         "seaborn>=0.11.0",
         "attrs>=21.4.0",
         "beartype>=0.10.0",
         "ordered_set>=4.0.2",
-        # "statmodels==0.12.2",
-        # "unidip==0.1.1"
+        "statsmodels>=0.12.2",
+        "unidip>=0.1.1"
     ],
     extras_require={
         # dev dependencies

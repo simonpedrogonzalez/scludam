@@ -22,15 +22,18 @@ w = np.ones(n)
 @pytest.fixture
 def kskde():
     from rpy2.robjects import numpy2ri, r
+    from rpy2.robjects import default_converter, conversion
+    # from rpy2.robjects import numpy2ri
+    from rpy2.robjects.conversion import localconverter
 
     rhardload(r, ["ks"])
-    numpy2ri.activate()
     obs, dims = data.shape
-    r.assign("data", data)
+    with localconverter(default_converter + numpy2ri.converter):
+        r.assign("data", data)
     r("result <- kde(data, eval.points=data)")
     H = np.asarray(r('result["H"]'))
     pdf = np.asarray(r('result["estimate"]'))
-    numpy2ri.deactivate()
+
     return pdf.ravel(), H
 
 
