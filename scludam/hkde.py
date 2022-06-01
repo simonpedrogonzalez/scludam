@@ -26,8 +26,7 @@ import beartype
 from numpy import ndarray
 from numbers import Number
 
-sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
-from scludam.rutils import pyargs2r, rclean, rhardload
+from scludam.rutils import load_r_packages, disable_r_console_output, disable_r_warnings, assign_r_args, clean_r_session
 from scludam.utils import Colnames
 from scludam.synthetic import (
     Cluster,
@@ -41,8 +40,9 @@ from scludam.synthetic import (
     three_clusters_sample,
 )
 
-# prepare r packages
-rhardload(r, ["ks"])
+disable_r_warnings()
+disable_r_console_output()
+load_r_packages(r, ["ks"])
 
 
 class BandwidthSelector:
@@ -63,8 +63,8 @@ class PluginSelector(BandwidthSelector):
         params = copy.deepcopy(self.__dict__)
         diag = params.pop("diag")
         # delete all previous session variables
-        rclean(r, "var")
-        _, rparams = pyargs2r(r, x=data, **params)
+        clean_r_session(r, "var")
+        _, rparams = assign_r_args(r, x=data, **params)
         return f'ks::Hpi{".diag" if diag else ""}({rparams})'
 
     # @beartype
@@ -73,7 +73,6 @@ class PluginSelector(BandwidthSelector):
         command = self.build_r_command(data)
         result = r(command)
         return np.asarray(result)
-
 
 @attrs(auto_attribs=True)
 class HKDE:

@@ -17,7 +17,7 @@ import seaborn as sns
 from sklearn.preprocessing import RobustScaler
 from warnings import warn
 from scipy.stats import ks_2samp, multivariate_normal
-
+from numpy.typing import ArrayLike
 sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
 from scludam.synthetic import (
     Cluster,
@@ -1071,23 +1071,3 @@ def plot(tr):
     ran_color = palette[np.random.choice(len(palette))]
     return sns.lineplot(np.arange(0, len(tr.dist)), tr.dist, color=ran_color)
 
-
-""" for i in range(10):
-    np.random.seed(i)
-    u = uniform_sample()
-    np.random.seed(i)
-    c = one_cluster_sample()
-    np.random.seed(i)
-    b = two_clusters_sample()
-    ur = DipDistTest(n_samples=200).test(u)
-    cr = DipDistTest(n_samples=200).test(c)
-    br = DipDistTest(n_samples=200).test(b)
-
-    if not ur.passed and cr.passed and br.passed:
-        print('Correct:', i)
-    else:
-        print('Incorrect:', i)
-        print(ur.passed, cr.passed, br.passed)
-        print('coso')
-
-print('coso') """

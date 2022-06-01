@@ -4,8 +4,11 @@ from astropy.table.table import Table
 from scipy.stats._multivariate import multi_rv_frozen
 from utils import raises_exception
 from scludam.hkde import HKDE, PluginSelector, r as rsession
-from scludam.rutils import rhardload
+from scludam.rutils import load_r_packages, disable_r_console_output, disable_r_warnings
 from scludam.utils import Colnames
+
+disable_r_console_output()
+disable_r_warnings()
 
 df = Table.read("tests/data/ngc2527_small.xml").to_pandas()
 cnames = Colnames(df.columns.to_list())
@@ -26,7 +29,7 @@ def kskde():
     # from rpy2.robjects import numpy2ri
     from rpy2.robjects.conversion import localconverter
 
-    rhardload(r, ["ks"])
+    load_r_packages(r, ["ks"])
     obs, dims = data.shape
     with localconverter(default_converter + numpy2ri.converter):
         r.assign("data", data)

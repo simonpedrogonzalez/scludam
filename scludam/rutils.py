@@ -8,11 +8,26 @@ from rpy2.robjects import default_converter, conversion
 # from rpy2.robjects import numpy2ri
 from rpy2.robjects.conversion import localconverter
 from rpy2.robjects import conversion
+import rpy2.rinterface_lib.callbacks as rcallbacks
+import warnings
+from rpy2.rinterface import RRuntimeWarning
 
 utils = None
 
+def disable_r_warnings():
+    warnings.filterwarnings("ignore", category=RRuntimeWarning)
 
-def rclean(rsession, mode: str = "all"):
+def disable_r_console_output():
+    # flush any R console output
+    def add_to_stdout(line):
+        pass
+    def add_to_stderr(line):
+        pass
+
+    rcallbacks.consolewrite_print = add_to_stdout
+    rcallbacks.consolewrite_warnerror = add_to_stderr
+
+def clean_r_session(rsession, mode: str = "all"):
     if mode == "all":
         rsession("rm(list=ls())")
     elif mode == "var":
@@ -21,22 +36,7 @@ def rclean(rsession, mode: str = "all"):
         rsession("rm(list=lsf.str())")
     return rsession
 
-
-# def pyargs2r(rsession, **kwargs):
-#     numpy2ri.activate()
-#     params = ''
-#     for key, value in kwargs.items():
-#         if value is not None:
-#             if isinstance(value, (int, float, np.ndarray, str, bool)):
-#                 rsession.assign(key, value)
-#                 params += f'{key}={key},'
-#             else:
-#                 raise TypeError('Unsuported py to r variable conversion.')
-#     numpy2ri.deactivate()
-#     return rsession, params[:-1]
-
-
-def rhardload(rsession, packages: Union[list, str]):
+def load_r_packages(rsession, packages: Union[list, str]):
     if isinstance(packages, str):
         packages = [packages]
     for package in packages:
@@ -52,7 +52,7 @@ def rhardload(rsession, packages: Union[list, str]):
     return rsession
 
 
-def pyargs2r(rsession, **kwargs):
+def assign_r_args(rsession, **kwargs):
     params = ""
     for key, value in kwargs.items():
         if value is not None:
