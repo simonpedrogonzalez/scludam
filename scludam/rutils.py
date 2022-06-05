@@ -56,12 +56,10 @@ def assign_r_args(rsession, **kwargs):
     params = ""
     for key, value in kwargs.items():
         if value is not None:
-            if isinstance(value, (int, float, str, bool)):
-                rsession.assign(key, value)
-            elif isinstance(value, np.ndarray):
+            if isinstance(value, (int, float, str, bool, np.ndarray)):
                 with localconverter(default_converter + numpy2ri.converter):
                     rsession.assign(key, value)
             else:
-                raise TypeError("Unsuported py to r variable conversion.")
+                raise TypeError(f"Unsupported python to r argument conversion for {key} of type {type(value).__name__}")
             params += f"{key}={key},"
     return rsession, params[:-1]

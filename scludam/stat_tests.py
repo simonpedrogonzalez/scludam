@@ -1,75 +1,146 @@
-import os
-import sys
-from abc import abstractmethod
+# scludam, Star CLUster Detection And Membership estimation package
+# Copyright (C) 2022  Simón Pedro González
 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""Module for useful statistical tests."""
+
+from abc import abstractmethod
+from numbers import Number
+from typing import Union
+from warnings import warn
+
+import numpy as np
 from astropy.stats import RipleysKEstimator
-from attrs import define, validators, field
-from matplotlib import pyplot as plt
-from scipy.spatial import ConvexHull
+from attrs import define, field, validators
+from beartype import beartype
+from beartype.vale import IsAttr, IsEqual
+from diptest import diptest
+from numpy.typing import NDArray
+from scipy.stats import ks_2samp, beta
+from sklearn.base import TransformerMixin
 from sklearn.metrics import pairwise_distances
-from sklearn.neighbors import BallTree
+from sklearn.neighbors import BallTree, DistanceMetric
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import resample
-from unidip.dip import diptst
-import numpy as np
-import pandas as pd
-import seaborn as sns
-from sklearn.preprocessing import RobustScaler
-from warnings import warn
-from scipy.stats import ks_2samp, multivariate_normal
-from numpy.typing import ArrayLike
-sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
-from scludam.synthetic import (
-    Cluster,
-    Field,
-    Synthetic,
-    UniformSphere,
-    polar_to_cartesian,
-    stats,
-    case2_sample0c,
-    case2_sample1c,
-    case2_sample2c,
-    BivariateUnifom,
-)
-from scludam.utils import combinations
+
+
+from typing_extensions import Annotated
+
+
+Numeric2DArray = Annotated[NDArray[np.number], IsAttr["ndim", IsEqual[2]]]
+Numeric1DArray = Annotated[NDArray[np.number], IsAttr["ndim", IsEqual[1]]]
 
 
 @define(auto_attribs=True)
 class TestResult:
-    passed: bool = None
+    """Base class to hold the results of a statistical test."""
+
+    rejectH0: bool
 
 
 class StatTest:
+    """Base class for statistical tests."""
+
     @abstractmethod
-    def test(self, data: np.ndarray, *args, **kwargs) -> TestResult:
+    def test(self, data: Numeric2DArray, *args, **kwargs) -> TestResult:
+        """Perform the test.
+
+        Parameters
+        ----------
+        data : Numeric2DArray
+            numpy numeric 2d array with the data to be tested.
+
+        Returns
+        -------
+        TestResult
+            Test result. Its fields depend on the specific test, but always
+            has field rejectH0: boolean
+        """
         pass
 
 
 @define(auto_attribs=True)
 class HopkinsTestResult(TestResult):
-    value: float = None
-    pvalue: float = None
+    """Results of a Hopkins test."""
+
+    value: Number
+    pvalue: Number
 
 
 @define(auto_attribs=True)
 class RipleyKTestResult(TestResult):
-    value: float = None
-    radii: np.ndarray = None
-    l_function: np.ndarray = None
+    """Results of a Ripley's K test."""
+
+    value: Number
+    radii: Numeric1DArray
+    l_function: Numeric1DArray
 
 
 @define(auto_attribs=True)
 class DipDistTestResult(TestResult):
-    pvalue: float = None
-    dist: np.ndarray = None
+    """Results of a dip dist test."""
+
+    value: Number
+    pvalue: Number
+    dist: Numeric1DArray
 
 
 @define(auto_attribs=True)
 class HopkinsTest(StatTest):
+    """Class to perform a Hopkins spatial randomness test.
+
+    Compares the distance between a sample of m points X' from the data set X and
+    their nearest neighbors in X, to the distances from X to their nearest neighbors
+    in a uniform distribution. The null hypothesis is:
+        H0: The dataset X comes from a Poisson Point Process.
+    Which can be thought of as:
+        H0: The dataset X does not present cluster structure.
+    The formula to calculate the Hopkins statistic is:
+        h = sum(d1**l) / (sum(d1**l) + sum(d2**l))
+    where:
+        d1: distance_to_nearest_neighbor_in_X
+        d2: distance_to_nearest_neighbor_in_uniform_distribution
+        l: dimensionality of the data
+    The Hopkins statistic is a number between 0.5 and 1. A value ~ 0.5 supports
+    the null hypothesis. A value ~ 1.0 supports the alternative hypothesis.
+    To get the p-value, the statistic is compared to a beta distribution with
+    parameters (m, m).
+
+    Attributes
+    ----------
+    n_iters : int
+        Number of iterations to perform the test. Final Hopkins statistic result
+        is taken as the median of the results, by default is 100.
+    n_samples : int
+        Number of samples to take from the data, by default is 0.1*n where n is
+        the number of points in the data set, as it is the recommended value.
+    metric : Union[str, DistanceMetric]
+        Metric to use for the distance between points, by default is 'euclidean'.
+        Can be str or sklearn.neighbours.DistanceMetric.
+    threshold : Number, optional
+        Threshold to use with the Hopkins statistic value to define if H0 is rejected,
+        by default is None. If set, it is used instead of the pvalue_threshold.
+    pvalue_threshold : float
+        Threshold to use with the p-value to define if H0 is rejected, by default
+        is 0.05.
+
+    """
+
     n_samples: int = None
-    metric: str = "euclidean"
+    metric: Union[str, DistanceMetric] = "euclidean"
     n_iters: int = 100
-    # reduction: Callable = np.median
     # interpretation:
     # H0: data comes from uniform distribution
     # H1: data does not come from uniform distribution
@@ -77,55 +148,34 @@ class HopkinsTest(StatTest):
     # if h = u/(u+w) ~ .5 => w ~ u luego no hay estructura
     # if h > .75 => reject H0, and in general  indicates a clustering
     # tendency at the 90% confidence level.
-    threshold: float = None
+    threshold: Number = None
     pvalue_threshold: float = 0.05
 
-    def get_pvalue(self, value, n_samples):
-        """
-        Parameters
-        ----------
-        value : float
-            The hopkins score of the dataset (between 0 and 1)
-        n_samples : int
-            The number of samples used to compute the hopkins score
-
-        Returns
-        ---------------------
-        pvalue : float
-            The pvalue of the hopkins score
-        """
-        beta = stats.beta(n_samples, n_samples)
+    def _get_pvalue(self, value: Union[Number, DipDistTestResult], n_samples: int):
+        b = beta(n_samples, n_samples)
         if value > 0.5:
-            return 1 - (beta.cdf(value) - beta.cdf(1 - value))
+            return 1 - (b.cdf(value) - b.cdf(1 - value))
         else:
-            return 1 - (beta.cdf(1 - value) - beta.cdf(value))
+            return 1 - (b.cdf(1 - value) - b.cdf(value))
 
-    def test(self, data: np.ndarray, *args, **kwargs):
-        """Assess the clusterability of a dataset. A score
-        between 0 and 1, a score around 0.5 express
-        no clusterability and a score tending to 1
-        express a high cluster tendency.
+    @beartype
+    def test(self, data: Numeric2DArray, *args, **kwargs):
+        """Perform the Hopkins test.
 
         Parameters
         ----------
-        data : numpy array
-            The input dataset
+        data : Numeric2DArray
+            numpy 2d numeric array containing the data.
 
         Returns
-        ---------------------
-        score : float
-            The hopkins score of the dataset (between 0 and 1)
+        -------
+        HopkinsTestResult
+            Result containing:
+                - value: the Hopkins statistic
+                - pvalue: the p-value
+                - rejectH0: True if H0 is rejected, False otherwise.
 
-        Examples
-        --------
-        >>> from sklearn import datasets
-        >>> from pyclustertend import hopkins
-        >>> X = datasets.load_iris().data
-        >>> hopkins(X,150)
-        0.16
         """
-        assert len(data.shape) == 2
-
         obs, dims = data.shape
 
         if self.n_samples is None:
@@ -153,62 +203,161 @@ class HopkinsTest(StatTest):
 
             sample_sum = np.sum(sample_nn_distance**dims)
             uniform_sum = np.sum(uniform_nn_distance**dims)
-            # sample_sum = self.reduction(sample_nn_distance)
-            # uniform_sum = self.reduction(uniform_nn_distance)
-            if sample_sum + uniform_sum == 0:
-                raise Exception("The denominator of the hopkins statistics is null")
+
             results.append(uniform_sum / (uniform_sum + sample_sum))
 
         value = np.median(np.array(results))
-        pvalue = self.get_pvalue(value, n_samples)
+        pvalue = self._get_pvalue(value, n_samples)
         if self.threshold is not None:
-            passed = value >= self.threshold
+            rejectH0 = value >= self.threshold
         else:
-            passed = pvalue <= self.pvalue_threshold
-        return HopkinsTestResult(value=value, passed=passed, pvalue=pvalue)
+            rejectH0 = pvalue <= self.pvalue_threshold
+        return HopkinsTestResult(value=value, rejectH0=rejectH0, pvalue=pvalue)
 
 
 @define(auto_attribs=True)
 class DipDistTest(StatTest):
+    """Class to perform a Dip-Dist test of multimodality over pairwise distances.
+
+    It analyzes the distribution of distances between pairs of points in a data set
+    to determine if the data set is multimodal. The null hypothesis is:
+        H0: The distance distribution is unimodal.
+    Which can be thought of as:
+        H0: The data set X does not present cluster structure.
+    Hartigan's Dip statistic is the maximum difference between an empirical distribution
+    and its closest unimodal distribution calculated using the greatest convex minorant
+    and the least concave majorant of the bounded distribution function.
+
+    Attributes
+    ----------
+    n_samples : int
+        number of samples to take from the data, by default is min(n, 100)
+        where n is the number of points in the data set. This value is simply chosen as
+        to reduce the computation time.
+    metric : Union[str, DistanceMetric]
+        Metric to use for the distance between points, by default is 'euclidean'. Can be
+        str or sklearn.neighbours.DistanceMetric.
+    pvalue_threshold : float
+        Threshold to use with the p-value to define if H0 is rejected, by default
+        is 0.05.
+
+    """
+
     n_samples: int = None
     metric: str = "euclidean"
     pvalue_threshold: float = 0.05
 
-    def test(self, data: np.ndarray, *args, **kwargs):
-        """dip test of unimodality over multidimensional
-        data based on distance metric"""
-        assert len(data.shape) == 2
+    @beartype
+    def test(self, data: Numeric2DArray, *args, **kwargs):
+        """Perform the Dip-Dist test.
 
+        Parameters
+        ----------
+        data : Numeric2DArray
+            numpy 2d numeric array containing the data.
+
+        Returns
+        -------
+        DipDistTestResult
+            The result containing:
+                - value: the Dip statistic
+                - pvalue: the p-value
+                - rejectH0: True if H0 is rejected, False otherwise.
+
+        """
         obs, dims = data.shape
 
-        if self.n_samples is None:
-            n_samples = min(obs, 100)
-        else:
+        if self.n_samples is not None:
             n_samples = min(obs, self.n_samples)
+        else:
+            n_samples = obs
 
         sample = resample(data, n_samples=n_samples, replace=False)
         dist = np.ravel(np.tril(pairwise_distances(sample, metric=self.metric)))
         dist = np.msort(dist[dist > 0])
-        _, pval, _ = diptst(dist, *args, **kwargs)
-        # sns.histplot(dist).set(title=str(pval))
-        # plt.show()
-        # print(pval)
-        passed = pval < self.pvalue_threshold
-        return DipDistTestResult(pvalue=pval, passed=passed, dist=dist)
+        dip, pval = diptest(dist, *args, **kwargs)
+        rejectH0 = pval < self.pvalue_threshold
+        return DipDistTestResult(value=dip, pvalue=pval, rejectH0=rejectH0, dist=dist)
 
 
 @define
 class RipleysKTest(StatTest):
+    """Class to perform the Ripleys K test of 2D spatial randomness.
+
+    It calculates the value of an estimate for the L function (a form of Ripleys
+    K function) for a set of radii taken from the center of the data set,
+    and compares it to the theoretical L function of a uniform distribution where
+    L_function(radii) = radii. The null hypothesis is:
+        H0: The data set X comes from a Poisson Point Process.
+    Which can be thought of as:
+        H0: The data set X does not present cluster structure.
+    The Ripleys K function is defined as:
+    The L function is defined as:
+        L(r) = sqrt(K(r)/pi)
+    The statistic to define if H0 is rejected is:
+        s = max(L(r) - r)
+
+    Attributes
+    ----------
+    rk_estimator : astropy.stats.RipleysKEstimator, optional
+        Estimator to use for the Ripleys K function, by default is None. Only used if
+        a custom RipleysKEstimator configuration is needed.
+
+    mode: str, optional
+        The comparison method to use to determine the rejection of H0, by default is
+        'ripleys'.
+        Allowed values are:
+            - 'ripleys': H0 rejected if s > ripley_factor * sqrt(area) / n
+                where:
+                    - area: is the area of the 2D data set taken as a square window.
+                    - n: is the number of points in the data set.
+                    - ripley_factor: are the tabulated values calculated by Ripleys to
+                    determine p-value significance. Available Ripleys factors are:
+                            - p-value = 0.05 -> factor = 1.42
+                            - p-value = 0.01 -> factor = 1.68
+            - 'chiu': H0 rejected if s > chiu_factor * sqrt(area) / n
+                where:
+                    - chiu_factor: are the tabulated values calculated by Chiu to
+                    determine p-value significance. Available Chiu factors are:
+                            - p-value = 0.1 -> factor = 1.31
+                            - p-value = 0.05 -> factor = 1.45
+                            - p-value = 0.01 -> factor = 1.75
+            - 'ks': H0 rejected if kolmogorov_smirnov_test_pvalue < pvalue_threshold
+                where:
+                    - kolmogorov_smirnov_test_pvalue: is the p-value of the Kolmogorov
+                    Smirnov test comparing the L function to the theoretical L function.
+                This option is experimental and should be used with caution.
+
+    radii : Numeric1DArray, optional
+        numpy 1d numeric array containing the radii to use for the Ripleys K function,
+        by default is None. If radii is None, radii are taken in a range [0, max_radius]
+        where max_radius is calculated as:
+            recommended_radius = short_side_of_rectangular_window / 4
+            recommended_radius_for_large_data_sets = sqrt(100 / pi * n)
+            max_radius = min(recommended_radius, recommended_radius_for_large_data_sets)
+
+        The steps between the radii values are calculated as:
+            step = max_radius / 128 / 4
+        This procedure is the recommended one in R spatstat package.
+
+    Raises
+    ------
+    ValueError
+        If tabulated factor for the chosen p-value threshold is not available, or if the
+        chosen p-value threshold is invalid.
+
+    """
+
     rk_estimator: RipleysKEstimator = None
 
-    scaler = MinMaxScaler()
+    _scaler: TransformerMixin = MinMaxScaler()
 
-    ripley_factors = {
+    _ripley_factors = {
         0.05: 1.42,
         0.01: 1.68,
     }
 
-    chiu_factors = {
+    _chiu_factors = {
         0.1: 1.31,
         0.05: 1.45,
         0.01: 1.75,
@@ -218,6 +367,8 @@ class RipleysKTest(StatTest):
         validator=validators.in_(["ripley", "chiu", "ks"]), default="ripley"
     )
 
+    radii: Numeric1DArray = None
+
     factor: float = None
 
     pvalue_threshold: float = field(default=0.05)
@@ -225,57 +376,93 @@ class RipleysKTest(StatTest):
     @pvalue_threshold.validator
     def _check_pvalue_threshold(self, attribute, value):
         if self.factor is None:
-            if self.mode == "ripley" and value not in self.ripley_factors.keys():
+            if self.mode == "ripley" and value not in self._ripley_factors.keys():
                 raise ValueError(
-                    f"{value} is not a valid pvalue threshold for {self.mode} rule. Must be one of {self.ripley_factors.keys()}"
+                    f"{value} is not a valid pvalue threshold for {self.mode} rule."
+                    f" Must be one of {self._ripley_factors.keys()}"
                 )
-            elif self.mode == "chiu" and value not in self.chiu_factors.keys():
+            elif self.mode == "chiu" and value not in self._chiu_factors.keys():
                 raise ValueError(
-                    f"{value} is not a valid pvalue threshold for {self.mode} rule. Must be one of {self.chiu_factors.keys()}"
+                    f"{value} is not a valid pvalue threshold for {self.mode} rule."
+                    f" Must be one of {self._chiu_factors.keys()}"
                 )
         elif value <= 0 or value >= 1:
             raise ValueError(
                 f"{value} is not a valid pvalue threshold. Must be between 0 and 1."
             )
 
-    def empirical_csr_rule(self, l_function, radii, area, n):
+    def _empirical_csr_rule(
+        self, l_function: Numeric2DArray, radii: Numeric2DArray, area: Number, n: int
+    ):
         supremum = np.max(np.abs(l_function - radii))
         if self.factor:
             factor = self.factor
         elif self.mode == "ripley":
-            factor = self.ripley_factors[self.pvalue_threshold]
+            factor = self._ripley_factors[self.pvalue_threshold]
         else:
-            factor = self.chiu_factors[self.pvalue_threshold]
-        return supremum, supremum >= factor * np.sqrt(area) / n
+            factor = self._chiu_factors[self.pvalue_threshold]
+        return supremum, supremum >= factor * np.sqrt(area) / float(n)
 
-    def ks_rule(self, l_function, radii):
+    def _ks_rule(self, l_function: Numeric2DArray, radii: Numeric2DArray):
         pvalue = ks_2samp(l_function, radii).pvalue
         return pvalue, pvalue <= self.pvalue_threshold
 
-    def test(self, data: np.ndarray, radii: np.ndarray = None, *args, **kwargs):
+    @beartype
+    def test(self, data: Numeric2DArray, *args, **kwargs):
+        """Perform the Ripleys K test of 2D spatial randomness.
 
+        Parameters
+        ----------
+        data : Numeric2DArray
+            numpy 2d numeric array containing the data set to test.
+
+        Returns
+        -------
+        RipleysKTestResult
+            Result of the Ripleys K test, containing the following attributes:
+                pvalue: float
+                    The p-value of the test.
+                rejectH0: bool
+                    True if H0 is rejected, False otherwise.
+                radii: Numeric1DArray
+                    numpy 1d numeric array containing the radii used for the test.
+                l_function: Numeric1DArray
+                    numpy 1d numeric array containing the L function values.
+
+        Warnings
+        --------
+        UserWarning
+            Warns if some dataset points are repeated exactly. In that case,
+            the RipleysKEstimator will not be able to calculate the L function,
+            so repeated points will will be eliminated before the test. Bound to
+            change when RipleysKEstimator implementation is changed.
+
+        """
         data_unique = np.unique(data, axis=0)
         if data_unique.shape[0] != data.shape[0]:
             warn(
-                "There are repeated data points that cause astropy.stats.RipleysKEstimator to break, they will be removed."
+                "There are repeated data points that cause"
+                " astropy.stats.RipleysKEstimator to break, they will be removed.",
+                category=UserWarning,
             )
             data = data_unique
 
         obs, dims = data.shape
-        if dims != 2:
-            raise ValueError("Data must be bidimensional.")
 
-        if self.scaler is not None:
-            data = self.scaler.fit_transform(data)
+        # negative data values are not handled properly by RipleysKEstimator
+        # hence, it seems that MinMax scaling is a must
+        # in the future, an alternative RipleysKEstimator implementation could be used
+        if self._scaler is not None:
+            data = self._scaler.fit_transform(data)
 
         x_min = data[:, 0].min()
         x_max = data[:, 0].max()
         y_min = data[:, 1].min()
         y_max = data[:, 1].max()
 
-        if radii is None:
+        if self.radii is None:
             # considers rectangular window
-            # based on spatstat rmax.rule
+            # based on R spatstat rmax.rule
             short_side = min(x_max - x_min, y_max - y_min)
             radii_max_ripley = short_side / 4
             radii_max_large = np.sqrt(1000 / (np.pi * obs))
@@ -284,7 +471,10 @@ class RipleysKTest(StatTest):
             radii = np.arange(0, radii_max + step, step)
 
         if self.rk_estimator is None:
-            # area = ConvexHull(points=data).volume
+            # Could be extended to other shapes
+            # depending on the edge correction methods
+            # available. Could use ConvexHull to get the
+            # area.
             area = (x_max - x_min) * (y_max - y_min)
             self.rk_estimator = RipleysKEstimator(
                 area=area,
@@ -297,777 +487,16 @@ class RipleysKTest(StatTest):
             area = self.rk_estimator.area
 
         if kwargs.get("mode") is None:
-            # best mode for rectangular window
+            # Best mode for rectangular window
             kwargs["mode"] = "ripley"
 
         l_function = self.rk_estimator.Lfunction(data, radii, *args, **kwargs)
 
         if self.mode == "ks":
-            value, passed = self.ks_rule(l_function, radii)
+            value, rejectH0 = self._ks_rule(l_function, radii)
         else:
-            value, passed = self.empirical_csr_rule(l_function, radii, area, obs)
-
-        print(self.ks_rule(l_function, radii))
-        print(f"{value} {passed}")
+            value, rejectH0 = self._empirical_csr_rule(l_function, radii, area, obs)
 
         return RipleyKTestResult(
-            value=value, passed=passed, radii=radii, l_function=l_function
+            value=value, rejectH0=rejectH0, radii=radii, l_function=l_function
         )
-
-
-def test_dip():
-    ns = [100, 1000, int(1e4)]
-    # case uniform
-    uniforms = [
-        UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=10).rvs(n)
-        for n in ns
-    ]
-
-    results_euclidean = np.array(
-        [DipTest(metric="euclidean").test(u) for u in uniforms]
-    )
-    results_mahalanobis = np.array([DipTest().test(u) for u in uniforms])
-
-    print(results_euclidean)
-    print(results_mahalanobis)
-    assert np.all(results_euclidean > 0.05)
-    assert np.all(results_mahalanobis > 0.05)
-
-    # case 1 k
-    any_pm = stats.multivariate_normal(mean=(7.5, 7), cov=1.0 / 35)
-    c_f_mixes = [0.1, 0.5, 0.9]
-    cov_diag = 0.5
-    random_matrix = np.random.rand(3, 3)
-    cov_full = [np.dot(rm, rm.T) for rm in random_matrix]
-    covs = [cov_diag, cov_full]
-    metrics = ["euclidean", "mahalanobis"]
-    parameters = combinations([ns, c_f_mixes, covs, metrics])
-    oneclusters = [
-        Synthetic(
-            field=Field(
-                space=UniformSphere(
-                    center=polar_to_cartesian((120.5, -27.5, 5)), radius=10
-                ),
-                pm=any_pm,
-                star_count=int(p[0] * (1 - p[1])),
-            ),
-            clusters=[
-                Cluster(
-                    space=stats.multivariate_normal(
-                        mean=polar_to_cartesian([120.7, -28.5, 5]),
-                        cov=p[2],
-                    ),
-                    pm=any_pm,
-                    star_count=int(p[0] * p[1]),
-                ),
-            ],
-            representation_type="cartesian",
-        )
-        .rvs()[["x", "y", "z"]]
-        .to_numpy()
-        for p in parameters
-    ]
-    results = [DipTest(metric=p[3]).test(oc) for oc, p in zip(oneclusters, parameters)]
-    a = [(p[0], p[1], r) for p, r in zip(parameters, results)]
-    print(results)
-    print("coso")
-    assert np.all(results < 0.2)
-
-    # NOTE: "fails" when mix is too imbalanced, e.g. .1 to .9, or viceversa
-    # Meaning:
-    # if dip > .1
-    # there is unimodal tendency, there are no clusters or there is only
-    # one cluster and no noise
-    # if dip < .1
-    # if there is multimodal tendency
-    #   there are several clusters
-    #   or one cluster + noise
-
-    # case 2 k
-    any_pm = stats.multivariate_normal(mean=(7.5, 7), cov=1.0 / 35)
-    c_f_mixes = [0.1, 0.5, 0.9]
-    cov_diag = 0.5
-    random_matrix = np.random.rand(3, 3)
-    cov_full = [np.dot(rm, rm.T) for rm in random_matrix]
-    covs = [cov_diag, cov_full]
-    metrics = ["euclidean", "mahalanobis"]
-    parameters = combinations([ns, c_f_mixes, covs, metrics])
-
-    twoclusters = [
-        Synthetic(
-            field=Field(
-                space=UniformSphere(
-                    center=polar_to_cartesian((120.5, -27.5, 5)), radius=10
-                ),
-                pm=any_pm,
-                star_count=int(p[0] * (1 - p[1])),
-            ),
-            clusters=[
-                Cluster(
-                    space=stats.multivariate_normal(
-                        mean=polar_to_cartesian([119.5, -28.5, 4.8]),
-                        cov=p[2],
-                    ),
-                    pm=any_pm,
-                    star_count=int(p[0] * p[1]),
-                ),
-                Cluster(
-                    space=stats.multivariate_normal(
-                        mean=polar_to_cartesian([121.5, -26.5, 5.2]),
-                        cov=p[2],
-                    ),
-                    pm=any_pm,
-                    star_count=int(p[0] * p[1]),
-                ),
-            ],
-            representation_type="cartesian",
-        )
-        .rvs()[["x", "y", "z"]]
-        .to_numpy()
-        for p in parameters
-    ]
-    results = [DipTest(metric=p[3]).test(oc) for oc, p in zip(twoclusters, parameters)]
-    a = [(p[0], p[1], r) for p, r in zip(parameters, results)]
-    print(a)
-    print(results)
-    print("coso")
-
-
-def test_hopkins():
-    ns = [100, 1000, int(1e4)]
-    # case uniform
-    uniforms = [
-        UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=10).rvs(n)
-        for n in ns
-    ]
-    metrics = ["euclidean", "mahalanobis"]
-    reductions = [np.median, np.mean, np.sum, lambda x: np.sum(x**3)]
-    cases = combinations([metrics, reductions, uniforms])
-    results = [
-        (len(d), m, f, HopkinsTest(metric=m, reduction=f).test(d)) for m, f, d in cases
-    ]
-
-    false_positives = [r for r in results if r[3].passed]
-    df = pd.DataFrame([(r[3].value, r[2].__name__) for r in false_positives])
-    df.columns = ["v", "f"]
-    sns.kdeplot(df.v, hue=df.f)
-    plt.show()
-
-    print(results)
-
-    # assert np.all(np.array([r.passed for _,_,r in results]) == False)
-
-    # all good except for np.sum(x**3), which makes the test pass in
-    # some cases while it should not
-
-    any_pm = stats.multivariate_normal(mean=(7.5, 7), cov=1.0 / 35)
-    c_f_mixes = [0.1, 0.5, 0.9]
-    cov_diag = 0.5
-    random_matrix = np.random.rand(3, 3)
-    cov_full = [np.dot(rm, rm.T) for rm in random_matrix]
-    covs = [cov_diag, cov_full]
-    cases = combinations([metrics, reductions, ns, c_f_mixes, covs])
-
-    results = [
-        (
-            n,
-            p,
-            m,
-            f,
-            c,
-            HopkinsTest(metric=m, reduction=f).test(
-                Synthetic(
-                    field=Field(
-                        space=UniformSphere(
-                            center=polar_to_cartesian((120.5, -27.5, 5)),
-                            radius=10,
-                        ),
-                        pm=any_pm,
-                        star_count=int(n * (1 - p)),
-                    ),
-                    clusters=[
-                        Cluster(
-                            space=stats.multivariate_normal(
-                                mean=polar_to_cartesian([120.7, -28.5, 5]),
-                                cov=c,
-                            ),
-                            pm=any_pm,
-                            star_count=int(n * p),
-                        ),
-                    ],
-                    representation_type="cartesian",
-                )
-                .rvs()[["x", "y", "z"]]
-                .to_numpy()
-            ),
-            Synthetic(
-                field=Field(
-                    space=UniformSphere(
-                        center=polar_to_cartesian((120.5, -27.5, 5)), radius=10
-                    ),
-                    pm=any_pm,
-                    star_count=int(n * (1 - p)),
-                ),
-                clusters=[
-                    Cluster(
-                        space=stats.multivariate_normal(
-                            mean=polar_to_cartesian([120.7, -28.5, 5]),
-                            cov=c,
-                        ),
-                        pm=any_pm,
-                        star_count=int(n * p),
-                    ),
-                ],
-                representation_type="cartesian",
-            )
-            .rvs()[["x", "y", "z"]]
-            .to_numpy(),
-        )
-        for m, f, n, p, c in cases
-    ]
-
-    # 1/3 of results are false negatives !!!
-    # whats wrong here
-    false_negatives = [r for r in results if r[5].passed is False]
-    print(false_negatives)
-    df = pd.DataFrame([(r[5].value, r[3].__name__) for r in false_positives])
-    df.columns = ["v", "f"]
-    sns.kdeplot(df.v, hue=df.f)
-    plt.show()
-    assert np.all(np.array([r.passed for _, _, r in results]) is True)
-
-
-def test_hopkins2():
-    f_ratios = [0.6, 0.7, 0.8, 0.9]
-
-    space = ["ra", "dec"]
-    pm = ["pmra", "pmdec"]
-    space_plx = ["ra", "dec", "parallax"]
-    pm_plx = ["pmra", "pmdec", "parallax"]
-    pm_plx_space = ["ra", "dec", "pmra", "pmdec", "parallax"]
-    no_plx = ["ra", "dec", "pmra", "pmdec"]
-    xyz = ["x", "y", "z"]
-
-    cols_2d = [space, pm]
-    cols_3d = [space_plx, pm_plx]
-    cols_5d = [pm_plx_space]
-    cols_all = [space, pm, space_plx, pm_plx, pm_plx_space, no_plx]
-    cols_all = [pm, space]
-
-    funcs = [case2_sample0c, case2_sample1c, case2_sample2c]
-
-    cs = combinations([funcs, f_ratios, cols_all])
-    from rpy2.robjects import r
-    from scludam.rutils import rhardload, pyargs2r, rclean
-
-    rhardload(r, "hopkins")
-    res = []
-    for c in cs:
-
-        sample = c[0](c[1])[c[2]].to_numpy()
-        sample = RobustScaler().fit_transform(sample)
-
-        rclean(r, "var")
-        _, rparams = pyargs2r(r, data=sample, n=100)
-        r_res = np.asarray(r(f"hv = hopkins(data,n)"))
-        r_res_pval = np.asarray(r(f"hopkins.pval(hv,n)"))
-        # r_res2 = np.asarray(r(f'get_clust_tendency(data,n)$hopkins_stat'))
-
-        test_result = HopkinsTest().test(sample)
-        if c[0].__name__ == "case2_sample0c":
-            n_clu = 0
-            passed = False
-        else:
-            passed = True
-            if c[0].__name__ == "case2_sample1c":
-                n_clu = 1
-            else:
-                n_clu = 2
-        err = passed == test_result.passed
-        r_passed = r_res_pval.ravel()[0] <= 0.05
-        r_err = r_passed == passed
-        res.append(
-            (
-                n_clu,
-                c[0].__name__,
-                c[1],
-                str(c[2]),
-                len(c[2]),
-                test_result.value,
-                test_result.pvalue,
-                test_result.passed,
-                passed,
-                test_result.passed == passed,
-                r_res.ravel()[0],
-                r_res_pval.ravel()[0],
-                err,
-                r_err,
-            )
-        )
-
-    df = pd.DataFrame(res)
-    df.columns = [
-        "n_clu",
-        "func",
-        "f_ratio",
-        "cols",
-        "dims",
-        "value",
-        "pvalue",
-        "passed",
-        "expected",
-        "passed_equal",
-        "r_value",
-        "r_pval",
-        "err",
-        "r_err",
-    ]
-    df["err"] = df.err.astype(int)
-    df["r_err"] = df.err.astype(int)
-    print(df)
-    # if p value > .05, the likelihood of the null hypothesis is > .05, then there is no enough evidence of the alternative hypothesis
-    # H0: sample comes from random distribution
-
-    # NO FUNCIONA BIEN EN 2D PORQUE ES EL UNICO CASO DONDE NO ESTA EL PARALAJE QUE ES LO QUE MEJOR AGRUPA
-    # DA FALSO POSITIVO CUANDO SE USA PARALAJE PORQUE NO ESTA UNIFORMEMENTE DISTRIBUIDO
-    # DA FALSO NEGATIVO CUANDO NO SE USA PARALAJE PORQUE ESTA MENOS UNIFORMEMENTE DISTRIBUIDO
-    # SACAR EL PARALAJE SOLUCIONARIA LOS DOS PROBLEMAS
-    # ALTERNATIVAMENTE, SE PUEDE PROBAR CON XYZ EN LUGAR DE RA DEC PLX
-
-
-def test_hopkins3():
-    from sklearn.datasets import load_iris
-
-    data = load_iris().data
-    np.random.seed(0)
-    test_result = HopkinsTest().test(data)
-    print(test_result)
-
-
-def rhopkins():
-    from rpy2.robjects import r
-    from scludam.rutils import rhardload, pyargs2r, rclean
-
-    rhardload(r, "hopkins")
-    rhardload(r, "pdist")
-    r(
-        """hopkins2 <- function (X, m=ceiling(nrow(X)/10), d=ncol(X), U=NULL) {
-  if (!(is.matrix(X)) & !(is.data.frame(X))) 
-    stop("X must be data.frame or matrix")
-
-  if (m > nrow(X)) 
-    stop("m must be no larger than num of samples")
-
-  if(missing(U)) {
-    # U is a matrix of column-wise uniform values sampled from the space of X
-    colmin <- apply(X, 2, min)
-    colmax <- apply(X, 2, max)    
-    U <- matrix(0, ncol = ncol(X), nrow = m)
-    for (i in 1:ncol(X)) {
-      U[, i] <- runif(m, min = colmin[i], max = colmax[i])
-    }
-  } else {
-    # The user has provided the uniform values.
-  }
-
-  # Random sample of m rows in X (without replacement)
-  k <- sample(1:nrow(X), m)
-  W <- X[k, , drop=FALSE]   # Need 'drop' in case X is single-column
-  
-  # distance between each row of W and each row of X
-  dwx <- as.matrix(pdist(W,X))
-  # Caution: W[i,] is the same point as X[k[i],] and the distance between them is 0,
-  # but we do not want to consider that when calculating the minimum distance
-  # between W[i,] and X, so change the distance from 0 to Inf
-  for(i in 1:m) dwx[i,k[i]] <- Inf
-  # distance from each row of W to the NEAREST row of X
-  dwx <- apply(dwx, 1, min)
-  
-  # distance between each row of U and each row of X
-  dux <- as.matrix(pdist(U,X)) # rows of dux refer to U, cols refer to X
-  # distance from each row of U to the NEAREST row of X
-  dux <- apply(dux, 1, min)
-
-  # You would think this would be faster, but it is not for our test cases:
-  # stat = 1 / (1 + sum(dwx^d) / sum( dux^d ) )
-  
-  return( sum(dux^d) / sum( dux^d + dwx^d ) )
-}"""
-    )
-
-    from sklearn import datasets
-
-    iris = datasets.load_iris()
-    min_data = np.min(iris.data, axis=0)
-    max_data = np.max(iris.data, axis=0)
-    dims = 4
-    np.random.seed(0)
-    uniform_sample = np.random.uniform(low=min_data, high=max_data, size=(150, dims))
-    pyargs2r(r, U=uniform_sample)
-    pyargs2r(r, X=iris.data)
-    r_res = np.asarray(r(f"hv = hopkins2(X,m=150,U=U)")).ravel()[0]
-    r_pval = np.asarray(r("hvpval = hopkins.pval(hv, 150)")).ravel()[0]
-    np.random.seed(0)
-    test_result = HopkinsTest(n_iters=1, n_samples=150).test(iris.data)
-    print(test_result.value)
-    print(r_res)
-    print(r_pval)
-
-
-def uniform_sample():
-    return BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(1000)
-
-
-def uni_scipy():
-    x = stats.uniform(loc=0, scale=1).rvs(size=1000)
-    y = stats.uniform(loc=0, scale=1).rvs(size=1000)
-    return np.vstack((x, y)).T
-
-
-def uni_numpy():
-    x = np.random.uniform(low=0, high=1, size=1000)
-    y = np.random.uniform(low=0, high=1, size=1000)
-    return np.vstack((x, y)).T
-
-
-def uni_r():
-    from rpy2.robjects import r
-    from scludam.rutils import rhardload, pyargs2r, rclean
-
-    r("x = runif(1000); y = runif(1000)")
-    return np.vstack((np.asarray(r("x")).ravel(), np.asarray(r("y")).ravel())).T
-
-
-def cluster_structure_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(500)
-    sample2 = stats.multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(500)
-    return np.concatenate((sample, sample2))
-
-
-def harder_cluster():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(800)
-    sample2 = stats.multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(200)
-    return np.concatenate((sample, sample2))
-
-
-def bimodal_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(500)
-    sample2 = stats.multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(250)
-    sample3 = stats.multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(250)
-    return np.concatenate((sample, sample2, sample3))
-
-
-def test_ripleys():
-    us = uniform_sample()
-    usr = RipleysKTest().test(data=us)
-    cl = cluster_structure_sample()
-    clr = RipleysKTest().test(data=cl)
-    prin
-
-
-def test_dip2():
-    us = uniform_sample()
-    usr = DipTest().test(data=us)
-    cl = cluster_structure_sample()
-    clr = DipTest().test(data=cl)
-    print("coso")
-
-
-def are_unis_equal():
-    from rpy2.robjects import r
-    from scludam.rutils import rhardload, pyargs2r, rclean
-
-    rhardload(r, "spatstat")
-    loser = []
-    for i in range(1000):
-        ur = uni_r()
-        un = uni_numpy()
-        us = uni_scipy()
-        pyargs2r(r, ur=ur, un=un, us=us)
-        r("W <- owin(c(0,1), c(0,1))")
-        r(
-            "ur <- as.ppp(as.matrix(ur), W=W); un <- as.ppp(as.matrix(un), W=W); us <- as.ppp(as.matrix(us), W=W)"
-        )
-        r(
-            'ler = Lest(ur, correction="Ripley"); ln = Lest(un, correction="Ripley"); ls = Lest(us, correction="Ripley")'
-        )
-        radir = np.asarray(r("ler$r"))
-        lfr = np.asarray(r("ler$iso"))
-        lfn = np.asarray(r("ln$iso"))
-        lfs = np.asarray(r("ls$iso"))
-        df = pd.DataFrame({"r": radir, "fr": lfr, "fn": lfn, "fs": lfs})
-        rval = np.abs(lfr - radir).max()
-        nval = np.abs(lfn - radir).max()
-        sval = np.abs(lfs - radir).max()
-        names = ["r", "n", "s"]
-        loser.append(names[np.argmax([rval, nval, sval])])
-
-    print(loser)
-
-
-def rripley():
-    from rpy2.robjects import r
-    from scludam.rutils import rhardload, pyargs2r, rclean
-    from sklearn.datasets import load_iris
-
-    iris = np.unique(load_iris().data[:, :2], axis=0)
-    x_min = np.min(iris[:, 0])
-    x_max = np.max(iris[:, 0])
-    y_min = np.min(iris[:, 1])
-    y_max = np.max(iris[:, 1])
-
-    rhardload(r, "spatstat")
-    pyargs2r(r, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max)
-    pyargs2r(r, iris=iris)
-    r("W <- owin(c(x_min, x_max), c(y_min, y_max))")
-    r("iris <- as.ppp(iris, W=W)")
-    r('le = Lest(iris, correction="Ripley")')
-    radii = np.asarray(r("le$r"))
-    lf = np.asarray(r("le$iso"))
-    diff = np.abs(lf - radii)
-    value = diff.max()
-
-    print(RipleysKTest().test(iris))
-    n = 1000
-
-    mine = []
-    rrr = []
-    mine2 = []
-    for i in range(100):
-        u = uniform_sample()
-        pyargs2r(r, u=u)
-        r("W <- owin(c(0,1), c(0,1))")
-        r("u <- as.ppp(as.matrix(u), W=W)")
-        r('le = Lest(u, correction="Ripley")')
-        radii = np.asarray(r("le$r"))
-        theo = np.asarray(r("le$theo"))
-        lf = np.asarray(r("le$iso"))
-        threshold = 1.45 * np.sqrt(1) / n
-        value = np.max(np.abs(lf - radii))
-        passed = value >= threshold
-        correct = not passed
-        rrr.append(correct)
-        correct_mine = not RipleysKTest().test(u).passed
-        correct_mine2 = not RipleysKTest(mode="ks").test(u).passed
-        if not correct:
-            print("stop")
-        mine.append(correct_mine)
-        mine2.append(correct_mine2)
-
-    rrr1 = []
-    mine1 = []
-    mine11 = []
-    for i in range(100):
-        u = cluster_structure_sample()
-        pyargs2r(r, u=u)
-        r("W <- owin(c(0,1), c(0,1))")
-        r("u <- as.ppp(as.matrix(u), W=W)")
-        r('le = Lest(u, correction="Ripley")')
-        radii = np.asarray(r("le$r"))
-        lf = np.asarray(r("le$iso"))
-        threshold = 1.45 * np.sqrt(1) / n
-        value = np.max(np.abs(lf - radii))
-        passed = value >= threshold
-        correct = passed
-        rrr1.append(correct)
-        correct_mine1 = RipleysKTest().test(u).passed
-        correct_mine3 = RipleysKTest(mode="ks").test(u).passed
-        mine1.append(correct_mine)
-        mine11.append(correct_mine3)
-
-    mine1h = []
-    rrrh = []
-    mine2h = []
-    for i in range(100):
-        u = harder_cluster()
-        pyargs2r(r, u=u)
-        r("W <- owin(c(0,1), c(0,1))")
-        r("u <- as.ppp(as.matrix(u), W=W)")
-        r('le = Lest(u, correction="Ripley")')
-        radii = np.asarray(r("le$r"))
-        lf = np.asarray(r("le$iso"))
-        threshold = 1.45 * np.sqrt(1) / n
-        value = np.max(np.abs(lf - radii))
-        passed = value >= threshold
-        correct = passed
-        rrrh.append(correct)
-        correct_mine = RipleysKTest().test(u).passed
-        correct_mine2 = RipleysKTest(mode="ks").test(u).passed
-        if not correct_mine2:
-            print("stop")
-        mine1h.append(correct_mine)
-        mine2h.append(correct_mine2)
-
-    mineks = np.concatenate([np.array(mine2), np.array(mine11)])
-    mineer = np.concatenate([np.array(mine), np.array(mine1)])
-    rrrr = np.concatenate([np.array(rrr), np.array(rrr1)])
-    ks = len(mineks[mineks])
-    er = len(mineer[mineer])
-    rr = len(rrrr[rrrr])
-    u = uniform_sample()
-    pyargs2r(r, u=u)
-    r("W <- owin(c(0,1), c(0,1))")
-    r("u <- as.ppp(as.matrix(u), W=W)")
-    r("plot(u)")
-    r("dev.off()")
-    r('le = Lest(u, correction="Ripley")')
-    radii = np.asarray(r("le$r"))
-    lf = np.asarray(r("le$iso"))
-    diff = np.abs(lf - radii)
-    value = diff.max()
-    threshold = 1.68 * np.sqrt(1) / n
-    passed = value >= threshold
-    correct = not passed
-    print(f"uniform {correct}")
-
-    lfa = RipleysKEstimator(area=1, x_max=1, x_min=0, y_min=0, y_max=1).Lfunction(
-        u, radii, mode="ripley"
-    )
-    diffa = np.abs(lfa - radii)
-    valuea = diffa.max()
-    thresholda = 1.68 * np.sqrt(1) / n
-    passeda = valuea >= thresholda
-    correcta = not passeda
-
-    clu = cluster_structure_sample()
-    pyargs2r(r, clu=clu)
-    r("clu <- as.ppp(as.matrix(clu), W=W)")
-    r("plot(clu)")
-    r("dev.off()")
-    r('le = Lest(clu, correction="Ripley")')
-    radii = np.asarray(r("le$r"))
-    lf = np.asarray(r("le$iso"))
-    diff = np.abs(lf - radii)
-    value = diff.max()
-    threshold = 1.68 * np.sqrt(1) / n
-    passed = value >= threshold
-    correct = passed
-    print(f"clu {correct}")
-
-    print(r_res)
-
-
-def rdip():
-    from rpy2.robjects import r
-    from scludam.rutils import rhardload, pyargs2r, rclean
-    from sklearn.datasets import load_iris
-
-    rhardload(r, "diptest")
-    us = uniform_sample()
-    cl = cluster_structure_sample()
-    bi = bimodal_sample()
-
-    sus = resample(us, n_samples=500, replace=False)
-    clss = resample(cl, n_samples=500, replace=False)
-    bis = resample(bi, n_samples=500, replace=False)
-
-    distu = np.ravel(np.tril(pairwise_distances(sus)))
-    distu = np.msort(distu[distu > 0])
-
-    distc = np.ravel(np.tril(pairwise_distances(clss)))
-    distc = np.msort(distc[distc > 0])
-
-    distb = np.ravel(np.tril(pairwise_distances(bis)))
-    distb = np.msort(distb[distb > 0])
-
-    pyargs2r(r, u=distu, clu=distc, bi=distb)
-    r("du = dip.test(u)")
-    r("dc = dip.test(clu)")
-    r("db = dip.test(bi)")
-    upval = np.asarray(r("du$p.value")).ravel()[0]
-    clpval = np.asarray(r("dc$p.value")).ravel()[0]
-    bipval = np.asarray(r("db$p.value")).ravel()[0]
-    ust = np.asarray(r("du$statistic")).ravel()[0]
-    clt = np.asarray(r("dc$statistic")).ravel()[0]
-    bit = np.asarray(r("db$statistic")).ravel()[0]
-    corru = upval > 0.05
-    corrc = clpval > 0.05
-    corrb = bipval <= 0.05
-    # sns.histplot(dist).set(title=str(pval))
-    # plt.show()
-    # print(pval)
-
-    np.random.seed(0)
-    usr = DipTest().test(data=us)
-    clr = DipTest().test(data=cl)
-
-
-# test_dip2()
-# rripley()
-# rdip()
-# are_unis_equal()
-""" pops = [uniform_sample, cluster_structure_sample, bimodal_sample]
-tests = [HopkinsTest(), RipleysKTest(), DipDistTest()]
-
-tres = []
-for t in tests:
-    for i,p in enumerate(pops):
-        np.random.seed(0)
-        tres.append({
-            'test': t.__class__.__name__,
-            'pop': i+1,
-            'passed': t.test(p()).passed,
-        })
-
-print(tres) """
-
-""" passeds = []
-for i in range(100):
-    passeds.append(RipleysKTest(pvalue_threshold=.01).test(uniform_sample()).passed)
-len(passeds[passeds])
-
-print(passeds) """
-# uht = HopkinsTest(metric="mahalanobis", n_iters=100).test(data=uniform_sample).passed
-
-
-def test_ripleysk_empirical_rule():
-    radii = np.array([1, 2, 3])
-    lf = np.array([1.01, 2.01, 3.02])
-    area = 1.5
-    n = 100
-    value1, passed1 = RipleysKTest(factor=1.65).empirical_csr_rule(
-        radii=radii, l_function=lf, area=area, n=n
-    )
-    assert passed1
-    assert np.isclose(value1, 0.02)
-    value2, passed2 = RipleysKTest(pvalue_threshold=0.01).empirical_csr_rule(
-        radii=radii, l_function=lf, area=area, n=n
-    )
-    assert not passed2
-    assert np.isclose(value2, 0.02)
-
-
-def uniform_sample():
-    return BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(1000)
-
-
-def one_cluster_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(500)
-    sample2 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(500)
-    return np.concatenate((sample, sample2))
-
-
-def two_clusters_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(500)
-    sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(250)
-    sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(250)
-    return np.concatenate((sample, sample2, sample3))
-
-
-def test_dip_uniform():
-    assert not DipDistTest().test(uniform_sample()).passed
-
-
-def test_dip_one_cluster():
-    assert not DipDistTest().test(one_cluster_sample()).passed
-
-
-def test_dip_two_clusters():
-    assert DipDistTest().test(data=two_clusters_sample()).passed
-
-
-def plot(tr):
-    palette = sns.color_palette("flare", 20)
-    ran_color = palette[np.random.choice(len(palette))]
-    return sns.lineplot(np.arange(0, len(tr.dist)), tr.dist, color=ran_color)
-

@@ -38,7 +38,7 @@ LogicalExpression = Tuple[str, str, str, Union[str, Number]]
 
 @define
 class Config:
-    """Class to hold defaults for the query."""
+    """Class to hold defaults for a query."""
 
     MAIN_GAIA_TABLE: str = "gaiaedr3.gaia_source"
     MAIN_GAIA_RA: str = "ra"
@@ -186,7 +186,7 @@ def search_table(search_query: str = None, only_names: bool = False, **kwargs):
 
 @define
 class Query:
-    """Class to hold a ADQL query to be executed.
+    """Class to hold an ADQL query to be executed.
 
     Attributes
     ----------
