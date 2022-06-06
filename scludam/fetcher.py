@@ -30,10 +30,7 @@ from astroquery.utils.commons import coord_to_radec, radius_to_unit
 from attrs import Factory, define
 from beartype import beartype
 from ordered_set import OrderedSet
-
-Coord = Tuple[Number, Number]
-Condition = Tuple[str, str, Union[str, Number]]
-LogicalExpression = Tuple[str, str, str, Union[str, Number]]
+from scludam.type_utils import Coord, Condition, LogicalExpression
 
 
 @define

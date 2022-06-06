@@ -25,7 +25,6 @@ import numpy as np
 from astropy.stats import RipleysKEstimator
 from attrs import define, field, validators
 from beartype import beartype
-from beartype.vale import IsAttr, IsEqual
 from diptest import diptest
 from numpy.typing import NDArray
 from scipy.stats import ks_2samp, beta
@@ -37,10 +36,7 @@ from sklearn.utils import resample
 
 
 from typing_extensions import Annotated
-
-
-Numeric2DArray = Annotated[NDArray[np.number], IsAttr["ndim", IsEqual[2]]]
-Numeric1DArray = Annotated[NDArray[np.number], IsAttr["ndim", IsEqual[1]]]
+from scludam.type_utils import Numeric1DArray, Numeric2DArray
 
 
 @define(auto_attribs=True)

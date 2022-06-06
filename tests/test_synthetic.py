@@ -14,6 +14,7 @@ from scludam.synthetic import (
     UniformSphere,
     cartesian_to_polar,
     is_inside_circle,
+    is_inside_sphere,
     polar_to_cartesian,
 )
 
@@ -36,9 +37,6 @@ class TestEDSD:
         "w0, wl, wf, a, b, n, test",
         [
             (1, 2, 3, None, None, 100, Ok),
-            ("a", 2, 3, None, None, 100, TypeError),
-            (1, "a", 3, None, None, 100, TypeError),
-            (1, 2, "a", None, None, 100, TypeError),
             (1, 2, 3, 0, 5, 100, Ok),
             (1.1, 4.1, -0.15, None, None, 100, ValueError),
             (1, 2, 3, 5, 3, 100, ValueError),
@@ -92,7 +90,7 @@ class TestHelpers:
         dy = np.abs(data[:, 1] - center[1])
         dz = np.abs(data[:, 2] - center[2])
         assert data[np.sqrt(dx**2 + dy**2 + dz**2) > radius].shape[0] == 0
-        assert data[~is_inside_circle(center, radius, data)].shape[0] == 0
+        assert data[~is_inside_sphere(center, radius, data)].shape[0] == 0
         k = radius / math.sqrt(3)
         cube = data[(dx <= k) & (dy <= k) & (dz <= k)]
         sx, sy, sz = cube[:, 0], cube[:, 1], cube[:, 2]
@@ -115,33 +113,18 @@ class TestField:
                 ValueError,
             ),
             (
-                "something",
-                multivariate_normal((0, 0)),
-                1,
-                "cartesian",
-                TypeError,
-            ),
-            (
                 multivariate_normal((0, 0, 0)),
                 multivariate_normal((0, 0)),
                 100,
                 "spherical",
                 Ok,
             ),
-            (UniformSphere(), EDSD(1, 2, 3), 1, "cartesian", TypeError),
             (
                 UniformSphere(),
                 multivariate_normal(),
                 1,
                 "cartesian",
                 ValueError,
-            ),
-            (
-                UniformSphere(),
-                multivariate_normal((0, 0)),
-                1.0,
-                "cartesian",
-                TypeError,
             ),
             (
                 UniformSphere(),
@@ -205,33 +188,18 @@ class TestCluster:
                 ValueError,
             ),
             (
-                "something",
-                multivariate_normal((0, 0)),
-                1,
-                "cartesian",
-                TypeError,
-            ),
-            (
                 multivariate_normal((0, 0, 0)),
                 multivariate_normal((0, 0)),
                 100,
                 "spherical",
                 Ok,
             ),
-            (UniformSphere(), EDSD(1, 2, 3), 1, "cartesian", TypeError),
             (
                 UniformSphere(),
                 multivariate_normal(),
                 1,
                 "cartesian",
                 ValueError,
-            ),
-            (
-                UniformSphere(),
-                multivariate_normal((0, 0)),
-                1.0,
-                "cartesian",
-                TypeError,
             ),
             (
                 UniformSphere(),
@@ -321,32 +289,6 @@ class TestSynthetic:
                 Ok,
             ),
             (
-                "something",
-                [
-                    Cluster(
-                        space=UniformSphere(),
-                        pm=multivariate_normal((0, 0)),
-                        star_count=10,
-                    )
-                ],
-                "cartesian",
-                TypeError,
-            ),
-            (
-                Field(
-                    space=UniformSphere(),
-                    pm=multivariate_normal((0, 0)),
-                    star_count=10,
-                ),
-                Cluster(
-                    space=UniformSphere(),
-                    pm=multivariate_normal((0, 0)),
-                    star_count=10,
-                ),
-                "cartesian",
-                TypeError,
-            ),
-            (
                 Field(
                     space=UniformSphere(),
                     pm=multivariate_normal((0, 0)),
@@ -368,7 +310,7 @@ class TestSynthetic:
         verify_result(
             test,
             lambda: Synthetic(
-                field=field, clusters=clusters, representation_type=rt
+                star_field=field, clusters=clusters, representation_type=rt
             ).rvs(),
         )
 
@@ -386,7 +328,7 @@ class TestSynthetic:
                     star_count=50,
                 ),
             ],
-            field=Field(
+            star_field=Field(
                 space=UniformSphere(radius=10),
                 pm=multivariate_normal((0, 0)),
                 star_count=int(1e5),

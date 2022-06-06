@@ -26,7 +26,7 @@ def sample0c():
         space=UniformFrustum(locs=(118, -31, 1.2), scales=(6, 6, 0.9)),
         star_count=int(n),
     )
-    return Synthetic(field=field, clusters=[]).rvs()[["pmra", "pmdec", "p_pm_field"]]
+    return Synthetic(star_field=field, clusters=[]).rvs()[["pmra", "pmdec", "p_pm_field"]]
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def sample1c(fmix=0.9):
             star_count=int(n * cmix),
         ),
     ]
-    return Synthetic(field=field, clusters=clusters).rvs()
+    return Synthetic(star_field=field, clusters=clusters).rvs()
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ def sample2c(fmix=0.6):
             star_count=int(n * cmix),
         ),
     ]
-    return Synthetic(field=field, clusters=clusters).rvs()
+    return Synthetic(star_field=field, clusters=clusters).rvs()
 
 
 def get_labels(proba):

@@ -554,7 +554,7 @@ def test_bandwidth():
             star_count=200,
         ),
     ]
-    s = Synthetic(field=field, clusters=clusters).rvs().to_numpy()
+    s = Synthetic(star_field=field, clusters=clusters).rvs().to_numpy()
     obs, dims = s.shape
     funcs = [
         scotts_rule,
@@ -590,7 +590,7 @@ def test_hkde():
             star_count=200,
         ),
     ]
-    df = Synthetic(field=field, clusters=clusters).rvs()
+    df = Synthetic(star_field=field, clusters=clusters).rvs()
     s = df.to_numpy()[:, 0:2]
     obs, dims = s.shape
 

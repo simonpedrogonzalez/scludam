@@ -522,7 +522,7 @@ def three_clusters_sample():
             star_count=cluster_size,
         ),
     ]
-    df = Synthetic(field=field, clusters=clusters).rvs()
+    df = Synthetic(star_field=field, clusters=clusters).rvs()
     return df
 
 
