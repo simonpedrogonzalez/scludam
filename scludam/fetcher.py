@@ -265,7 +265,7 @@ class Query:
     @beartype
     def _validate_operator(self, operator: str):
         if operator not in ["<", ">", "=", ">=", "<=", "LIKE", "like"]:
-            raise ValueError(f"Invalid operator {operator}")
+            raise ValueError(f"Invalid operator: {operator}")
 
     @beartype
     def where(self, condition: Union[Condition, List[Condition]]):

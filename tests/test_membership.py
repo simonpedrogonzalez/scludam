@@ -3,14 +3,15 @@ import pytest
 import numpy as np
 
 from scludam.utils import Colnames
-from scludam.synthetic import case2_sample0c, case2_sample1c, case2_sample2c
+
+# from scludam.synthetic import case2_sample0c, case2_sample1c, case2_sample2c
 from sklearn.metrics import matthews_corrcoef
 from scludam.utils import one_hot_encode
 from scludam.synthetic import (
-    Field,
-    Cluster,
+    StarField,
+    StarCluster,
     Synthetic,
-    BivariateUnifom,
+    BivariateUniform,
     UniformFrustum,
     polar_to_cartesian,
 )
@@ -21,12 +22,14 @@ from scipy.stats import multivariate_normal
 def sample0c():
     n = 1000
 
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
+    field = StarField(
+        pm=BivariateUniform(locs=(-7, 6), scales=(2.5, 2.5)),
         space=UniformFrustum(locs=(118, -31, 1.2), scales=(6, 6, 0.9)),
-        star_count=int(n),
+        n_stars=int(n),
     )
-    return Synthetic(star_field=field, clusters=[]).rvs()[["pmra", "pmdec", "p_pm_field"]]
+    return Synthetic(star_field=field, clusters=[]).rvs()[
+        ["pmra", "pmdec", "p_pm_field"]
+    ]
 
 
 @pytest.fixture
@@ -36,16 +39,16 @@ def sample1c(fmix=0.9):
     cmix = (1 - fmix) / n_clusters
     flocs = polar_to_cartesian((118, -31, 1.2))
 
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
+    field = StarField(
+        pm=BivariateUniform(locs=(-7, 6), scales=(2.5, 2.5)),
         space=UniformFrustum(locs=(118, -31, 1.2), scales=(6, 6, 0.9)),
-        star_count=int(n * fmix),
+        n_stars=int(n * fmix),
     )
     clusters = [
-        Cluster(
+        StarCluster(
             space=multivariate_normal(mean=polar_to_cartesian([121, -28, 1.6]), cov=50),
             pm=multivariate_normal(mean=(-5.75, 7.25), cov=1.0 / 34),
-            star_count=int(n * cmix),
+            n_stars=int(n * cmix),
         ),
     ]
     return Synthetic(star_field=field, clusters=clusters).rvs()
@@ -62,25 +65,25 @@ def sample2c(fmix=0.6):
     f_end_point_dec = polar_to_cartesian((118, -25, 1.2))
     f_end_point_plx = polar_to_cartesian((118, -31, 2))
 
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
+    field = StarField(
+        pm=BivariateUniform(locs=(-7, 6), scales=(2.5, 2.5)),
         space=UniformFrustum(locs=(118, -31, 1.2), scales=(6, 6, 0.9)),
-        star_count=int(n * fmix),
+        n_stars=int(n * fmix),
     )
     clusters = [
-        Cluster(
+        StarCluster(
             space=multivariate_normal(
                 mean=polar_to_cartesian([120.5, -27.25, 1.57]), cov=50
             ),
             pm=multivariate_normal(mean=(-5.4, 6.75), cov=1.0 / 34),
-            star_count=int(n * cmix),
+            n_stars=int(n * cmix),
         ),
-        Cluster(
+        StarCluster(
             space=multivariate_normal(
                 mean=polar_to_cartesian([121.75, -28.75, 1.63]), cov=50
             ),
             pm=multivariate_normal(mean=(-6.25, 7.75), cov=1.0 / 34),
-            star_count=int(n * cmix),
+            n_stars=int(n * cmix),
         ),
     ]
     return Synthetic(star_field=field, clusters=clusters).rvs()

@@ -27,7 +27,6 @@ from itertools import permutations
 sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
 
 from scludam.hkde import HKDE, PluginSelector, pair_density_plot
-from scludam.synthetic import one_cluster_sample_small, three_clusters_sample
 from scludam.utils import combinations, Colnames
 from scludam.masker import RangeMasker, DistanceMasker, CrustMasker
 from scludam.plot_gauss_err import plot_kernels
@@ -436,227 +435,227 @@ class DBME:
         )
 
 
-def parametric(data, labels, priors):
-    import pomegranate as pg
+# def parametric(data, labels, priors):
+#     import pomegranate as pg
 
-    f = pg.IndependentComponentsDistribution(
-        [
-            pg.UniformDistribution.from_samples(data[:, 0][labels == -1]),
-            pg.UniformDistribution.from_samples(data[:, 1][labels == -1]),
-            pg.UniformDistribution.from_samples(data[:, 2][labels == -1]),
-        ]
-    )
+#     f = pg.IndependentComponentsDistribution(
+#         [
+#             pg.UniformDistribution.from_samples(data[:, 0][labels == -1]),
+#             pg.UniformDistribution.from_samples(data[:, 1][labels == -1]),
+#             pg.UniformDistribution.from_samples(data[:, 2][labels == -1]),
+#         ]
+#     )
 
-    c = pg.IndependentComponentsDistribution(
-        [
-            pg.NormalDistribution.from_samples(data[:, 0][labels == 0]),
-            pg.NormalDistribution.from_samples(data[:, 1][labels == 0]),
-            pg.NormalDistribution.from_samples(data[:, 2][labels == 0]),
-        ]
-    )
+#     c = pg.IndependentComponentsDistribution(
+#         [
+#             pg.NormalDistribution.from_samples(data[:, 0][labels == 0]),
+#             pg.NormalDistribution.from_samples(data[:, 1][labels == 0]),
+#             pg.NormalDistribution.from_samples(data[:, 2][labels == 0]),
+#         ]
+#     )
 
-    mix = pg.GeneralMixtureModel([c, f])
-    mix.fit(data)
-    return mix.predict_proba(data), mix
-
-
-def test_membership():
-    np.random.seed(0)
-    df = one_cluster_sample_small(cluster_size=50, field_size=int(1e4))
-    data = df[["pmra", "pmdec", "parallax"]].to_numpy()
-
-    real_pmp = df["p_pm_cluster1"].to_numpy()
-    real_pmlabels = np.zeros_like(real_pmp)
-    real_pmlabels[real_pmp > 0.5] = 1
-
-    estimator = DensityBasedMembershipEstimator(
-        min_cluster_size=50,
-        n_iters=5,
-        pdf_estimator=HKDE(bw=PluginSelector(diag=True)),
-        iter_pdf_update=False,
-        mixing_error=1,
-    )
-    result = estimator.fit_predict(data)
-
-    calculated_pmp = result.p[:, 1]
-    calculated_labels = np.zeros_like(calculated_pmp)
-    calculated_labels[calculated_pmp > 0.5] = 1
-
-    acc = accuracy_score(real_pmlabels, calculated_labels)
-    conf = confusion_matrix(real_pmlabels, calculated_labels)
-    minfo = normalized_mutual_info_score(real_pmlabels, calculated_labels)
-
-    print("minfo")
-    print(minfo)
-    print("acc")
-    print(acc)
-    print("conf")
-    print(conf)
-    print("end")
+#     mix = pg.GeneralMixtureModel([c, f])
+#     mix.fit(data)
+#     return mix.predict_proba(data), mix
 
 
-def mem_plot_kernels(dbme, ax, data, index=1, n=10, nstd=3, labels=None):
-    n = min(n, data.shape[0])
-    e = dbme.estimators[index]
-    if labels is None:
-        condition = dbme.labels == index - 1
-    else:
-        condition = labels
-    means = data[condition][:n]
-    cov = e.covariances[condition][:n]
-    return plot_kernels(
-        means=means,
-        cov_matrices=cov,
-        ax=ax,
-        alpha=1,
-        linewidth=0.5,
-        edgecolor="k",
-        facecolor="none",
-        nstd=nstd,
-    )
+# def test_membership():
+#     np.random.seed(0)
+#     df = one_cluster_sample_small(cluster_size=50, field_size=int(1e4))
+#     data = df[["pmra", "pmdec", "parallax"]].to_numpy()
+
+#     real_pmp = df["p_pm_cluster1"].to_numpy()
+#     real_pmlabels = np.zeros_like(real_pmp)
+#     real_pmlabels[real_pmp > 0.5] = 1
+
+#     estimator = DensityBasedMembershipEstimator(
+#         min_cluster_size=50,
+#         n_iters=5,
+#         pdf_estimator=HKDE(bw=PluginSelector(diag=True)),
+#         iter_pdf_update=False,
+#         mixing_error=1,
+#     )
+#     result = estimator.fit_predict(data)
+
+#     calculated_pmp = result.p[:, 1]
+#     calculated_labels = np.zeros_like(calculated_pmp)
+#     calculated_labels[calculated_pmp > 0.5] = 1
+
+#     acc = accuracy_score(real_pmlabels, calculated_labels)
+#     conf = confusion_matrix(real_pmlabels, calculated_labels)
+#     minfo = normalized_mutual_info_score(real_pmlabels, calculated_labels)
+
+#     print("minfo")
+#     print(minfo)
+#     print("acc")
+#     print(acc)
+#     print("conf")
+#     print(conf)
+#     print("end")
 
 
-# it just does not fucking work:
-# log_likelihood decreases instead of increasing
-# mixtures do not stabilize
-def test_membership_real():
-    s1_5 = "tests/data/clusters_phot/ngc2527.xml"
-    s2 = "ng2527_x2.xml"
-    s2_5 = "ng2527_x2.5.xml"
-    s3 = "ng2527_x3.xml"
-    s3_5 = "ng2527_x3.5.xml"
-    s2_5_phot = "ng2527_phot_x2.5.xml"
-    s15_mag = "scripts/data/clusters_phot/ngc2527bright1.csv"
-    s7_5 = "ngc2527_select_9_sigmas.xml"
-    s2_5_cured = "ng2527_cured_x2.5.xml"
-    s7_5_cured = "ng2527_cured_x7.5.xml"
-
-    print("reading")
-    df = Table.read(s7_5_cured).to_pandas()
-    cnames = Colnames(df.columns.to_list())
-    fiveparameters = ["pmra", "pmdec", "parallax", "ra", "dec"]
-    threeparameters = ["pmra", "pmdec", "parallax"]
-    twoparameters = ["pmra", "pmdec"]
-    datanames = cnames.get_data_names(fiveparameters)
-    errornames, missing_err = cnames.get_error_names(datanames)
-    corrnames, missing_corr = cnames.get_corr_names(datanames)
-    data = df[datanames].to_numpy()
-    err = df[errornames].to_numpy()
-    if missing_corr:
-        corr = None
-    else:
-        corr = df[corrnames].to_numpy()
-    n, d = data.shape
-    w = np.ones(n)
-    print("calculating")
-
-    """ scaled = RobustScaler().fit_transform(data)
-    mask = DistanceMasker(center='geometric', percentage=10).mask(data=scaled)
-    mask2 = CrustMasker(percentage=10).mask(data=scaled)
-    sns.scatterplot(data[:,0], data[:,1], hue=mask) """
-
-    normal = 190
-    cured = 167
-    dbme = DensityBasedMembershipEstimator(
-        min_cluster_size=cured,
-        n_iters=10,
-        pdf_estimator=HKDE(bw=PluginSelector(diag=True)),
-        kernel_calculation_mode="per_class",
-        mixing_error=1,
-    )
-    result = dbme.fit_predict(data)  # , err=err, corr=corr)
-    dbme.iter_plot()
-    plt.show()
-    dbme.membership_plot(0, palette="viridis", density_intervals=10, colnames=datanames)
-
-    df["p"] = result.p[:, 1]
-    mems = df[df.p > 0.5]
-    nonmems = df[df.p <= 0.5]
-    sns.scatterplot(
-        mems.bp_rp, mems.phot_g_mean_mag, hue=mems.p, hue_norm=(0, 1)
-    ).invert_yaxis()
-    sns.scatterplot(
-        nonmems.bp_rp, nonmems.phot_g_mean_mag, hue=nonmems.p, hue_norm=(0, 1)
-    ).invert_yaxis()
-
-    plt.show()
-    print("coso")
+# def mem_plot_kernels(dbme, ax, data, index=1, n=10, nstd=3, labels=None):
+#     n = min(n, data.shape[0])
+#     e = dbme.estimators[index]
+#     if labels is None:
+#         condition = dbme.labels == index - 1
+#     else:
+#         condition = labels
+#     means = data[condition][:n]
+#     cov = e.covariances[condition][:n]
+#     return plot_kernels(
+#         means=means,
+#         cov_matrices=cov,
+#         ax=ax,
+#         alpha=1,
+#         linewidth=0.5,
+#         edgecolor="k",
+#         facecolor="none",
+#         nstd=nstd,
+#     )
 
 
-def test_cluster_selection():
+# # it just does not fucking work:
+# # log_likelihood decreases instead of increasing
+# # mixtures do not stabilize
+# def test_membership_real():
+#     s1_5 = "tests/data/clusters_phot/ngc2527.xml"
+#     s2 = "ng2527_x2.xml"
+#     s2_5 = "ng2527_x2.5.xml"
+#     s3 = "ng2527_x3.xml"
+#     s3_5 = "ng2527_x3.5.xml"
+#     s2_5_phot = "ng2527_phot_x2.5.xml"
+#     s15_mag = "scripts/data/clusters_phot/ngc2527bright1.csv"
+#     s7_5 = "ngc2527_select_9_sigmas.xml"
+#     s2_5_cured = "ng2527_cured_x2.5.xml"
+#     s7_5_cured = "ng2527_cured_x7.5.xml"
 
-    np.random.seed(0)
-    df = three_clusters_sample(cluster_size=50, field_size=int(1e3))
-    data = df[["pmra", "pmdec", "parallax"]].to_numpy()
-    real_pmp = df["p_pm_cluster1"].to_numpy()
-    real_pmlabels = np.zeros_like(real_pmp)
-    real_pmlabels[real_pmp > 0.5] = 1
+#     print("reading")
+#     df = Table.read(s7_5_cured).to_pandas()
+#     cnames = Colnames(df.columns.to_list())
+#     fiveparameters = ["pmra", "pmdec", "parallax", "ra", "dec"]
+#     threeparameters = ["pmra", "pmdec", "parallax"]
+#     twoparameters = ["pmra", "pmdec"]
+#     datanames = cnames.get_data_names(fiveparameters)
+#     errornames, missing_err = cnames.get_error_names(datanames)
+#     corrnames, missing_corr = cnames.get_corr_names(datanames)
+#     data = df[datanames].to_numpy()
+#     err = df[errornames].to_numpy()
+#     if missing_corr:
+#         corr = None
+#     else:
+#         corr = df[corrnames].to_numpy()
+#     n, d = data.shape
+#     w = np.ones(n)
+#     print("calculating")
 
-    estimator = DensityBasedMembershipEstimator(
-        min_cluster_size=50,
-        min_samples=30,
-        cluster_centers=np.array([(8, 8, 5), (5, 5, 5)]),
-        # allow_single_cluster=True,
-        n_iters=30,
-        kernel_calculation_mode="per_class",
-        mixing_error=1,
-    )
+#     scaled = RobustScaler().fit_transform(data)
+#     mask = DistanceMasker(center='geometric', percentage=10).mask(data=scaled)
+#     mask2 = CrustMasker(percentage=10).mask(data=scaled)
+#     sns.scatterplot(data[:,0], data[:,1], hue=mask)
 
-    estimator.fit_predict(data)
-    # estimator.iter_plot()
-    estimator.clustering_plot()
-    print("coso")
+#     normal = 190
+#     cured = 167
+#     dbme = DensityBasedMembershipEstimator(
+#         min_cluster_size=cured,
+#         n_iters=10,
+#         pdf_estimator=HKDE(bw=PluginSelector(diag=True)),
+#         kernel_calculation_mode="per_class",
+#         mixing_error=1,
+#     )
+#     result = dbme.fit_predict(data)  # , err=err, corr=corr)
+#     dbme.iter_plot()
+#     plt.show()
+#     dbme.membership_plot(0, palette="viridis", density_intervals=10, colnames=datanames)
 
+#     df["p"] = result.p[:, 1]
+#     mems = df[df.p > 0.5]
+#     nonmems = df[df.p <= 0.5]
+#     sns.scatterplot(
+#         mems.bp_rp, mems.phot_g_mean_mag, hue=mems.p, hue_norm=(0, 1)
+#     ).invert_yaxis()
+#     sns.scatterplot(
+#         nonmems.bp_rp, nonmems.phot_g_mean_mag, hue=nonmems.p, hue_norm=(0, 1)
+#     ).invert_yaxis()
 
-# test_membership()
-# test_membership_real()
-# test_cluster_selection()
-# test_simul()
-from scludam.synthetic import case2_sample0c, case2_sample1c, case2_sample2c
-from scludam.shdbscan import SHDBSCAN, one_hot_encode
-
-
-def test_1c_pm():
-    fmix = 0.9
-    clu_size = int(1000 * (1 - fmix))
-    df = case2_sample1c(fmix)
-    test_proba = df["p_pm_cluster1"].to_numpy()
-
-    test_labels = np.zeros_like(test_proba)
-    test_labels[test_proba > 0.5] = 1
-    test_labels = test_labels - 1
-    init_proba = one_hot_encode(test_labels)
-
-    data = df[["pmra", "pmdec"]].to_numpy()
-
-    # clu = SHDBSCAN(min_cluster_size=clu_size, auto_allow_single_cluster=True, outlier_quantile=.9).fit(data)
-    # init_proba = clu.proba
-
-    dbme = DBME(n_iters=20).fit(data, init_proba, test_proba=test_proba)
-
-    print("coso")
-
-
-def test_1c_space():
-    fmix = 0.9
-    clu_size = int(1000 * (1 - fmix))
-    df = case2_sample1c(fmix)
-    test_proba = df["p_pm_cluster1"].to_numpy()
-    all_test_proba = df[["p_pm_field", "p_pm_cluster1"]].to_numpy()
-
-    test_labels = np.zeros_like(test_proba)
-    test_labels[test_proba > 0.5] = 1
-    test_labels = test_labels - 1
-    init_proba = one_hot_encode(test_labels)
-
-    data = df[["pmra", "pmdec"]].to_numpy()
-
-    # clu = SHDBSCAN(min_cluster_size=clu_size, auto_allow_single_cluster=True, outlier_quantile=.9).fit(data)
-    # init_proba = clu.proba
-
-    dbme = DBME(n_iters=20).fit(data, init_proba, test_proba=test_proba)
-
-    print("coso")
+#     plt.show()
+#     print("coso")
 
 
-# test_1c_space()
+# def test_cluster_selection():
+
+#     np.random.seed(0)
+#     df = three_clusters_sample(cluster_size=50, field_size=int(1e3))
+#     data = df[["pmra", "pmdec", "parallax"]].to_numpy()
+#     real_pmp = df["p_pm_cluster1"].to_numpy()
+#     real_pmlabels = np.zeros_like(real_pmp)
+#     real_pmlabels[real_pmp > 0.5] = 1
+
+#     estimator = DensityBasedMembershipEstimator(
+#         min_cluster_size=50,
+#         min_samples=30,
+#         cluster_centers=np.array([(8, 8, 5), (5, 5, 5)]),
+#         # allow_single_cluster=True,
+#         n_iters=30,
+#         kernel_calculation_mode="per_class",
+#         mixing_error=1,
+#     )
+
+#     estimator.fit_predict(data)
+#     # estimator.iter_plot()
+#     estimator.clustering_plot()
+#     print("coso")
+
+
+# # test_membership()
+# # test_membership_real()
+# # test_cluster_selection()
+# # test_simul()
+# from scludam.synthetic import case2_sample0c, case2_sample1c, case2_sample2c
+# from scludam.shdbscan import SHDBSCAN, one_hot_encode
+
+
+# def test_1c_pm():
+#     fmix = 0.9
+#     clu_size = int(1000 * (1 - fmix))
+#     df = case2_sample1c(fmix)
+#     test_proba = df["p_pm_cluster1"].to_numpy()
+
+#     test_labels = np.zeros_like(test_proba)
+#     test_labels[test_proba > 0.5] = 1
+#     test_labels = test_labels - 1
+#     init_proba = one_hot_encode(test_labels)
+
+#     data = df[["pmra", "pmdec"]].to_numpy()
+
+#     # clu = SHDBSCAN(min_cluster_size=clu_size, auto_allow_single_cluster=True, outlier_quantile=.9).fit(data)
+#     # init_proba = clu.proba
+
+#     dbme = DBME(n_iters=20).fit(data, init_proba, test_proba=test_proba)
+
+#     print("coso")
+
+
+# def test_1c_space():
+#     fmix = 0.9
+#     clu_size = int(1000 * (1 - fmix))
+#     df = case2_sample1c(fmix)
+#     test_proba = df["p_pm_cluster1"].to_numpy()
+#     all_test_proba = df[["p_pm_field", "p_pm_cluster1"]].to_numpy()
+
+#     test_labels = np.zeros_like(test_proba)
+#     test_labels[test_proba > 0.5] = 1
+#     test_labels = test_labels - 1
+#     init_proba = one_hot_encode(test_labels)
+
+#     data = df[["pmra", "pmdec"]].to_numpy()
+
+#     # clu = SHDBSCAN(min_cluster_size=clu_size, auto_allow_single_cluster=True, outlier_quantile=.9).fit(data)
+#     # init_proba = clu.proba
+
+#     dbme = DBME(n_iters=20).fit(data, init_proba, test_proba=test_proba)
+
+#     print("coso")
+
+
+# # test_1c_space()

@@ -6,8 +6,10 @@ def raises_exception(exception, fun):
             fun()
     else:
         return fun()
-        
+
+# use pytest.raises(... match="message") insted
 def assert_eq_err_message(record, message):
+    assert 0
     assert record.value.args[0] == message
 
 def assert_eq_warn_message(record, message):

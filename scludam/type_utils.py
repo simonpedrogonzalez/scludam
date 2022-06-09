@@ -18,8 +18,8 @@ Coord = Tuple[Number, Number]
 Condition = Tuple[str, str, Union[str, Number]]
 LogicalExpression = Tuple[str, str, str, Union[str, Number]]
 
-Vector2Numpy = Annotated[NDArray[np.number], IsAttr["shape", IsEqual[(2,)]]]
-Vector3Numpy = Annotated[NDArray[np.number], IsAttr["shape", IsEqual[(3,)]]]
+Vector2Numpy = Annotated[NDArray[np.number], Is[lambda x: x.shape == (2,)]]
+Vector3Numpy = Annotated[NDArray[np.number], Is[lambda x: x.shape == (3,)]]
 Vector2 = Union[Tuple[Number, Number], Annotated[List[Number], 2], Vector2Numpy]
 Vector3 = Union[Tuple[Number, Number, Number], Annotated[List[Number], 3], Vector3Numpy]
 

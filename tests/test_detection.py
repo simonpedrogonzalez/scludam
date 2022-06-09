@@ -1,8 +1,8 @@
 from scludam.synthetic import (
     polar_to_cartesian,
     UniformSphere,
-    Cluster,
-    Field,
+    StarCluster,
+    StarField,
     Synthetic,
 )
 from scipy.stats import multivariate_normal
@@ -22,36 +22,37 @@ import numpy as np
 import pytest
 from utils import assert_eq_warn_message
 
+
 @pytest.fixture
 def three_clusters_sample():
     field_size = int(1e4)
     cluster_size = int(2e2)
-    field = Field(
+    field = StarField(
         pm=multivariate_normal(mean=(0.0, 0.0), cov=20),
         space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=10),
-        star_count=field_size,
+        n_stars=field_size,
     )
     clusters = [
-        Cluster(
+        StarCluster(
             space=multivariate_normal(
                 mean=polar_to_cartesian([120.7, -28.5, 5]), cov=0.5
             ),
             pm=multivariate_normal(mean=(0.5, 0), cov=1.0 / 10),
-            star_count=cluster_size,
+            n_stars=cluster_size,
         ),
-        Cluster(
+        StarCluster(
             space=multivariate_normal(
                 mean=polar_to_cartesian([120.8, -28.6, 5]), cov=0.5
             ),
             pm=multivariate_normal(mean=(4.5, 4), cov=1.0 / 10),
-            star_count=cluster_size,
+            n_stars=cluster_size,
         ),
-        Cluster(
+        StarCluster(
             space=multivariate_normal(
                 mean=polar_to_cartesian([120.9, -28.7, 5]), cov=0.5
             ),
             pm=multivariate_normal(mean=(7.5, 7), cov=1.0 / 10),
-            star_count=cluster_size,
+            n_stars=cluster_size,
         ),
     ]
     df = Synthetic(star_field=field, clusters=clusters).rvs()
@@ -285,7 +286,10 @@ def test_detect_happy_pass(three_clusters_sample):
         result = CountPeakDetector(
             bin_shape=[0.5, 0.5, 0.05], min_count=5, min_dif=20
         ).detect(data)
-        assert_eq_warn_message(record, "Histogram has too few bins in some dimensions: bin numbers are [41 42  1]")
+        assert_eq_warn_message(
+            record,
+            "Histogram has too few bins in some dimensions: bin numbers are [41 42  1]",
+        )
     center1 = (7.5, 7, np.log10(5))
     center2 = (4.5, 4, np.log10(5))
     center3 = (0.5, 0, np.log10(5))

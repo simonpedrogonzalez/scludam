@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from attr import attrs
+
 # from KDEpy import NaiveKDE
 # from KDEpy.bw_selection import (
 #     improved_sheather_jones,
@@ -18,6 +19,7 @@ from attr import attrs
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from rpy2.robjects import r
 from scipy.stats import gaussian_kde, halfnorm, multivariate_normal
+
 # from statsmodels.nonparametric.bandwidths import bw_scott, bw_silverman
 # from statsmodels.nonparametric.kernel_density import KDEMultivariate
 from statsmodels.stats.correlation_tools import corr_nearest
@@ -26,18 +28,21 @@ import beartype
 from numpy import ndarray
 from numbers import Number
 
-from scludam.rutils import load_r_packages, disable_r_console_output, disable_r_warnings, assign_r_args, clean_r_session
+from scludam.rutils import (
+    load_r_packages,
+    disable_r_console_output,
+    disable_r_warnings,
+    assign_r_args,
+    clean_r_session,
+)
 from scludam.utils import Colnames
 from scludam.synthetic import (
-    Cluster,
-    Field,
+    StarCluster,
+    StarField,
     Synthetic,
     UniformSphere,
-    one_cluster_sample,
-    one_cluster_sample_small,
     polar_to_cartesian,
     stats,
-    three_clusters_sample,
 )
 
 disable_r_warnings()
@@ -73,6 +78,7 @@ class PluginSelector(BandwidthSelector):
         command = self.build_r_command(data)
         result = r(command)
         return np.asarray(result)
+
 
 @attrs(auto_attribs=True)
 class HKDE:
@@ -518,6 +524,8 @@ def univariate_density_plot(
     return ax
 
 
+""" 
+
 def test_corr():
     obs = 3
     dims = 3
@@ -540,18 +548,18 @@ def test_corr():
 
 
 def test_bandwidth():
-    field = Field(
+    field = StarField(
         pm=stats.multivariate_normal(mean=(0.0, 0.0), cov=20),
         space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=10),
-        star_count=int(1e3),
+        n_stars=int(1e3),
     )
     clusters = [
-        Cluster(
+        StarCluster(
             space=stats.multivariate_normal(
                 mean=polar_to_cartesian([120.7, -28.5, 5]), cov=0.5
             ),
             pm=stats.multivariate_normal(mean=(0.5, 0), cov=1.0 / 35),
-            star_count=200,
+            n_stars=200,
         ),
     ]
     s = Synthetic(star_field=field, clusters=clusters).rvs().to_numpy()
@@ -576,18 +584,18 @@ def test_bandwidth():
 
 
 def test_hkde():
-    field = Field(
+    field = StarField(
         pm=stats.multivariate_normal(mean=(0.0, 0.0), cov=20),
         space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=10),
-        star_count=int(1e3),
+        n_stars=int(1e3),
     )
     clusters = [
-        Cluster(
+        StarCluster(
             space=stats.multivariate_normal(
                 mean=polar_to_cartesian([120.7, -28.5, 5]), cov=0.5
             ),
             pm=stats.multivariate_normal(mean=(0.5, 0), cov=1.0 / 35),
-            star_count=200,
+            n_stars=200,
         ),
     ]
     df = Synthetic(star_field=field, clusters=clusters).rvs()
@@ -633,8 +641,8 @@ def test_hkde():
     sns.scatterplot(x, y, hue=stmod_pdf).set(title="statsmodels")
     plt.figure()
     sns.scatterplot(x, y, hue=rkde_pdf).set(title="ks")
-    """ plt.figure()
-    sns.histplot(np.sqrt(kdeh_pdf**2-kdepy_pdf**2), bins=50).set(title='diff') """
+    plt.figure()
+    sns.histplot(np.sqrt(kdeh_pdf**2-kdepy_pdf**2), bins=50).set(title='diff')
     plt.figure()
     sns.histplot(scipy_pdf, bins=50).set(title="dens scipy")
     plt.figure()
@@ -739,7 +747,7 @@ def test_new_way():
     hkde = HKDE().fit2(data=data, err=err, corr=corr, weights=w)
     hkde.pdf2()
     print("coso")
-
+ """
 
 # test_new_way()
 # test_performance()

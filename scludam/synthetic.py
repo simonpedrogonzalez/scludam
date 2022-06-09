@@ -1,26 +1,50 @@
-import matplotlib.pyplot as plt
-import seaborn as sns
+# scludam, Star CLUster Detection And Membership estimation package
+# Copyright (C) 2022  Simón Pedro González
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""Module for synthetic data generation."""
+
+from numbers import Number
+from typing import List, Union
+
+import astropy.units as u
 import numpy as np
 import pandas as pd
-from scipy import stats
-from scipy.optimize import curve_fit
-from typing_extensions import TypedDict
-from typing import Optional, Tuple, List, Union, Callable
-# from attr import attrib, attrs, validators, Factory
-from attrs import define, validators, field, Factory
-import copy
-import math
 from astropy.coordinates import Distance, SkyCoord
-from scipy.spatial import ConvexHull
-import astropy.units as u
-from numbers import Number
-from scludam.type_utils import Vector2, Vector3, Vector2Array, Vector3Array, Numeric1DArray, Numeric2DArray, _type
+from attrs import Factory, define, field, validators
 from beartype import beartype
+from numpy.typing import NDArray
+from scipy import stats
+from scipy.spatial import ConvexHull
+
+from scludam.type_utils import (
+    Numeric1DArray,
+    Numeric2DArray,
+    Vector2,
+    Vector2Array,
+    Vector3,
+    Vector3Array,
+    _type,
+)
 
 
 # Helper functions
 @beartype
-def is_inside_circle(center: Vector2, radius: Number, data: Numeric2DArray):
+def is_inside_circle(
+    center: Vector2, radius: Number, data: Union[Vector2, Vector2Array]
+) -> NDArray[bool]:
     """Check if data is inside a circle.
 
     Parameters
@@ -30,24 +54,31 @@ def is_inside_circle(center: Vector2, radius: Number, data: Numeric2DArray):
         of the circle
     radius : Number
         radius of the circle
-    data : Numeric2DArray
+    data : Union[Vector2, Vector2Array]
         numpy numeric array of shape (n, 2) to check if inside the circle
 
     Returns
     -------
     NDArray[bool]
         mask indicating if data is inside the circle.
+
     """
+    data = np.array(data)
+    if data.ndim == 1:
+        data = data[np.newaxis, :]
     dx = np.abs(data[:, 0] - center[0])
     dy = np.abs(data[:, 1] - center[1])
     return (
-        (dx < radius)
-        & (dy < radius)
+        (dx <= radius)
+        & (dy <= radius)
         & ((dx + dy <= radius) | (dx**2 + dy**2 <= radius**2))
     )
 
+
 @beartype
-def is_inside_sphere(center: Vector3, radius: Number, data: Numeric2DArray):
+def is_inside_sphere(
+    center: Vector3, radius: Number, data: Union[Vector3, Vector3Array]
+) -> NDArray[bool]:
     """Check if data is inside a sphere.
 
     Parameters
@@ -57,14 +88,18 @@ def is_inside_sphere(center: Vector3, radius: Number, data: Numeric2DArray):
         of the sphere
     radius : Number
         radius of the sphere
-    data : Numeric2DArray
+    data : Union[Vector3, Vector3Array]
         numeric array of shape (n, 3) to check if inside the sphere
 
     Returns
     -------
     NDArray[bool]
         mask indicating if data is inside the sphere.
-    """    
+
+    """
+    data = np.array(data)
+    if data.ndim == 1:
+        data = data[np.newaxis, :]
     dx = np.abs(data[:, 0] - center[0])
     dy = np.abs(data[:, 1] - center[1])
     dz = np.abs(data[:, 2] - center[2])
@@ -73,7 +108,9 @@ def is_inside_sphere(center: Vector3, radius: Number, data: Numeric2DArray):
 
 # Coordinate transformation
 @beartype
-def cartesian_to_polar(coords: Union[Vector3, Vector3Array]):
+def cartesian_to_polar(
+    coords: Union[Vector3, Vector3Array]
+) -> Union[Vector3, Vector3Array]:
     """Convert cartesian coordinates to polar coordinates.
 
     Cartesian coordinates are taken as (x, y, z) in parsecs in
@@ -89,7 +126,8 @@ def cartesian_to_polar(coords: Union[Vector3, Vector3Array]):
     -------
     Union[Vector3, Vector3Array]
         polar coordinates in (ra, dec, parallax).
-    """    
+
+    """
     coords = np.array(coords)
     if len(coords.shape) == 1:
         coords = SkyCoord(
@@ -118,7 +156,9 @@ def cartesian_to_polar(coords: Union[Vector3, Vector3Array]):
 
 
 @beartype
-def polar_to_cartesian(coords: Union[Vector3, Vector3Array]):
+def polar_to_cartesian(
+    coords: Union[Vector3, Vector3Array]
+) -> Union[Vector3, Vector3Array]:
     """Convert polar coordinates to cartesian coordinates.
 
     Polar coordinates are taken as (ra, dec, parallax) in (degree, degree, mas)
@@ -134,7 +174,8 @@ def polar_to_cartesian(coords: Union[Vector3, Vector3Array]):
     -------
     Union[Vector3, Vector3Array]
         cartesian coordinates in (x, y, z) in parsecs in ICRS system.
-    """    
+
+    """
     coords = np.array(coords)
     if len(coords.shape) == 1:
         coords = SkyCoord(
@@ -171,29 +212,16 @@ def _in_range(min_value, max_value):
 
 def _dist_has_n_dimensions(n: int):
     def _dist_has_n_dimensions_validator(instance, attribute, value):
-        if not value.dim:
-            raise TypeError(f"{attribute.name} attribute does not have dim property")
-        elif value.dim != n:
+        if value.dim != n:
             raise ValueError(
-                f"{attribute.name} attribute must have {n} dimensions, but has {value.dim} dimensions"
+                f"{attribute.name} attribute must have {n} dimensions,               "
+                f" but has {value.dim} dimensions"
             )
 
     return _dist_has_n_dimensions_validator
 
 
-def _has_len(length: int):
-    def _has_len_validator(instance, attribute, value):
-        if len(value) != length:
-            raise ValueError(
-                f"{attribute.name} attribute must have length {length}, but has length {len(value)}"
-            )
-
-    return _has_len_validator
-
-
 # Custom distributions
-
-# unused
 @define(init=False)
 class EDSD(stats.rv_continuous):
     """Class to represent the EDSD distribution.
@@ -223,7 +251,7 @@ class EDSD(stats.rv_continuous):
         of the profile
     wf : float
         Distribution final point that indicates the upper limit
-    
+
     Extends
     -------
     scipy.stats.rv_continuous
@@ -242,7 +270,9 @@ class EDSD(stats.rv_continuous):
             a < w0
             b > wf
             a < b
+
     """
+
     w0: float
     wl: float
     wf: float
@@ -299,11 +329,24 @@ class EDSD(stats.rv_continuous):
         if self.a:
             if self.b and (self.a > self.b) or np.isclose(self.a, self.b):
                 raise ValueError("a must be < than b")
-            if np.isclose(self.a, wf):
+            if self.a > wf or np.isclose(self.a, wf):
                 raise ValueError("a must be < than wf")
         return True
 
-    def rvs(self, size: int = 1):
+    def rvs(self, size: int = 1) -> Numeric1DArray:
+        """Generate random variates from the EDSD distribution.
+
+        Parameters
+        ----------
+        size : int, optional
+            Size of the sample, by default 1
+
+        Returns
+        -------
+        Numeric1DArray
+            Generated sample.
+
+        """
         wl, w0, wf = self.wl, self.w0, self.wf
         self._argcheck(wl, w0, wf)
         limits = np.array([max(w0 + 1e-10, self.a), min(wf - 1e-10, self.b)]).astype(
@@ -327,20 +370,22 @@ class UniformSphere(stats._multivariate.multi_rv_frozen):
 
     Attributes
     ----------
-    center : 
+    center :
         _description_
 
     Returns
     -------
     _type_
         _description_
-    """    
-    center: Vector3 = field(validator=_type(Vector3), default=(0.0,0.0,0.0))
+
+    """
+
+    center: Vector3 = field(validator=_type(Vector3), default=(0.0, 0.0, 0.0))
     radius: Number = field(validator=_type(Number), default=1.0)
     dim: int = field(default=3, init=False)
 
     @beartype
-    def rvs(self, size: int = 1):
+    def rvs(self, size: int = 1) -> Vector3Array:
         """Generate random sample from the Uniform Sphere distribution.
 
         Parameters
@@ -352,7 +397,8 @@ class UniformSphere(stats._multivariate.multi_rv_frozen):
         -------
         Vector3Array :
             numpy numeric array of shape (size, 3) with the samples.
-        """        
+
+        """
         phi = stats.uniform().rvs(size) * 2 * np.pi
         cos_theta = stats.uniform(-1, 2).rvs(size)
         theta = np.arccos(cos_theta)
@@ -363,7 +409,7 @@ class UniformSphere(stats._multivariate.multi_rv_frozen):
         return np.vstack((x, y, z)).T
 
     @beartype
-    def pdf(self, x: Union[Vector3, Vector3Array]):
+    def pdf(self, x: Union[Vector3, Vector3Array]) -> Numeric1DArray:
         """Probability density function of the Uniform Sphere distribution.
 
         Is calculated as 0 if the point is outside the sphere,
@@ -378,7 +424,8 @@ class UniformSphere(stats._multivariate.multi_rv_frozen):
         -------
         Numeric1DArray
             numpy numeric array of shape (size,) with the pdf values.
-        """        
+
+        """
         is_inside = is_inside_sphere(self.center, self.radius, x)
         res = np.array(is_inside, dtype=float)
         res[res > 0] = 1.0 / (4.0 / 3.0 * np.pi * self.radius**3)
@@ -390,7 +437,7 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
     """Class to represent the Uniform Frustum distribution.
 
     It was defined to represent a square sky region sample. It
-    represents a uniform distribution inside a pyramidal frustum. 
+    represents a uniform distribution inside a pyramidal frustum.
 
     Attributes
     ----------
@@ -407,27 +454,14 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
     -------
     UniformFrustum
         instance of the Uniform Frustum distribution.
-    """    
-    locs: Vector3 = field(validator=_type(Vector3), default=(0.0,0.0,0.0))
-    scales: Vector3 = field(validator=_type(Vector3), default=(1.0,1.0,1.0))
+
+    """
+
+    locs: Vector3 = field(validator=_type(Vector3))
+    scales: Vector3 = field(validator=_type(Vector3))
     dim: int = field(default=3, init=False)
 
-    def _is_inside_shape(self, data: Numeric2DArray):
-        mask = np.zeros(data.shape[0])
-        polar = cartesian_to_polar(data)
-        mask[
-            (polar[:, 0] > self.locs[0])
-            & (polar[:, 0] < self.locs[0] + self.scales[0])
-            & (polar[:, 1] > self.locs[1])
-            & (polar[:, 1] < self.locs[1] + self.scales[1])
-            & (polar[:, 2] > self.locs[2])
-            & (polar[:, 2] < self.locs[2] + self.scales[2])
-        ] = 1
-        return mask.astype(dtype=bool)
-
-    # volume of a sqare based piramidal frustum
-    # which base is given by locs
-    def _volume(self):
+    def _get_vertices(self):
         vertices = np.array(
             [
                 self.locs,
@@ -454,14 +488,50 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
                     self.locs[1] + self.scales[1],
                     self.locs[2] + self.scales[2],
                 ),
+                # (
+                #     self.locs[0] + self.scales[0] / 2,
+                #     self.locs[1] + self.scales[1] / 2,
+                #     self.locs[2],
+                # ),
+                # (
+                #     self.locs[0] + self.scales[0] / 2,
+                #     self.locs[1] + self.scales[1] / 2,
+                #     self.locs[2] + self.scales[2],
+                # ),
             ]
         )
         vertices = polar_to_cartesian(vertices)
+        if not np.isfinite(vertices).all():
+            raise ValueError("Invalid ICRS polar coordinate for locs.")
+        return vertices
+
+    def _is_inside_shape(self, data: Numeric2DArray):
+        mask = np.zeros(data.shape[0])
+        polar = cartesian_to_polar(data)
+        vertices = cartesian_to_polar(self._get_vertices())
+
+        ramax, decmax, plxmax = tuple(vertices.max(axis=0))
+        ramin, decmin, plxmin = tuple(vertices.min(axis=0))
+
+        mask[
+            (polar[:, 0] > ramin)
+            & (polar[:, 0] < ramax)
+            & (polar[:, 1] > decmin)
+            & (polar[:, 1] < decmax)
+            & (polar[:, 2] > plxmin)
+            & (polar[:, 2] < plxmax)
+        ] = 1
+        return mask.astype(dtype=bool)
+
+    # volume of a sqare based piramidal frustum
+    # which base is given by locs. TODO: improve.
+    def _volume(self):
+        vertices = self._get_vertices()
         hull = ConvexHull(vertices)
         return hull.volume
 
     @beartype
-    def rvs(self, size:int=1):
+    def rvs(self, size: int = 1) -> Vector3Array:
         """Generate random sample from the Uniform Frustum distribution.
 
         Parameters
@@ -473,54 +543,12 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
         -------
         Vector3Array :
             numpy numeric array of shape (size, 3) with the samples.
+
         """
-        extremes = np.array(
-            [
-                self.locs,
-                (self.locs[0] + self.scales[0], self.locs[1], self.locs[2]),
-                (self.locs[0], self.locs[1] + self.scales[1], self.locs[2]),
-                (
-                    self.locs[0] + self.scales[0],
-                    self.locs[1] + self.scales[1],
-                    self.locs[2],
-                ),
-                (self.locs[0], self.locs[1], self.locs[2] + self.scales[2]),
-                (
-                    self.locs[0] + self.scales[0],
-                    self.locs[1],
-                    self.locs[2] + self.scales[2],
-                ),
-                (
-                    self.locs[0],
-                    self.locs[1] + self.scales[1],
-                    self.locs[2] + self.scales[2],
-                ),
-                (
-                    self.locs[0] + self.scales[0],
-                    self.locs[1] + self.scales[1],
-                    self.locs[2] + self.scales[2],
-                ),
-                (
-                    self.locs[0] + self.scales[0] / 2,
-                    self.locs[1] + self.scales[1] / 2,
-                    self.locs[2],
-                ),
-                (
-                    self.locs[0] + self.scales[0] / 2,
-                    self.locs[1] + self.scales[1] / 2,
-                    self.locs[2] + self.scales[2],
-                ),
-            ]
-        )
+        extremes = self._get_vertices()
 
-        extremes = polar_to_cartesian(extremes)
-
-        xmin = extremes[:, 0].min()
-        xmax = extremes[:, 0].max()
-        ymin = extremes[:, 1].min()
-        ymax = extremes[:, 1].max()
-        zmin = extremes[:, 2].min()
-        zmax = extremes[:, 2].max()
+        xmax, ymax, zmax = tuple(extremes.max(axis=0))
+        xmin, ymin, zmin = tuple(extremes.min(axis=0))
 
         data = np.array([])
         while data.shape[0] < size:
@@ -539,7 +567,7 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
         return data
 
     @beartype
-    def pdf(self, data: Union[Vector3, Vector3Array]):
+    def pdf(self, data: Union[Vector3, Vector3Array]) -> Numeric1DArray:
         """Probability density function of the Uniform Frustum distribution.
 
         It is defined as 1 / volume of the frustum for the points inside the frustum,
@@ -554,6 +582,7 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
         -------
         Numeric1DArray :
             numpy numeric array of shape with the pdf values.
+
         """
         res = np.zeros(data.shape[0])
         res[self._is_inside_shape(data)] = 1
@@ -570,17 +599,20 @@ class UniformCircle(stats._multivariate.multi_rv_frozen):
         center of the circle.
     radius : Number
         radius of the circle.
+
     Returns
     -------
     UniformCircle :
         instance of the Uniform Circle distribution.
-    """    
+
+    """
+
     center: Vector2 = field(validator=_type(Vector2), default=(0.0, 0.0))
     radius: Number = field(validator=_type(Number), default=1.0)
     dim: int = field(default=2, init=False)
 
     @beartype
-    def pdf(self, x: Union[Vector2, Vector2Array]):
+    def pdf(self, x: Union[Vector2, Vector2Array]) -> Numeric1DArray:
         """Probability density function of the Uniform Circle distribution.
 
         It is defined as 1 / (pi * radius^2) for the points inside the circle,
@@ -595,14 +627,15 @@ class UniformCircle(stats._multivariate.multi_rv_frozen):
         -------
         Numeric1DArray :
             numpy numeric array of shape with the pdf values.
+
         """
         is_inside = is_inside_circle(self.center, self.radius, x)
         res = np.array(is_inside, dtype=float)
         res[res > 0] = 1.0 / (np.pi * self.radius**2)
         return res
-        
+
     @beartype
-    def rvs(self, size: int = 1):
+    def rvs(self, size: int = 1) -> Vector2Array:
         """Generate random sample from the Uniform Circle distribution.
 
         Parameters
@@ -614,7 +647,8 @@ class UniformCircle(stats._multivariate.multi_rv_frozen):
         -------
         Vector2Array :
             numpy numeric array of shape (size, 2) with the samples.
-        """        
+
+        """
         theta = stats.uniform().rvs(size=size) * 2 * np.pi
         r = self.radius * stats.uniform().rvs(size=size) ** 0.5
         x = r * np.cos(theta) + self.center[0]
@@ -623,7 +657,7 @@ class UniformCircle(stats._multivariate.multi_rv_frozen):
 
 
 @define
-class BivariateUnifom(stats._multivariate.multi_rv_frozen):
+class BivariateUniform(stats._multivariate.multi_rv_frozen):
     """Bivariate Uniform distribution.
 
     Attributes
@@ -637,15 +671,17 @@ class BivariateUnifom(stats._multivariate.multi_rv_frozen):
     stats._multivariate.multi_rv_frozen
     Returns
     -------
-    BivariateUnifom :
+    BivariateUniform :
         instance of the Bivariate Uniform distribution.
-    """    
+
+    """
+
     locs: Vector2 = field(validator=_type(Vector2), default=(0.0, 0.0))
     scales: Vector2 = field(validator=_type(Vector2), default=(1.0, 1.0))
     dim: int = field(default=2, init=False)
 
     @beartype
-    def rvs(self, size: int = 1):
+    def rvs(self, size: int = 1) -> Vector2Array:
         """Generate random sample from the Bivariate Uniform distribution.
 
         Parameters
@@ -657,13 +693,14 @@ class BivariateUnifom(stats._multivariate.multi_rv_frozen):
         -------
         Vector2Array :
             numpy array of shape (size, 2) with the samples.
-        """        
+
+        """
         x = stats.uniform(loc=self.locs[0], scale=self.scales[0]).rvs(size=size)
         y = stats.uniform(loc=self.locs[1], scale=self.scales[1]).rvs(size=size)
         return np.vstack((x, y)).T
 
     @beartype
-    def pdf(self, x): #: Union[Vector2, Vector2Array]):
+    def pdf(self, x: Union[Vector2, Vector2Array]) -> Numeric1DArray:
         """Probability density function of the Bivariate Uniform distribution.
 
         Parameters
@@ -675,7 +712,8 @@ class BivariateUnifom(stats._multivariate.multi_rv_frozen):
         -------
         Numeric1DArray :
             numpy array with the pdf values.
-        """        
+
+        """
         pdfx = stats.uniform(loc=self.locs[0], scale=self.scales[0]).pdf(x[:, 0])
         pdfy = stats.uniform(loc=self.locs[1], scale=self.scales[1]).pdf(x[:, 1])
         return pdfx * pdfy
@@ -698,13 +736,15 @@ class TrivariateUniform(stats._multivariate.multi_rv_frozen):
     -------
     TrivariateUniform :
         instance of the Trivariate Uniform distribution.
-    """    
+
+    """
+
     locs: Vector3 = field(validator=_type(Vector3), default=(0.0, 0.0, 0.0))
     scales: Vector3 = field(validator=_type(Vector3), default=(1.0, 1.0, 1.0))
     dim: int = field(default=3, init=False)
 
     @beartype
-    def rvs(self, size: int = 1):
+    def rvs(self, size: int = 1) -> Vector3Array:
         """Generate random sample from the Trivariate Uniform distribution.
 
         Parameters
@@ -716,14 +756,15 @@ class TrivariateUniform(stats._multivariate.multi_rv_frozen):
         -------
         Vector3Array :
             numpy array of shape (size, 3) with the samples.
-        """        
+
+        """
         x = stats.uniform(loc=self.locs[0], scale=self.scales[0]).rvs(size=size)
         y = stats.uniform(loc=self.locs[1], scale=self.scales[1]).rvs(size=size)
         z = stats.uniform(loc=self.locs[2], scale=self.scales[2]).rvs(size=size)
         return np.vstack((x, y, z)).T
 
     @beartype
-    def pdf(self, x: Union[Vector3, Vector3Array]):
+    def pdf(self, x: Union[Vector3, Vector3Array]) -> Numeric1DArray:
         """Probability density function of the Trivariate Uniform distribution.
 
         Is defined as 1 / volume for the points inside the volume, and 0 for
@@ -736,9 +777,10 @@ class TrivariateUniform(stats._multivariate.multi_rv_frozen):
 
         Returns
         -------
-        Numerc1DArray :
+        Numeric1DArray :
             numpy array with the pdf values.
-        """        
+
+        """
         pdfx = stats.uniform(loc=self.locs[0], scale=self.scales[0]).pdf(x[:, 0])
         pdfy = stats.uniform(loc=self.locs[1], scale=self.scales[1]).pdf(x[:, 1])
         pdfz = stats.uniform(loc=self.locs[2], scale=self.scales[2]).pdf(x[:, 2])
@@ -747,16 +789,55 @@ class TrivariateUniform(stats._multivariate.multi_rv_frozen):
 
 # Data generators
 @define
-class Cluster:
+class StarCluster:
+    """Class for generating astrometric data from a star cluster.
 
-    space: stats._multivariate.multi_rv_frozen = field(validator=[_type(stats._multivariate.multi_rv_frozen), _dist_has_n_dimensions(n=3)])
-    pm: stats._multivariate.multi_rv_frozen = field(validator=[_type(stats._multivariate.multi_rv_frozen), _dist_has_n_dimensions(n=2)])
-    representation_type: str = field(validator=[_type(str), validators.in_(["cartesian", "spherical"])], default="spherical")
-    star_count: int = field(validator=[_type(int), _in_range(0, "inf")], default=200)
+    Attributes
+    ----------
+    space : stats._multivariate.multi_rv_frozen
+        Space distribution of the cluster. It must have 3 dimensions.
+    pm : stats._multivariate.multi_rv_frozen
+        Proper motion distribution of the cluster. It must have 3 dimensions.
+    representation_type : str
+        Type of representation of the cluster. It must be "spherical" or "cartesian",
+        by default "spherical".
+
+    Returns
+    -------
+    StarCluster :
+        An instance of the StarCluster class.
+
+    """
+
+    space: stats._multivariate.multi_rv_frozen = field(
+        validator=[
+            _type(stats._multivariate.multi_rv_frozen),
+            _dist_has_n_dimensions(n=3),
+        ]
+    )
+    pm: stats._multivariate.multi_rv_frozen = field(
+        validator=[
+            _type(stats._multivariate.multi_rv_frozen),
+            _dist_has_n_dimensions(n=2),
+        ]
+    )
+    representation_type: str = field(
+        validator=[_type(str), validators.in_(["cartesian", "spherical"])],
+        default="spherical",
+    )
+    n_stars: int = field(validator=[_type(int), _in_range(0, "inf")], default=200)
 
     # TODO: fails when n is 1
-    def rvs(self):
-        size = self.star_count
+    def rvs(self) -> pd.DataFrame:
+        """Generate random sample from the Star Cluster distribution.
+
+        Returns
+        -------
+        pd.DataFrame
+            Data frame with the samples.
+
+        """
+        size = self.n_stars
         data = pd.DataFrame()
         xyz = np.atleast_2d(self.space.rvs(size))
         if self.representation_type == "spherical":
@@ -767,8 +848,21 @@ class Cluster:
         data[["pmra", "pmdec"]] = pd.DataFrame(pm)
         return data
 
-    # test
-    def pdf(self, data):
+    def pdf(self, data: pd.DataFrame) -> Numeric1DArray:
+        """Joint probability density function of the StarCluster distribution.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data to be evaluated. Must contain the columns "ra", "dec", "parallax"
+            or "x", "y", "z", and "pmra", "pmdec".
+
+        Returns
+        -------
+        Numeric1DArray
+            PDF values for the data.
+
+        """
         pm_pdf = self.pm.pdf(data[["pmra", "pmdec"]].to_numpy())
         if set(["x", "y", "z"]).issubset(set(data.columns)):
             space_pdf = self.space.pdf(data[["x", "y", "z"]].to_numpy())
@@ -777,10 +871,37 @@ class Cluster:
             space_pdf = self.space.pdf(xyz)
         return pm_pdf * space_pdf
 
-    def pmpdf(self, data):
+    def pm_pdf(self, data: pd.DataFrame) -> Numeric1DArray:
+        """Probability density function of the Proper Motion distribution.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data to be evaluated.
+
+        Returns
+        -------
+        Numeric1DArray
+            PDF values for the data.
+
+        """
         return self.pm.pdf(data[["pmra", "pmdec"]].to_numpy())
 
-    def spacepdf(self, data):
+    def space_pdf(self, data: pd.DataFrame) -> Numeric1DArray:
+        """Probability density function of the space distribution.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data to be evaluated. Must have columns "x", "y", "z" or
+            "ra", "dec", "parallax".
+
+        Returns
+        -------
+        Numeric1DArray
+            PDF values for the data.
+
+        """
         if set(["x", "y", "z"]).issubset(set(data.columns)):
             space_pdf = self.space.pdf(data[["x", "y", "z"]].to_numpy())
         else:
@@ -790,15 +911,55 @@ class Cluster:
 
 
 @define
-class Field:
-    space: stats._multivariate.multi_rv_frozen = field(validator=[_type(stats._multivariate.multi_rv_frozen), _dist_has_n_dimensions(n=3)])
-    pm: stats._multivariate.multi_rv_frozen = field(validator=[_type(stats._multivariate.multi_rv_frozen), _dist_has_n_dimensions(n=2)])
-    representation_type: str = field(validator=[_type(str), validators.in_(["cartesian", "spherical"])], default="spherical")
-    star_count: int = field(validator=[_type(int), _in_range(0, "inf")], default=int(1e5))
+class StarField:
+    """Class for generating star field data.
+
+    Attributes
+    ----------
+    space : stats._multivariate.multi_rv_frozen
+        Distribution of the space coordinates. Must have 3 dimensions.
+    pm : stats._multivariate.multi_rv_frozen
+        Distribution of the proper motion coordinates. Must have 2 dimensions.
+    representation_type : str
+        Type of representation of the spatial data. Must be "cartesian" or "spherical",
+        by default "spherical".
+
+    Returns
+    -------
+    StarField :
+        An instance of the StarField class.
+
+    """
+
+    space: stats._multivariate.multi_rv_frozen = field(
+        validator=[
+            _type(stats._multivariate.multi_rv_frozen),
+            _dist_has_n_dimensions(n=3),
+        ]
+    )
+    pm: stats._multivariate.multi_rv_frozen = field(
+        validator=[
+            _type(stats._multivariate.multi_rv_frozen),
+            _dist_has_n_dimensions(n=2),
+        ]
+    )
+    representation_type: str = field(
+        validator=[_type(str), validators.in_(["cartesian", "spherical"])],
+        default="spherical",
+    )
+    n_stars: int = field(validator=[_type(int), _in_range(0, "inf")], default=int(1e5))
 
     # TODO: test
-    def rvs(self):
-        size = self.star_count
+    def rvs(self) -> pd.DataFrame:
+        """Generate random sample from the Star Field distribution.
+
+        Returns
+        -------
+        pd.DataFrame
+            Contains columns for the space distrubution and the pm distribution.
+
+        """
+        size = self.n_stars
         data = pd.DataFrame()
         xyz = np.atleast_2d(self.space.rvs(size))
         pm = np.atleast_2d(self.pm.rvs(size))
@@ -811,7 +972,20 @@ class Field:
         return data
 
     # TODO: test
-    def pdf(self, data):
+    def pdf(self, data: pd.DataFrame) -> Numeric1DArray:
+        """Joint Probability Density Function of the Star Field.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data to be evaluated.
+
+        Returns
+        -------
+        Numeric1DArray
+            PDF values for the data.
+
+        """
         pm_pdf = self.pm.pdf(data[["pmra", "pmdec"]].to_numpy())
         if set(["x", "y", "z"]).issubset(set(data.columns)):
             space_pdf = self.space.pdf(data[["x", "y", "z"]].to_numpy())
@@ -820,10 +994,37 @@ class Field:
             space_pdf = self.space.pdf(xyz)
         return pm_pdf * space_pdf
 
-    def pmpdf(self, data):
+    def pm_pdf(self, data: pd.DataFrame) -> Numeric1DArray:
+        """Probability density function of the Proper Motion distribution.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data to be evaluated. Must have columns "pmra" and "pmdec".
+
+        Returns
+        -------
+        Numeric1DArray
+            PDF of the Proper Motion distribution.
+
+        """
         return self.pm.pdf(data[["pmra", "pmdec"]].to_numpy())
 
-    def spacepdf(self, data):
+    def space_pdf(self, data: pd.DataFrame) -> Numeric1DArray:
+        """Probability density function of the space distribution.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data to be evaluated. Must have columns "x", "y", "z"
+            or "ra", "dec", "parallax".
+
+        Returns
+        -------
+        Numeric1DArray
+            PDF of the space distribution.
+
+        """
         if set(["x", "y", "z"]).issubset(set(data.columns)):
             space_pdf = self.space.pdf(data[["x", "y", "z"]].to_numpy())
         else:
@@ -834,12 +1035,42 @@ class Field:
 
 @define
 class Synthetic:
-    star_field: Field = field(validator=_type(Field))
-    representation_type: str = field(validator=[_type(str), validators.in_(["cartesian", "spherical"])], default="spherical")
-    clusters: List[Cluster] = Factory(list)
+    """Class for generating synthetic data.
+
+    Attributes
+    ----------
+    space : stats._multivariate.multi_rv_frozen
+        The space distribution, it must be a 3d distribution.
+    pm : stats._multivariate.multi_rv_frozen
+        The proper motion distribution, it must be a 2d distribution.
+    representation_type : str
+        The representation type, it must be "cartesian" or "spherical",
+        by default is "spherical".
+
+    Returns
+    -------
+    Synthetic
+        A class instance capable of being used to generate synthetic data.
+
+    """
+
+    star_field: StarField = field(validator=_type(StarField))
+    representation_type: str = field(
+        validator=[_type(str), validators.in_(["cartesian", "spherical"])],
+        default="spherical",
+    )
+    clusters: List[StarCluster] = Factory(list)
 
     # TODO: test
-    def rvs(self):
+    def rvs(self) -> pd.DataFrame:
+        """Generate synthetic data from field and cluster distributions.
+
+        Returns
+        -------
+        pd.DataFrame
+            synthetic data
+
+        """
         self.star_field.representation_type = "cartesian"
         data = self.star_field.rvs()
         for i in range(len(self.clusters)):
@@ -848,15 +1079,15 @@ class Synthetic:
             data = pd.concat([data, cluster_data], axis=0)
 
         # TODO: improve
-        total_stars = sum([c.star_count for c in self.clusters]) + self.star_field.star_count
-        field_mixing_ratio = float(self.star_field.star_count) / float(total_stars)
+        total_stars = sum([c.n_stars for c in self.clusters]) + self.star_field.n_stars
+        field_mixing_ratio = float(self.star_field.n_stars) / float(total_stars)
         field_p = self.star_field.pdf(data) * field_mixing_ratio
 
-        field_pmp = self.star_field.pmpdf(data) * field_mixing_ratio
-        field_spacep = self.star_field.spacepdf(data) * field_mixing_ratio
+        field_pmp = self.star_field.pm_pdf(data) * field_mixing_ratio
+        field_spacep = self.star_field.space_pdf(data) * field_mixing_ratio
 
         clusters_mixing_ratios = [
-            float(c.star_count) / float(total_stars) for c in self.clusters
+            float(c.n_stars) / float(total_stars) for c in self.clusters
         ]
         cluster_ps = np.array(
             [
@@ -867,13 +1098,13 @@ class Synthetic:
 
         cluster_pmps = np.array(
             [
-                self.clusters[i].pmpdf(data) * clusters_mixing_ratios[i]
+                self.clusters[i].pm_pdf(data) * clusters_mixing_ratios[i]
                 for i in range(len(self.clusters))
             ]
         )
         cluster_spaceps = np.array(
             [
-                self.clusters[i].spacepdf(data) * clusters_mixing_ratios[i]
+                self.clusters[i].space_pdf(data) * clusters_mixing_ratios[i]
                 for i in range(len(self.clusters))
             ]
         )
@@ -906,321 +1137,3 @@ class Synthetic:
             data["log10_parallax"] = np.log10(data["parallax"])
             data.drop(["x", "y", "z"], inplace=True, axis=1)
         return data
-
-
-def one_cluster_sample(field_size=int(1e4)):
-    field = Field(
-        pm=stats.multivariate_normal(mean=(0.0, 0.0), cov=20),
-        space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=10),
-        star_count=field_size,
-    )
-    clusters = [
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120.7, -28.5, 5]), cov=0.5
-            ),
-            pm=stats.multivariate_normal(mean=(0.5, 0), cov=1.0 / 35),
-            star_count=200,
-        ),
-    ]
-    df = Synthetic(star_field=field, clusters=clusters).rvs()
-    return df
-
-
-def three_clusters_sample():
-    field_size = int(1e4)
-    cluster_size = int(2e2)
-    field = Field(
-        pm=stats.multivariate_normal(mean=(0.0, 0.0), cov=20),
-        space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=20),
-        star_count=field_size,
-    )
-    clusters = [
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120.7, -28.5, 5]), cov=0.5
-            ),
-            pm=stats.multivariate_normal(mean=(0.5, 0), cov=1.0 / 10),
-            star_count=cluster_size,
-        ),
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120.8, -28.6, 5]), cov=0.5
-            ),
-            pm=stats.multivariate_normal(mean=(4.5, 4), cov=1.0 / 10),
-            star_count=cluster_size,
-        ),
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120.9, -28.7, 5]), cov=0.5
-            ),
-            pm=stats.multivariate_normal(mean=(7.5, 7), cov=1.0 / 10),
-            star_count=cluster_size,
-        ),
-    ]
-    df = Synthetic(star_field=field, clusters=clusters).rvs()
-    return df
-
-
-def sample3c(fmix=0.9):
-    field_size = int(1e4)
-    cluster_size = int(2e2)
-
-    field = Field(
-        pm=stats.multivariate_normal(mean=(0.0, 0.0), cov=20),
-        space=UniformFrustum(locs=(118, -31, 1.2), scales=(6, 6, 1)),
-        star_count=field_size,
-    )
-    clusters = [
-        Cluster(
-            pm=stats.multivariate_normal(mean=(0.5, 0), cov=1.0 / 10),
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120, -28, 1.3]), cov=0.7
-            ),
-            star_count=cluster_size,
-        ),
-        Cluster(
-            pm=stats.multivariate_normal(mean=(4.5, 4), cov=1.0 / 10),
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([121, -27, 1.7]), cov=0.7
-            ),
-            star_count=cluster_size,
-        ),
-        Cluster(
-            pm=stats.multivariate_normal(mean=(7.5, 7), cov=1.0 / 10),
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([122.5, -25.5, 2.1]), cov=0.7
-            ),
-            star_count=cluster_size,
-        ),
-    ]
-    return Synthetic(star_field=field, clusters=clusters).rvs()
-
-
-""" df = sample3c()
-#df_plot = df[['ra', 'dec', 'parallax', 'pmra', 'pmdec']]
-#sns.pairplot(df_plot, markers='.')
-import os
-import sys
-sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
-from scludam.plots import membership_3d_plot
-
-membership_3d_plot(df[['x', 'y', 'z']].values, df['p_field'].values)
-
-plt.show()
-print('coso') """
-
-
-def one_cluster_sample_small(field_size=int(1e3), cluster_size=int(2e2)):
-    field = Field(
-        pm=stats.multivariate_normal(mean=(0.0, 0.0), cov=10),
-        space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=10),
-        star_count=field_size,
-    )
-    clusters = [
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120.7, -28.5, 5]), cov=1.5
-            ),
-            pm=stats.multivariate_normal(mean=(0.5, 0), cov=1.0 / 35),
-            star_count=cluster_size,
-        ),
-    ]
-    df = Synthetic(star_field=field, clusters=clusters).rvs()
-    return df
-
-
-def case1_sample0c():
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
-        space=UniformSphere(center=polar_to_cartesian((121.25, -28, 1.6)), radius=28),
-        star_count=1000,
-    )
-    return Synthetic(field=field, clusters=[]).rvs()
-
-
-def case1_sample1c(fmix=0.6):
-    n = 1000
-    n_clusters = 1
-    cmix = (1 - fmix) / n_clusters
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
-        space=UniformSphere(center=polar_to_cartesian((121.25, -28, 1.6)), radius=28),
-        star_count=int(n * fmix),
-    )
-    clusters = [
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([121, -28, 1.6]), cov=7
-            ),
-            pm=stats.multivariate_normal(mean=(-5.75, 7.25), cov=1.0 / 34),
-            star_count=int(n * cmix),
-        ),
-    ]
-    return Synthetic(star_field=field, clusters=clusters).rvs()
-
-
-def case1_sample2c(fmix=0.6):
-    n = 1000
-    n_clusters = 2
-    cmix = (1 - fmix) / n_clusters
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
-        space=UniformSphere(center=polar_to_cartesian((121.25, -28, 1.6)), radius=28),
-        star_count=int(n * fmix),
-    )
-    clusters = [
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120.5, -27.25, 1.57]), cov=7
-            ),
-            pm=stats.multivariate_normal(mean=(-5.4, 6.75), cov=1.0 / 34),
-            star_count=int(n * cmix),
-        ),
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([121.75, -28.75, 1.63]), cov=7
-            ),
-            pm=stats.multivariate_normal(mean=(-6.25, 7.75), cov=1.0 / 34),
-            star_count=int(n * cmix),
-        ),
-    ]
-    return Synthetic(star_field=field, clusters=clusters).rvs()
-
-
-def case2_sample0c(fmix=None):
-    n = 1000
-
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
-        space=UniformFrustum(locs=(118, -31, 1.2), scales=(6, 6, 0.9)),
-        star_count=int(n),
-    )
-    return Synthetic(star_field=field, clusters=[]).rvs()
-
-
-def case2_sample1c(fmix=0.6):
-    n = 1000
-    n_clusters = 1
-    cmix = (1 - fmix) / n_clusters
-    flocs = polar_to_cartesian((118, -31, 1.2))
-
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
-        space=UniformFrustum(locs=(118, -31, 1.2), scales=(6, 6, 0.9)),
-        star_count=int(n * fmix),
-    )
-    clusters = [
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([121, -28, 1.6]), cov=50
-            ),
-            pm=stats.multivariate_normal(mean=(-5.75, 7.25), cov=1.0 / 34),
-            star_count=int(n * cmix),
-        ),
-    ]
-    return Synthetic(star_field=field, clusters=clusters).rvs()
-
-
-def case2_sample2c(fmix=0.6):
-    n = 1000
-    n_clusters = 2
-    cmix = (1 - fmix) / n_clusters
-    flocs = polar_to_cartesian((118, -31, 1.2))
-
-    f_end_point_ra = polar_to_cartesian((124, -31, 1.2))
-    f_end_point_dec = polar_to_cartesian((118, -25, 1.2))
-    f_end_point_plx = polar_to_cartesian((118, -31, 2))
-
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(2.5, 2.5)),
-        space=UniformFrustum(locs=(118, -31, 1.2), scales=(6, 6, 0.9)),
-        star_count=int(n * fmix),
-    )
-    clusters = [
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120.5, -27.25, 1.57]), cov=50
-            ),
-            pm=stats.multivariate_normal(mean=(-5.4, 6.75), cov=1.0 / 34),
-            star_count=int(n * cmix),
-        ),
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([121.75, -28.75, 1.63]), cov=50
-            ),
-            pm=stats.multivariate_normal(mean=(-6.25, 7.75), cov=1.0 / 34),
-            star_count=int(n * cmix),
-        ),
-    ]
-    return Synthetic(star_field=field, clusters=clusters).rvs()
-
-
-def case2_sample2c_big(fmix=0.6):
-    n = 1000
-    n_clusters = 2
-    cmix = (1 - fmix) / n_clusters
-
-    field = Field(
-        pm=BivariateUnifom(locs=(-7, 6), scales=(10.5, 10.5)),
-        space=UniformFrustum(locs=(118, -31, 1.2), scales=(36, 36, 2)),
-        star_count=int(n * fmix),
-    )
-    clusters = [
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([120.5, -27.25, 1.57]), cov=50
-            ),
-            pm=stats.multivariate_normal(mean=(-5.4, 6.75), cov=1.0 / 34),
-            star_count=int(n * cmix),
-        ),
-        Cluster(
-            space=stats.multivariate_normal(
-                mean=polar_to_cartesian([121.75, -28.75, 1.63]), cov=50
-            ),
-            pm=stats.multivariate_normal(mean=(-6.25, 7.75), cov=1.0 / 34),
-            star_count=int(n * cmix),
-        ),
-    ]
-    return Synthetic(star_field=field, clusters=clusters).rvs()
-
-
-# df = case2_sample2c_big()
-# print('coso')
-# df = case2_sample1c(fmix=.6)
-# print('coso')
-
-
-""" uf = UniformFrustum(locs=(118, -25, 1.6), scales=(1,1,.1))
-data = uf.rvs(size=1000)
-vol = uf.volume()
-fig, ax = plt.subplots(subplot_kw={ 'projection': '3d' })
-ax.scatter3D(data[:,0], data[:,1], data[:,2])
-plt.show()   """
-""" df = case2_sample2c(.9)
-df = df[['ra', 'dec', 'pmra', 'pmdec', 'parallax']]
-sns.pairplot(df)
-plt.show()
-print('coso') """
-""" rt = 'spherical'
-field = Field(
-    pm=stats.multivariate_normal(mean=(0., 0.), cov=3),
-    # space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=700),
-    space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=3),
-    representation_type=rt,
-    star_count=int(60)
-)
-cluster = Cluster(
-    space=stats.multivariate_normal(
-        mean=polar_to_cartesian([120.7, -28.5, 5]),
-        cov=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-    ),
-    pm=stats.multivariate_normal(mean=(.5, .5), cov=.5),
-    representation_type=rt,
-    star_count=40
-)
-synthetic = Synthetic(star_field=field, clusters=[cluster])
-data = synthetic.rvs()
-data[['ra', 'dec', 'parallax']] = cartesian_to_polar(data[['x', 'y', 'z']].to_numpy())
-sns.scatterplot(data=data, x='ra', y='dec', hue='p_cluster1')
-plt.show() """

@@ -38,7 +38,7 @@ from scludam.plots import (
 )
 from scludam.plot_gauss_err import plot_kernels
 from scludam.utils import combinations, Colnames
-from scludam.synthetic import BivariateUnifom
+from scludam.synthetic import BivariateUniform
 from scludam.hkde import HKDE, PluginSelector, pair_density_plot
 from scludam.masker import RangeMasker, DistanceMasker, CrustMasker
 from scludam.utils import one_hot_encode
@@ -407,6 +407,7 @@ class SHDBSCAN:
         return ax
 
 
+""" 
 def iris():
     from sklearn.datasets import load_iris
 
@@ -428,17 +429,17 @@ def plot3d_s(data, z):
 
 
 def uniform_sample():
-    return BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(1000)
+    return BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(1000)
 
 
 def one_cluster_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(900)
+    sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(900)
     sample2 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(100)
     return np.concatenate((sample, sample2))
 
 
 def two_clusters_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(800)
+    sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(800)
     sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(100)
     sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(100)
     return np.concatenate((sample, sample2, sample3))
@@ -533,7 +534,7 @@ def test_no_clusters_aasc(uniform_sample):
 
 
 def three_clusters_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(500)
+    sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
     sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(160)
     sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(160)
     sample4 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(160)
@@ -573,3 +574,4 @@ def test_clusterer_parameter(iris):
 
 
 # test_clusterer_parameter(iris())
+ """

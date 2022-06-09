@@ -5,7 +5,7 @@ from scipy.stats import multivariate_normal
 
 from scludam import DipDistTest, HopkinsTest, RipleysKTest
 from sklearn.datasets import load_iris
-from scludam.synthetic import BivariateUnifom
+from scludam.synthetic import BivariateUniform
 
 
 @pytest.fixture
@@ -15,19 +15,19 @@ def iris():
 
 @pytest.fixture
 def uniform_sample():
-    return BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(1000)
+    return BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(1000)
 
 
 @pytest.fixture
 def one_cluster_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(500)
+    sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
     sample2 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(500)
     return np.concatenate((sample, sample2))
 
 
 @pytest.fixture
 def two_clusters_sample():
-    sample = BivariateUnifom(locs=(0, 0), scales=(1, 1)).rvs(500)
+    sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
     sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(250)
     sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(250)
     return np.concatenate((sample, sample2, sample3))

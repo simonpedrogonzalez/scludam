@@ -14,13 +14,14 @@ from matplotlib import pyplot as plt
 import math
 
 from scludam.masker import RangeMasker
-from scludam.synthetic import three_clusters_sample
+
+# from scludam.synthetic import three_clusters_sample
 from decimal import Decimal
 from scludam.synthetic import (
     polar_to_cartesian,
     UniformSphere,
-    Cluster,
-    Field,
+    StarCluster,
+    StarField,
     Synthetic,
 )
 from scipy.stats import multivariate_normal
@@ -494,32 +495,32 @@ def create_heatmaps(hist, edges, bin_shape, clusters_idx):
 def three_clusters_sample():
     field_size = int(1e4)
     cluster_size = int(1e2)
-    field = Field(
+    field = StarField(
         pm=multivariate_normal(mean=(0.0, 0.0), cov=20),
         space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=100),
-        star_count=field_size,
+        n_stars=field_size,
     )
     clusters = [
-        Cluster(
+        StarCluster(
             space=multivariate_normal(
                 mean=polar_to_cartesian([120.7, -28.5, 5]), cov=0.5
             ),
             pm=multivariate_normal(mean=(0.5, 0), cov=1.0 / 10),
-            star_count=cluster_size,
+            n_stars=cluster_size,
         ),
-        Cluster(
+        StarCluster(
             space=multivariate_normal(
                 mean=polar_to_cartesian([120.8, -28.6, 5]), cov=0.5
             ),
             pm=multivariate_normal(mean=(4.5, 4), cov=1.0 / 10),
-            star_count=cluster_size,
+            n_stars=cluster_size,
         ),
-        Cluster(
+        StarCluster(
             space=multivariate_normal(
                 mean=polar_to_cartesian([120.9, -28.7, 5]), cov=0.5
             ),
             pm=multivariate_normal(mean=(7.5, 7), cov=1.0 / 10),
-            star_count=cluster_size,
+            n_stars=cluster_size,
         ),
     ]
     df = Synthetic(star_field=field, clusters=clusters).rvs()

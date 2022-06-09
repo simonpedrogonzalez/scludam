@@ -10,7 +10,6 @@ from astropy.table.table import Table
 from astroquery.utils.tap.model.job import Job
 from astroquery.utils.tap.model.tapcolumn import TapColumn
 from astroquery.utils.tap.model.taptable import TapTableMeta
-from utils import assert_eq_err_message
 
 from scludam import Query, search_object, search_table
 from scludam.fetcher import Config, SimbadResult
@@ -235,14 +234,12 @@ class TestQuery:
         )
 
     def test_where_invalid_column_raises_error(self):
-        with pytest.raises(KeyError) as record:
+        with pytest.raises(KeyError, match="Invalid column name: col3") as record:
             Query("table").select("col1", "col2").where(("col3", "=", "'value'"))
-            assert_eq_err_message(record, "Invalid column name: col3")
 
     def test_where_invalid_operator_raises_error(self):
-        with pytest.raises(ValueError) as record:
+        with pytest.raises(ValueError, match="Invalid operator: invalid"):
             Query("table").where(("col1", "invalid", "'value'"))
-            assert_eq_err_message(record, "Invalid operator: invalid")
 
     def test_where_list_tuple_adds_and_expression(self):
         correct = "SELECT * FROM table WHERE col1 = 'value' AND col2 = 'value2'"
