@@ -6,6 +6,12 @@ sudo: true
 #  - sudo dpkg -i pandoc-2.7.3-1-amd64.deb
 #  - pandoc --version
 
+before_install:
+  - sudo apt install r-base
+  - sudo apt install r-base-dev
+  - which R
+  - R --version
+
 install:
   - pip install tox
   - pip install -U importlib_metadata>=4.2.0
