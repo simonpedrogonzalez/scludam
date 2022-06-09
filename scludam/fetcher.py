@@ -30,15 +30,12 @@ from astroquery.utils.commons import coord_to_radec, radius_to_unit
 from attrs import Factory, define
 from beartype import beartype
 from ordered_set import OrderedSet
-
-Coord = Tuple[Number, Number]
-Condition = Tuple[str, str, Union[str, Number]]
-LogicalExpression = Tuple[str, str, str, Union[str, Number]]
+from scludam.type_utils import Coord, Condition, LogicalExpression
 
 
 @define
 class Config:
-    """Class to hold defaults for the query."""
+    """Class to hold defaults for a query."""
 
     MAIN_GAIA_TABLE: str = "gaiaedr3.gaia_source"
     MAIN_GAIA_RA: str = "ra"
@@ -186,7 +183,7 @@ def search_table(search_query: str = None, only_names: bool = False, **kwargs):
 
 @define
 class Query:
-    """Class to hold a ADQL query to be executed.
+    """Class to hold an ADQL query to be executed.
 
     Attributes
     ----------
@@ -268,7 +265,7 @@ class Query:
     @beartype
     def _validate_operator(self, operator: str):
         if operator not in ["<", ">", "=", ">=", "<=", "LIKE", "like"]:
-            raise ValueError(f"Invalid operator {operator}")
+            raise ValueError(f"Invalid operator: {operator}")
 
     @beartype
     def where(self, condition: Union[Condition, List[Condition]]):

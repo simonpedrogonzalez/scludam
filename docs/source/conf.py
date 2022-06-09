@@ -22,7 +22,7 @@ copyright = '2022, Simón Pedro González'
 author = 'Simón Pedro González'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = '0.0.2'
 
 
 # -- General configuration ---------------------------------------------------
@@ -55,7 +55,21 @@ source_suffix = ['.rst', '.md']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', '**.ipynb_checkpoints']
+exclude_patterns = [
+    '_build',
+    '**.ipynb_checkpoints',
+    'masker.py',
+    'membership.py',
+    'pipeline.py',
+    'plot_gauss_err.py',
+    'plots.py',
+    'rutils.py',
+    'utils.py',
+    'synthetic.py',
+    'shdbscan.py',
+    'detection.py',
+    'hkde.py',
+    ]
 
 # The master toctree document.
 master_doc = 'index'
