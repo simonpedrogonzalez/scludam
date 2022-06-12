@@ -234,7 +234,7 @@ class TestQuery:
         )
 
     def test_where_invalid_column_raises_error(self):
-        with pytest.raises(KeyError, match="Invalid column name: col3") as record:
+        with pytest.raises(KeyError, match="Invalid column name: col3"):
             Query("table").select("col1", "col2").where(("col3", "=", "'value'"))
 
     def test_where_invalid_operator_raises_error(self):

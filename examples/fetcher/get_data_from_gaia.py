@@ -1,19 +1,25 @@
 from scludam import Query, search_object, search_table
 
-
 iden = "ngc2527"
 
+# search object to get some general information
 object_info = search_object(iden)
-print(f'Object found in {object_info.coords}')
-object_info.table.write(f"examples/{iden}_object_metadata.txt", format="ascii", overwrite=True)
+print(f"Object found in {object_info.coords}")
+object_info.table.write(
+    f"examples/{iden}_object_metadata.txt", format="ascii", overwrite=True
+)
 
 default_table = Query().table
 
+# search the default table information (gaia edr3)
 tables = search_table(default_table)
 first_table = tables[0]
 print(f"name: {first_table.name}\n description: {first_table.description}\n")
-first_table.columns.write(f"examples/{default_table}_columns_metadata.txt", format="ascii", overwrite=True)
+first_table.columns.write(
+    f"examples/{default_table}_columns_metadata.txt", format="ascii", overwrite=True
+)
 
+# create query around object
 query = (
     Query()
     .select(
@@ -52,8 +58,10 @@ query = (
     .where_aen_criterion()
 )
 
+# count the number of rows that will be received if query is executed
 count = query.count()
 print(f'Stars found: {count["count_all"][0]}')
 
+# execute query and save data
 data = query.get()
-data.write(f'examples/{iden}_data.xml', format="votable", overwrite=True)
+data.write(f"examples/{iden}_data.xml", format="votable", overwrite=True)

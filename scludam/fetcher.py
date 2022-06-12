@@ -14,10 +14,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Module for remote catalog data fetching."""
+"""Module for remote catalog data fetching.
+
+The module provides functions for searching objects and tables, and to
+fetch the data from the remote catalog. Currently the data fetching
+supports the GAIA catalogues. Object searching is done using the
+Simbad service.
+
+Examples
+--------
+.. literalinclude:: ../../examples/fetcher/get_data_from_gaia.py
+    :language: python
+    :linenos:
+
+Options for each function and class in the example are described in the documentation below.
+"""
 
 from numbers import Number
-from typing import List, Tuple, Union
+from typing import List, Union
 
 import astropy.units as u
 import numpy as np
@@ -52,7 +66,15 @@ config = Config()
 
 @define
 class SimbadResult:
-    """Class to hold the result of a search_object query."""
+    """Class to hold the result of a search_object query.
+
+    Attributes
+    ----------
+    table : astropy.table.Table
+        The table with the results of the query.
+    coords : astropy.coordinates.SkyCoord
+        The coordinates of the object in ICRS system.
+    """
 
     coords: SkyCoord = None
     table: Table = None
@@ -85,9 +107,7 @@ def search_object(
     Returns
     -------
     SimbadResult
-        Object with two fields:
-        - coords: astropy.coordinates.SkyCoord
-        - table: astropy.table.Table
+        Object with the search results
 
     """
     simbad = Simbad()
@@ -107,7 +127,17 @@ def search_object(
 
 @define
 class TableInfo:
-    """Class to hold the result of a search_table query."""
+    """Class to hold the result of a search_table query.
+    
+    Attributes
+    ----------
+    name : str
+        Name of the table.
+    columns : astropy.table.Table
+        Table with the information of the columns of the table.
+    description : str
+        Description of the table.
+    """
 
     name: str
     description: str
@@ -128,10 +158,7 @@ def search_table(search_query: str = None, only_names: bool = False, **kwargs):
     Returns
     -------
     List[TableInfo]
-        List of tables found. For each table, the following fields are available:
-        - name: str
-        - description: str
-        - columns: astropy.table.Table
+        List of tables found.
 
     """
     from astroquery.gaia import Gaia
@@ -412,10 +439,7 @@ class Query:
     ):
         """Add astrometric excess noise rejection criterion based on GAIA criteria.
 
-        It also adds the aen and aen_sig columns to column list. The criteria is:
-        exclude objects if
-        astrometric_excess_noise_significance > aen_sig_value AND
-        astrometric_excess_noise > aen_value
+        It also adds the aen and aen_sig columns to column list.
 
         Parameters
         ----------
@@ -435,9 +459,17 @@ class Query:
         Query
             instance of query
 
+        Notes
+        -----
+        The criteria [1]_ used is:
+        *  exclude objects if
+        *   ``astrometric_excess_noise_significance > aen_sig_value AND``
+        *   ``astrometric_excess_noise > aen_value``
+
         References
         ----------
-        https://gea.esac.esa.int/archive/documentation/GEDR3/Gaia_archive/chap_datamodel/sec_dm_main_tables/ssec_dm_gaia_source.html
+        .. [1] GAIA Team (2021). GAIA EDR3 data model
+            . https://gea.esac.esa.int/archive/documentation/GEDR3/Gaia_archive/chap_datamodel/sec_dm_main_tables/ssec_dm_gaia_source.html
 
         """  # noqa E501
         self.extra_columns.append(aen_name)
@@ -457,9 +489,7 @@ class Query:
     ):
         """Add rejection criterion based on Arenou et al. (2018).
 
-        It also adds the bp_rp and bp_rp_ef columns to column list. The criteria is:
-        include objects if 1 + 0.015(BP-RP)^2 < E <1.3 + 0.006(BP-RP)^2
-        where E is photometric BP-RP excess factor.
+        It also adds the bp_rp and bp_rp_ef columns to column list.
 
         Parameters
         ----------
@@ -474,11 +504,18 @@ class Query:
         Query
             instance of query
 
+        Notes
+        -----
+        The criteria [2]_ used is:
+        *  include objects if: ``1 + 0.015(BP-RP)^2 < E <1.3 + 0.006(BP-RP)^2``
+        *   where ``E`` is photometric BP-RP excess factor.
+
         References
         ----------
-        Arenou et al. (2018), A&A 616, A17, https://doi.org/10.1051/0004-6361/201833234
+        .. [2] Arenou et al. (2018).  Gaia Data Release 2.
+            A&A 616, A17. https://doi.org/10.1051/0004-6361/201833234
 
-        """
+        """  # noqa E501
         self.extra_columns.append(bp_rp_name)
         self.extra_columns.append(bp_rp_ef_name)
         return self.where(
@@ -549,13 +586,11 @@ class Query:
         """Execute the query.
 
         It launches an asynchronous gaia job. It takes some time to execute the
-        query and parse the results.
+        query and parse the results. Parameters are passed through kwargs to
+        astroquery.gaia.Gaia.launch_job_async.
 
         Parameters
         ----------
-        Parameters that are passed through kwargs to
-        astroquery.gaia.Gaia.launch_job_async
-        For example:
         dump_to_file : bool
             If True, results will be stored in file, false by default.
         output_file : str
@@ -564,8 +599,8 @@ class Query:
         Returns
         -------
         astroquery.table.table.Table
-            table with the results if dump_to_file is False
-
+            Table with the results if dump_to_file is False.
+  
         """
         query = self.build()
 
@@ -585,13 +620,11 @@ class Query:
 
         It launches an asynchronous gaia job. It takes some time
         to execute the query and parse the results. It only returns
-        a table with a single count_all column.
+        a table with a single count_all column. Parameters are
+        passed through kwargs to astroquery.gaia.Gaia.launch_job_async.
 
         Parameters
         ----------
-        Parameters that are passed through kwargs to
-        astroquery.gaia.Gaia.launch_job_async
-        For example:
         dump_to_file : bool
             If True, results will be stored in file, false by default.
         output_file : str
