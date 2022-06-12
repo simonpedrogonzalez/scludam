@@ -27,7 +27,9 @@ Examples
     :language: python
     :linenos:
 
-Options for each function and class in the example are described in the documentation below.
+Options for each function and class in the example are described
+in the documentation below.
+
 """
 
 from numbers import Number
@@ -44,7 +46,8 @@ from astroquery.utils.commons import coord_to_radec, radius_to_unit
 from attrs import Factory, define
 from beartype import beartype
 from ordered_set import OrderedSet
-from scludam.type_utils import Coord, Condition, LogicalExpression
+
+from scludam.type_utils import Condition, Coord, LogicalExpression
 
 
 @define
@@ -74,6 +77,7 @@ class SimbadResult:
         The table with the results of the query.
     coords : astropy.coordinates.SkyCoord
         The coordinates of the object in ICRS system.
+
     """
 
     coords: SkyCoord = None
@@ -128,7 +132,7 @@ def search_object(
 @define
 class TableInfo:
     """Class to hold the result of a search_table query.
-    
+
     Attributes
     ----------
     name : str
@@ -137,6 +141,7 @@ class TableInfo:
         Table with the information of the columns of the table.
     description : str
         Description of the table.
+
     """
 
     name: str
@@ -600,7 +605,7 @@ class Query:
         -------
         astroquery.table.table.Table
             Table with the results if dump_to_file is False.
-  
+
         """
         query = self.build()
 
