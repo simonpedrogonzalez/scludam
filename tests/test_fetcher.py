@@ -1,4 +1,4 @@
-"""Test data fetcher module"""
+"""Test data fetcher module."""
 
 import re
 from itertools import chain
@@ -10,26 +10,15 @@ from astropy.table.table import Table
 from astroquery.utils.tap.model.job import Job
 from astroquery.utils.tap.model.tapcolumn import TapColumn
 from astroquery.utils.tap.model.taptable import TapTableMeta
-from utils import assert_eq_err_message
 
 from scludam import Query, search_object, search_table
 from scludam.fetcher import Config, SimbadResult
 
 
-class Ok:
-    pass
-
-
-def verify_result(test, func):
-    if issubclass(test, Exception):
-        with pytest.raises(test):
-            func()
-    else:
-        func()
-
-
-def simbad_query_object():
-    return Table.read("tests/files/simbad_response.xml", format="votable")
+def simbad_query_object(identifier):
+    if identifier == "ic2395":
+        return Table.read("tests/files/simbad_response.xml", format="votable")
+    return None
 
 
 def gaia_load_tables():
@@ -57,10 +46,11 @@ def gaia_load_tables():
 
 
 def search_object_mock():
-    coords = SkyCoord(
-        "08 42 31.0", "-48 06 00", unit=(u.hourangle, u.deg), frame="icrs"
+    return SimbadResult(
+        coords=SkyCoord(
+            "08 42 31.0", "-48 06 00", unit=(u.hourangle, u.deg), frame="icrs"
+        )
     )
-    return SimbadResult(coords=coords)
 
 
 def gaia_launch_job_async():
@@ -106,10 +96,15 @@ def format_query_string(string):
 
 @pytest.fixture
 def mock_simbad_query_object(mocker):
-    mocker.patch(
-        "astroquery.simbad.Simbad.query_object",
-        return_value=simbad_query_object(),
+    return mocker.patch(
+        "astroquery.simbad.SimbadClass.query_object",
+        side_effect=simbad_query_object,
     )
+
+
+@pytest.fixture
+def mock_simbad_add_votable_columns(mocker):
+    return mocker.patch("astroquery.simbad.SimbadClass.add_votable_fields")
 
 
 @pytest.fixture
@@ -138,46 +133,19 @@ def mock_gaia_launch_job_async(mocker):
     )
 
 
-def test_search_object_valid_id(mock_simbad_query_object):
+def test_search_object_valid_id(
+    mock_simbad_query_object, mock_simbad_add_votable_columns, mocker
+):
     result = search_object("ic2395", cols=["coordinates", "parallax"])
     assert result.coords.to_string("hmsdms", precision=2) == SkyCoord(
         ra=130.62916667, dec=-48.1, frame="icrs", unit="deg"
     ).to_string("hmsdms", precision=2)
     assert isinstance(result.table, Table)
-    assert sorted(list(result.table.columns)) == sorted(
-        [
-            "MAIN_ID",
-            "RA",
-            "DEC",
-            "RA_PREC",
-            "DEC_PREC",
-            "COO_ERR_MAJA",
-            "COO_ERR_MINA",
-            "COO_ERR_ANGLE",
-            "COO_QUAL",
-            "COO_WAVELENGTH",
-            "COO_BIBCODE",
-            "RA_2",
-            "DEC_2",
-            "RA_PREC_2",
-            "DEC_PREC_2",
-            "COO_ERR_MAJA_2",
-            "COO_ERR_MINA_2",
-            "COO_ERR_ANGLE_2",
-            "COO_QUAL_2",
-            "COO_WAVELENGTH_2",
-            "COO_BIBCODE_2",
-            "PLX_VALUE",
-            "PLX_PREC",
-            "PLX_ERROR",
-            "PLX_QUAL",
-            "PLX_BIBCODE",
-            "SCRIPT_NUMBER_ID",
-        ]
-    )
+    mock_simbad_query_object.assert_called_with("ic2395")
+    mock_simbad_add_votable_columns.assert_called_with("coordinates", "parallax")
 
 
-def test_search_object_invalid_id(mock_simbad_query_object):
+def test_search_object_invalid_id(mock_simbad_query_object, mocker):
     empty_result = search_object("invalid_identifier")
     assert empty_result.table is None and empty_result.coords is None
 
@@ -266,14 +234,12 @@ class TestQuery:
         )
 
     def test_where_invalid_column_raises_error(self):
-        with pytest.raises(KeyError) as record:
+        with pytest.raises(KeyError, match="Invalid column name: col3"):
             Query("table").select("col1", "col2").where(("col3", "=", "'value'"))
-            assert_eq_err_message(record, "Invalid column name: col3")
 
     def test_where_invalid_operator_raises_error(self):
-        with pytest.raises(ValueError) as record:
+        with pytest.raises(ValueError, match="Invalid operator: invalid"):
             Query("table").where(("col1", "invalid", "'value'"))
-            assert_eq_err_message(record, "Invalid operator: invalid")
 
     def test_where_list_tuple_adds_and_expression(self):
         correct = "SELECT * FROM table WHERE col1 = 'value' AND col2 = 'value2'"
@@ -316,41 +282,34 @@ class TestQuery:
             == correct
         )
 
-    def test_where_in_circle(self, mock_search_object):
+    @pytest.mark.parametrize(
+        "center",
+        [
+            search_object_mock().coords,
+            "some_identifier",
+            (
+                search_object_mock().coords.ra.value,
+                search_object_mock().coords.dec.value,
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("radius", [0.5, 0.5 * u.deg, 30 * u.arcmin])
+    def test_where_in_circle(self, center, radius, mock_search_object, mocker):
         correct = (
             f"SELECT *, {Config().MAIN_GAIA_RA}, {Config().MAIN_GAIA_DEC}, DISTANCE("
             " POINT('ICRS', ra, dec), POINT('ICRS', 130.6291, -48.1)) AS dist FROM"
             " table WHERE col1 <= 1 AND 1 = CONTAINS( POINT('ICRS', ra, dec),"
             " CIRCLE('ICRS', 130.6291, -48.1, 0.5)) AND col2 >= 5 ORDER BY dist ASC"
         )
-        name = "dummy_name"
-        coords = search_object_mock().coords
-        ra = coords.ra.value
-        dec = coords.dec.value
-        queries = [
+        query = (
             Query("table")
             .where(("col1", "<=", 1))
-            .where_in_circle(name, 0.5)
-            .where(("col2", ">=", 5)),
-            Query("table")
-            .where(("col1", "<=", 1))
-            .where_in_circle(coords, 0.5)
-            .where(("col2", ">=", 5)),
-            Query("table")
-            .where(("col1", "<=", 1))
-            .where_in_circle((ra, dec), 0.5)
-            .where(("col2", ">=", 5)),
-            Query("table")
-            .where(("col1", "<=", 1))
-            .where_in_circle((ra, dec), 30 * u.arcmin)
-            .where(("col2", ">=", 5)),
-            Query("table")
-            .where(("col1", "<=", 1))
-            .where_in_circle((ra, dec), 0.5 * u.deg)
-            .where(("col2", ">=", 5)),
-        ]
-        for q in queries:
-            assert format_query_string(q.build()) == correct
+            .where_in_circle(center, radius)
+            .where(("col2", ">=", 5))
+        )
+        assert format_query_string(query.build()) == correct
+        if isinstance(center, str):
+            mock_search_object.assert_called_with("some_identifier")
 
     def test_where_astrometric_aen_criterion(self):
         correct = (
