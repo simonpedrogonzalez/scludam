@@ -16,8 +16,8 @@
 
 """Module for useful statistical tests.
 
-The tests in this module can be used to determine if there is cluster structure
-(the data is "clusterable") in a n dimensional numerical dataset.
+The tests in this module can be used to determine if there is cluster structure (the
+data is "clusterable") in a n dimensional numerical dataset.
 
 """
 
@@ -144,15 +144,16 @@ class HopkinsTest(StatTest):
 
     References
     ----------
-    .. [1] Hopkins, B. and Skellam, J.G. (1954). A new method of determining the type of 
+    .. [1] Hopkins, B. and Skellam, J.G. (1954). A new method of determining the type of
          distribution of plant individuals”. Annals of Botany, 1954, 18(2),
          pp.213-227. https://doi.org/10.1093/oxfordjournals.aob.a083391
-    
+
     Examples
     --------
     .. literalinclude:: ../../examples/stat_tests/hopkins.py
         :language: python
         :linenos:
+
     """
 
     n_samples: int = None
@@ -268,8 +269,9 @@ class DipDistTest(StatTest):
 
     Notes
     -----
-    The test analyzes the pairwise distance distribution [2]_ between points in a data set
-    to determine if said distribution is multimodal. The null hypothesis is:
+    The test analyzes the pairwise distance distribution [2]_ between points
+    in a data set to determine if said distribution is multimodal.
+    The null hypothesis is:
 
     *  H0: The distance distribution is unimodal.
 
@@ -277,8 +279,9 @@ class DipDistTest(StatTest):
 
     *  H0: The data set X does not present cluster structure.
 
-    Hartigan's Dip statistic [3]_ is the maximum difference between an empirical distribution
-    and its closest unimodal distribution calculated using the greatest convex minorant
+    Hartigan's Dip statistic [3]_ is the maximum difference between an
+    empirical distribution and its closest unimodal distribution
+    calculated using the greatest convex minorant
     and the least concave majorant of the bounded distribution function.
 
     References
@@ -295,6 +298,7 @@ class DipDistTest(StatTest):
         :language: python
         :linenos:
     .. image:: ../../examples/stat_tests/dipdist.png
+
     """
 
     n_samples: int = None
@@ -363,7 +367,8 @@ class RipleysKTest(StatTest):
     Attributes
     ----------
     rk_estimator : astropy.stats.RipleysKEstimator, optional
-        Estimator to use for the Ripleys K function [4]_, by default is None. Only used if
+        Estimator to use for the Ripleys K function [4]_, by default
+        is None. Only used if
         a custom RipleysKEstimator configuration is needed.
 
     mode : str, optional
@@ -375,33 +380,36 @@ class RipleysKTest(StatTest):
             *   area: is the area of the 2D data set taken as a square window.
             *   n: is the number of points in the data set.
             *   ripley_factor: are the tabulated values calculated by Ripleys [4]_
-                to determine p-value significance. Available Ripleys factors 
+                to determine p-value significance. Available Ripleys factors
                 are ``p-value = 0.05`` -> ``factor = 1.42`` and
                 ``p-value = 0.01`` -> ``factor = 1.68``.
 
         #. "chiu": H0 rejected if ``s > chiu_factor * sqrt(area) / n`` where:
 
             *   chiu_factor: are the tabulated values suggested by Chiu [5]_ to
-                determine p-value significance. Available Chiu factors are 
+                determine p-value significance. Available Chiu factors are
                 ``p-value = 0.1 -> factor = 1.31``,
                 ``p-value = 0.05 -> factor = 1.45`` and
                 ``p-value = 0.01 -> factor = 1.75``.
 
-        #. "ks": H0 rejected if ``kolmogorov_smirnov_test_pvalue < pvalue_threshold``, where 
+        #. "ks": H0 rejected if
+           ``kolmogorov_smirnov_test_pvalue < pvalue_threshold``, where
            kolmogorov_smirnov_test_pvalue is the p-value of the Kolmogorov Smirnov test
            comparing the estimated L function to the theoretical L function of a uniform
            distribution. This option is experimental and should be used with caution.
 
     radii : Numeric1DArray, optional
         numpy 1d numeric array containing the radii to use for the Ripleys K function,
-        by default is None. If radii is None, radii are taken in a range ``[0, max_radius]``,
+        by default is None. If radii is None, radii are taken in a range
+        ``[0, max_radius]``,
         where max_radius is calculated as:
 
             *  ``recommended_radius = short_side_of_rectangular_window / 4``
             *  ``recommended_radius_for_large_data_sets = sqrt(100 / pi * n)``
             *  ``max_radius = min(recommended_radius, recommended_radius_for_large_data_sets)``
-        
-        The steps between the radii values are calculated as ``step = max_radius / 128 / 4``.
+
+        The steps between the radii values are calculated as
+        ``step = max_radius / 128 / 4``.
         This procedure is the recommended one in R spatstat package [6]_.
 
     Raises
@@ -434,24 +442,25 @@ class RipleysKTest(StatTest):
     References
     ----------
     .. [4] B. D. Ripley (1979). Tests of Randomness for Spatial Point Patterns.
-         J. R. Statist. Soc. B (1979), 41, No.3, pp. 368-374. 
+         J. R. Statist. Soc. B (1979), 41, No.3, pp. 368-374.
          https://doi.org/10.1111/j.2517-6161.1979.tb01091.x
     .. [5] S. N. Chiu (2007). Correction to Koen's critical values in testing
          spatial randomness. Journal of Statistical Computation and Simulation
          2007 77(11-12):1001-1004. DOI: 10.1080/10629360600989147
     .. [6] A. Baddeley, R. Turner (2005). Spatstat: An R Package for Analyzing
          Spatial Point Patterns. Journal of Statistical Software, 12(6), 1–42.
-         DOI: 10.18637/jss.v012.i06. 
+         DOI: 10.18637/jss.v012.i06.
     .. [7] J. Besag (1977). Contribution to the Discussion on Dr. Ripley’s
          Paper. Journals of the Royal Statistical Society, B39, 193-195.
-    
+
     Examples
     --------
     .. literalinclude:: ../../examples/stat_tests/ripley.py
         :language: python
         :linenos:
     .. image:: ../../examples/stat_tests/ripley.png
-    """
+
+    """  # noqa: E501
 
     rk_estimator: RipleysKEstimator = None
 

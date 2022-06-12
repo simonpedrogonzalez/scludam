@@ -280,7 +280,8 @@ class EDSD(stats.rv_continuous):
         IV, Distances to 1.33 Billion Stars in Gaia Data Release 2. The Astronomical
         Journal, 156:58 (11pp), 2018 August. https://doi.org/10.3847/1538-3881/aacb21
 
-    .. [2] Z. Shao & L. Li (2019). Gaia Parallax of Milky Way Globular Clusters: A Solution
+    .. [2] Z. Shao & L. Li (2019). Gaia Parallax of Milky Way
+        Globular Clusters: A Solution
         of Mixture Model. https://www.researchgate.net/publication/335233416
 
     Examples
@@ -289,6 +290,7 @@ class EDSD(stats.rv_continuous):
         :language: python
         :linenos:
     .. image:: ../../examples/synthetic/edsd.png
+
     """
 
     w0: float
@@ -398,6 +400,7 @@ class EDSD(stats.rv_continuous):
         The PPF is a polinomial approximation of the real PPF. As cdf and
         ppf are approximations, one is close to the inverse of the other,
         but not exactly.
+
         """
         return self._ppf(y, self.wl, self.w0, self.wf)
 
