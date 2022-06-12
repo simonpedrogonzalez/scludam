@@ -14,7 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Module for useful statistical tests."""
+"""Module for useful statistical tests.
+
+The tests in this module can be used to determine if there is cluster structure (the
+data is "clusterable") in a n dimensional numerical dataset.
+
+"""
 
 from abc import abstractmethod
 from numbers import Number
@@ -26,22 +31,26 @@ from astropy.stats import RipleysKEstimator
 from attrs import define, field, validators
 from beartype import beartype
 from diptest import diptest
-from numpy.typing import NDArray
-from scipy.stats import ks_2samp, beta
+from scipy.stats import beta, ks_2samp
 from sklearn.base import TransformerMixin
 from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import BallTree, DistanceMetric
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import resample
 
-
-from typing_extensions import Annotated
 from scludam.type_utils import Numeric1DArray, Numeric2DArray
 
 
 @define(auto_attribs=True)
 class TestResult:
-    """Base class to hold the results of a statistical test."""
+    """Base class to hold the results of a statistical test.
+
+    Attributes
+    ----------
+    rejectH0 : bool
+        Whether the null hypothesis was rejected.
+
+    """
 
     rejectH0: bool
 
@@ -61,76 +70,89 @@ class StatTest:
         Returns
         -------
         TestResult
-            Test result. Its fields depend on the specific test, but always
-            has field rejectH0: boolean
+            Test result. Its fields depend on the specific test.
+
         """
         pass
 
 
 @define(auto_attribs=True)
 class HopkinsTestResult(TestResult):
-    """Results of a Hopkins test."""
+    """Results of a Hopkins test.
+
+    Attributes
+    ----------
+    rejectH0: bool
+        True if the null hypothesis is rejected.
+    pvalue: Number
+        The p-value of the test.
+    value: Number
+        The value of the Hopkins statistic.
+
+    """
 
     value: Number
     pvalue: Number
-
-
-@define(auto_attribs=True)
-class RipleyKTestResult(TestResult):
-    """Results of a Ripley's K test."""
-
-    value: Number
-    radii: Numeric1DArray
-    l_function: Numeric1DArray
-
-
-@define(auto_attribs=True)
-class DipDistTestResult(TestResult):
-    """Results of a dip dist test."""
-
-    value: Number
-    pvalue: Number
-    dist: Numeric1DArray
 
 
 @define(auto_attribs=True)
 class HopkinsTest(StatTest):
     """Class to perform a Hopkins spatial randomness test.
 
-    Compares the distance between a sample of m points X' from the data set X and
-    their nearest neighbors in X, to the distances from X to their nearest neighbors
-    in a uniform distribution. The null hypothesis is:
-        H0: The dataset X comes from a Poisson Point Process.
-    Which can be thought of as:
-        H0: The dataset X does not present cluster structure.
-    The formula to calculate the Hopkins statistic is:
-        h = sum(d1**l) / (sum(d1**l) + sum(d2**l))
-    where:
-        d1: distance_to_nearest_neighbor_in_X
-        d2: distance_to_nearest_neighbor_in_uniform_distribution
-        l: dimensionality of the data
-    The Hopkins statistic is a number between 0.5 and 1. A value ~ 0.5 supports
-    the null hypothesis. A value ~ 1.0 supports the alternative hypothesis.
-    To get the p-value, the statistic is compared to a beta distribution with
-    parameters (m, m).
-
     Attributes
     ----------
-    n_iters : int
+    n_iters : int, optional
         Number of iterations to perform the test. Final Hopkins statistic result
         is taken as the median of the results, by default is 100.
-    n_samples : int
-        Number of samples to take from the data, by default is 0.1*n where n is
+    n_samples : int, optional
+        Number of samples to take from the data, by default is ``0.1*n`` where n is
         the number of points in the data set, as it is the recommended value.
-    metric : Union[str, DistanceMetric]
+    metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'.
         Can be str or sklearn.neighbours.DistanceMetric.
     threshold : Number, optional
         Threshold to use with the Hopkins statistic value to define if H0 is rejected,
         by default is None. If set, it is used instead of the pvalue_threshold.
-    pvalue_threshold : float
+    pvalue_threshold : float, optional
         Threshold to use with the p-value to define if H0 is rejected, by default
         is 0.05.
+
+    Notes
+    -----
+    The test compares the distance between a sample of ``m`` points ``X'``
+    from the data set ``X`` and their nearest neighbors in ``X``, to the
+    distances from ``X`` to their nearest neighbors in a uniform distribution.
+    The null hypothesis is:
+
+    *  H0: The dataset X comes from a Poisson Point Process.
+
+    Which can be thought of as:
+
+    *  H0: The dataset X does not present cluster structure.
+
+    The formula to calculate the Hopkins statistic [1]_
+    is ``h = sum(d1**l) / (sum(d1**l) + sum(d2**l))``, where:
+
+    *  d1: distance_to_nearest_neighbor_in_X
+    *  d2: distance_to_nearest_neighbor_in_uniform_distribution
+    *  l: dimensionality of the data
+
+    The Hopkins statistic is a number between 0.5 and 1. A value ``~0.5`` supports
+    the null hypothesis. A value ``~1.0`` supports the alternative hypothesis.
+    To get the p-value, the statistic is compared to a beta distribution with
+    parameters ``(m, m)``.
+
+    References
+    ----------
+    .. [1] Hopkins, B. and Skellam, J.G. (1954). A new method of determining the type of
+         distribution of plant individuals”. Annals of Botany, 1954, 18(2),
+         pp.213-227. https://doi.org/10.1093/oxfordjournals.aob.a083391
+
+    Examples
+    --------
+    .. literalinclude:: ../../examples/stat_tests/hopkins.py
+        :language: python
+        :linenos:
 
     """
 
@@ -147,7 +169,7 @@ class HopkinsTest(StatTest):
     threshold: Number = None
     pvalue_threshold: float = 0.05
 
-    def _get_pvalue(self, value: Union[Number, DipDistTestResult], n_samples: int):
+    def _get_pvalue(self, value: Number, n_samples: int):
         b = beta(n_samples, n_samples)
         if value > 0.5:
             return 1 - (b.cdf(value) - b.cdf(1 - value))
@@ -161,15 +183,12 @@ class HopkinsTest(StatTest):
         Parameters
         ----------
         data : Numeric2DArray
-            numpy 2d numeric array containing the data.
+            Array containing the data.
 
         Returns
         -------
         HopkinsTestResult
-            Result containing:
-                - value: the Hopkins statistic
-                - pvalue: the p-value
-                - rejectH0: True if H0 is rejected, False otherwise.
+            Test results.
 
         """
         obs, dims = data.shape
@@ -212,30 +231,73 @@ class HopkinsTest(StatTest):
 
 
 @define(auto_attribs=True)
-class DipDistTest(StatTest):
-    """Class to perform a Dip-Dist test of multimodality over pairwise distances.
-
-    It analyzes the distribution of distances between pairs of points in a data set
-    to determine if the data set is multimodal. The null hypothesis is:
-        H0: The distance distribution is unimodal.
-    Which can be thought of as:
-        H0: The data set X does not present cluster structure.
-    Hartigan's Dip statistic is the maximum difference between an empirical distribution
-    and its closest unimodal distribution calculated using the greatest convex minorant
-    and the least concave majorant of the bounded distribution function.
+class DipDistTestResult(TestResult):
+    """Results of a dip dist test.
 
     Attributes
     ----------
-    n_samples : int
-        number of samples to take from the data, by default is min(n, 100)
-        where n is the number of points in the data set. This value is simply chosen as
-        to reduce the computation time.
-    metric : Union[str, DistanceMetric]
+    value : Number
+        The value of the dip statistic.
+    pvalue : Number
+        The pvalue of the test.
+    dist : Numeric1DArray
+        The ordered distance array.
+
+    """
+
+    value: Number
+    pvalue: Number
+    dist: Numeric1DArray
+
+
+@define(auto_attribs=True)
+class DipDistTest(StatTest):
+    """Class to perform a Dip-Dist test of multimodality over pairwise distances.
+
+    Attributes
+    ----------
+    n_samples : int, optional
+        number of samples to take from the data, by default is set to the number
+        of points in the data set. If n_samples is provided, then it is set to
+        min(n, n_samples).
+    metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'. Can be
         str or sklearn.neighbours.DistanceMetric.
-    pvalue_threshold : float
+    pvalue_threshold : float, optional
         Threshold to use with the p-value to define if H0 is rejected, by default
-        is 0.05.
+        is ``0.05``.
+
+    Notes
+    -----
+    The test analyzes the pairwise distance distribution [2]_ between points
+    in a data set to determine if said distribution is multimodal.
+    The null hypothesis is:
+
+    *  H0: The distance distribution is unimodal.
+
+    Which can be thought of as:
+
+    *  H0: The data set X does not present cluster structure.
+
+    Hartigan's Dip statistic [3]_ is the maximum difference between an
+    empirical distribution and its closest unimodal distribution
+    calculated using the greatest convex minorant
+    and the least concave majorant of the bounded distribution function.
+
+    References
+    ----------
+    .. [2] A. Adolfsson, M. Ackerman, N. C. Brownstein (2018). To Cluster,
+         or Not to Cluster: An Analysis of Clusterability Methods
+         . https://doi.org/10.48550/arXiv.1808.08317
+    .. [3] J. A. Hartigan and P. M. Hartigan (1985). The Dip Test of Unimodality.
+         Annals of Statistics 13, 70–84. DOI: 10.1214/aos/1176346577
+
+    Examples
+    --------
+    .. literalinclude:: ../../examples/stat_tests/dipdist.py
+        :language: python
+        :linenos:
+    .. image:: ../../examples/stat_tests/dipdist.png
 
     """
 
@@ -255,10 +317,7 @@ class DipDistTest(StatTest):
         Returns
         -------
         DipDistTestResult
-            The result containing:
-                - value: the Dip statistic
-                - pvalue: the p-value
-                - rejectH0: True if H0 is rejected, False otherwise.
+            The test results.
 
         """
         obs, dims = data.shape
@@ -276,65 +335,82 @@ class DipDistTest(StatTest):
         return DipDistTestResult(value=dip, pvalue=pval, rejectH0=rejectH0, dist=dist)
 
 
+@define(auto_attribs=True)
+class RipleyKTestResult(TestResult):
+    """Results of a Ripley's K test.
+
+    Attributes
+    ----------
+    rejectH0: bool
+        True if the null hypothesis is rejected.
+    value: Number
+        The value calculated to determine if H0 is rejected. If
+        the test ``mode`` is ``chiu`` or ``ripley``, then the value is the
+        the ``supremum`` statistic. If the test mode is ``ks``, then
+        the value is the pvalue of the Kolmogorov-Smirnov test.
+    radii: Numeric1DArray
+        The radii used in the test.
+    l_function: Numeric1DArray
+        The L function values.
+
+    """
+
+    value: Number
+    radii: Numeric1DArray
+    l_function: Numeric1DArray
+
+
 @define
 class RipleysKTest(StatTest):
     """Class to perform the Ripleys K test of 2D spatial randomness.
 
-    It calculates the value of an estimate for the L function (a form of Ripleys
-    K function) for a set of radii taken from the center of the data set,
-    and compares it to the theoretical L function of a uniform distribution where
-    L_function(radii) = radii. The null hypothesis is:
-        H0: The data set X comes from a Poisson Point Process.
-    Which can be thought of as:
-        H0: The data set X does not present cluster structure.
-    The Ripleys K function is defined as:
-    The L function is defined as:
-        L(r) = sqrt(K(r)/pi)
-    The statistic to define if H0 is rejected is:
-        s = max(L(r) - r)
-
     Attributes
     ----------
     rk_estimator : astropy.stats.RipleysKEstimator, optional
-        Estimator to use for the Ripleys K function, by default is None. Only used if
+        Estimator to use for the Ripleys K function [4]_, by default
+        is None. Only used if
         a custom RipleysKEstimator configuration is needed.
 
-    mode: str, optional
+    mode : str, optional
         The comparison method to use to determine the rejection of H0, by default is
-        'ripleys'.
-        Allowed values are:
-            - 'ripleys': H0 rejected if s > ripley_factor * sqrt(area) / n
-                where:
-                    - area: is the area of the 2D data set taken as a square window.
-                    - n: is the number of points in the data set.
-                    - ripley_factor: are the tabulated values calculated by Ripleys to
-                    determine p-value significance. Available Ripleys factors are:
-                            - p-value = 0.05 -> factor = 1.42
-                            - p-value = 0.01 -> factor = 1.68
-            - 'chiu': H0 rejected if s > chiu_factor * sqrt(area) / n
-                where:
-                    - chiu_factor: are the tabulated values calculated by Chiu to
-                    determine p-value significance. Available Chiu factors are:
-                            - p-value = 0.1 -> factor = 1.31
-                            - p-value = 0.05 -> factor = 1.45
-                            - p-value = 0.01 -> factor = 1.75
-            - 'ks': H0 rejected if kolmogorov_smirnov_test_pvalue < pvalue_threshold
-                where:
-                    - kolmogorov_smirnov_test_pvalue: is the p-value of the Kolmogorov
-                    Smirnov test comparing the L function to the theoretical L function.
-                This option is experimental and should be used with caution.
+        "ripley". Allowed values are:
+
+        #.  "ripley": H0 rejected if ``s > ripley_factor * sqrt(area) / n`` where
+
+            *   area: is the area of the 2D data set taken as a square window.
+            *   n: is the number of points in the data set.
+            *   ripley_factor: are the tabulated values calculated by Ripleys [4]_
+                to determine p-value significance. Available Ripleys factors
+                are ``p-value = 0.05`` -> ``factor = 1.42`` and
+                ``p-value = 0.01`` -> ``factor = 1.68``.
+
+        #. "chiu": H0 rejected if ``s > chiu_factor * sqrt(area) / n`` where:
+
+            *   chiu_factor: are the tabulated values suggested by Chiu [5]_ to
+                determine p-value significance. Available Chiu factors are
+                ``p-value = 0.1 -> factor = 1.31``,
+                ``p-value = 0.05 -> factor = 1.45`` and
+                ``p-value = 0.01 -> factor = 1.75``.
+
+        #. "ks": H0 rejected if
+           ``kolmogorov_smirnov_test_pvalue < pvalue_threshold``, where
+           kolmogorov_smirnov_test_pvalue is the p-value of the Kolmogorov Smirnov test
+           comparing the estimated L function to the theoretical L function of a uniform
+           distribution. This option is experimental and should be used with caution.
 
     radii : Numeric1DArray, optional
         numpy 1d numeric array containing the radii to use for the Ripleys K function,
-        by default is None. If radii is None, radii are taken in a range [0, max_radius]
+        by default is None. If radii is None, radii are taken in a range
+        ``[0, max_radius]``,
         where max_radius is calculated as:
-            recommended_radius = short_side_of_rectangular_window / 4
-            recommended_radius_for_large_data_sets = sqrt(100 / pi * n)
-            max_radius = min(recommended_radius, recommended_radius_for_large_data_sets)
 
-        The steps between the radii values are calculated as:
-            step = max_radius / 128 / 4
-        This procedure is the recommended one in R spatstat package.
+            *  ``recommended_radius = short_side_of_rectangular_window / 4``
+            *  ``recommended_radius_for_large_data_sets = sqrt(100 / pi * n)``
+            *  ``max_radius = min(recommended_radius, recommended_radius_for_large_data_sets)``
+
+        The steps between the radii values are calculated as
+        ``step = max_radius / 128 / 4``.
+        This procedure is the recommended one in R spatstat package [6]_.
 
     Raises
     ------
@@ -342,7 +418,49 @@ class RipleysKTest(StatTest):
         If tabulated factor for the chosen p-value threshold is not available, or if the
         chosen p-value threshold is invalid.
 
-    """
+    Notes
+    -----
+    The test calculates the value of an estimate for the L function [7]_ (a
+    form of Ripleys K function) for a set of radii taken from the
+    center of the data set, and compares it to the theoretical L
+    function of a uniform distribution. The null hypothesis is:
+
+    *  H0: The data set X comes from a Poisson Point Process.
+
+    Which can be thought of as:
+
+    *  H0: The data set X does not present cluster structure.
+
+    The Ripleys K(r) function is defined as the expected number
+    of additional random points within a distance r of a typical random point.
+    For a completely random point process (Poisson Point Process),
+    ``K(r) = pi*r^2``. The L(r) function is a form of K(r) defined as
+    ``L(r) = sqrt(K(r)/pi)``.
+    The statistic to define if H0 is rejected based on the L function is the
+    ``supremum`` of the difference ``s = max(L(r) - r)``.
+
+    References
+    ----------
+    .. [4] B. D. Ripley (1979). Tests of Randomness for Spatial Point Patterns.
+         J. R. Statist. Soc. B (1979), 41, No.3, pp. 368-374.
+         https://doi.org/10.1111/j.2517-6161.1979.tb01091.x
+    .. [5] S. N. Chiu (2007). Correction to Koen's critical values in testing
+         spatial randomness. Journal of Statistical Computation and Simulation
+         2007 77(11-12):1001-1004. DOI: 10.1080/10629360600989147
+    .. [6] A. Baddeley, R. Turner (2005). Spatstat: An R Package for Analyzing
+         Spatial Point Patterns. Journal of Statistical Software, 12(6), 1–42.
+         DOI: 10.18637/jss.v012.i06.
+    .. [7] J. Besag (1977). Contribution to the Discussion on Dr. Ripley’s
+         Paper. Journals of the Royal Statistical Society, B39, 193-195.
+
+    Examples
+    --------
+    .. literalinclude:: ../../examples/stat_tests/ripley.py
+        :language: python
+        :linenos:
+    .. image:: ../../examples/stat_tests/ripley.png
+
+    """  # noqa: E501
 
     rk_estimator: RipleysKEstimator = None
 
@@ -415,20 +533,13 @@ class RipleysKTest(StatTest):
         Returns
         -------
         RipleysKTestResult
-            Result of the Ripleys K test, containing the following attributes:
-                pvalue: float
-                    The p-value of the test.
-                rejectH0: bool
-                    True if H0 is rejected, False otherwise.
-                radii: Numeric1DArray
-                    numpy 1d numeric array containing the radii used for the test.
-                l_function: Numeric1DArray
-                    numpy 1d numeric array containing the L function values.
+            Result of the Ripleys K test.
+
 
         Warnings
         --------
         UserWarning
-            Warns if some dataset points are repeated exactly. In that case,
+            Warns if some dataset points are repeated (exactly equal). In that case,
             the RipleysKEstimator will not be able to calculate the L function,
             so repeated points will will be eliminated before the test. Bound to
             change when RipleysKEstimator implementation is changed.

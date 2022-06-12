@@ -173,3 +173,11 @@ examples/*.txt
 
 docs/build
 docs/doctrees
+
+examples/fetcher/gaiaedr3.gaia_source_columns_metadata.txt
+
+examples/fetcher/ngc2527_data.xml
+
+examples/fetcher/ngc2527_object_metadata.txt
+
+examples/fetcher/ngc2527_object_metadata.xml

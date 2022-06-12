@@ -4,12 +4,13 @@ scludam package
 Submodules
 ----------
 
-scludam.fetcher module
-----------------------
+.. toctree::
+   :maxdepth: 4
 
-.. automodule:: scludam.fetcher
-   :members:
-   :show-inheritance:
+   scludam.fetcher
+   scludam.stat_tests
+   scludam.synthetic
+   scludam.type_utils
 
 Module contents
 ---------------

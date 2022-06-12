@@ -14,7 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Module for synthetic data generation."""
+"""Module for synthetic data generation.
+
+Contains some helpful functions and distributions and the main classes for generating
+synthetic sky region samples with an star field and star clusters.
+
+"""
 
 from numbers import Number
 from typing import List, Union
@@ -226,22 +231,6 @@ def _dist_has_n_dimensions(n: int):
 class EDSD(stats.rv_continuous):
     """Class to represent the EDSD distribution.
 
-    Exponentially Decreasing Space Density is used to represent
-    certain distributions, such as a parallax distribution of a
-    star catalogue. The EDSD distribution is defined as:
-        f(w) = wl**3 / 2*(w-w0)**4 * exp(-wl/(w-w0)) if w > w0 and w < wf
-        f(w) = 0 if w <= w0
-        f(w) = 0 if w >= wf
-    where:
-        w = parallax in mas
-        w0 = distribution zero point that indicates the lower limit
-        wl = parameter that determines the width and the peak at wl/4
-            of the profile
-        wf = distribution final point that indicates the upper limit
-            from which the distribution is zero. This is added to make
-            the interesting function domain limited to [w0, wf], so other
-            values outside this range are not evaluated.
-
     Attributes
     ----------
     w0 : float
@@ -252,10 +241,6 @@ class EDSD(stats.rv_continuous):
     wf : float
         Distribution final point that indicates the upper limit
 
-    Extends
-    -------
-    scipy.stats.rv_continuous
-
     Returns
     -------
     EDSD:
@@ -264,12 +249,47 @@ class EDSD(stats.rv_continuous):
     Raises
     ------
     ValueError
-        If wf < w0
-        If a and b, which mark de evaluation domain in scipy.rv_continuous
-        do not verify:
-            a < w0
-            b > wf
-            a < b
+        If ``wf < w0``, or if a and b, which determine de evaluation
+        domain in scipy.rv_continuous, do not verify ``a < w0``, ``b > wf``
+        and ``b > a``.
+
+    Notes
+    -----
+    Exponentially Decreasing Space Density is used to represent
+    certain distributions, such as a parallax distribution of a
+    star catalogue [1]_ [2]_. The EDSD distribution is defined as:
+
+    *  ``f(w) = wl**3 / 2*(w-w0)**4 * exp(-wl/(w-w0))`` if ``w > w0`` and ``w < wf``
+    *  ``f(w) = 0`` if ``w <= w0``
+    *  ``f(w) = 0`` if ``w >= wf``
+
+    where:
+
+    *   ``w``: parallax in mas
+    *   ``w0``:  distribution zero point that indicates the lower limit
+    *   ``wl``: parameter that determines the width and the peak at wl/4
+        of the profile
+    *   ``wf``: distribution final point that indicates the upper limit
+        from which the distribution is zero. This is added to make
+        the function domain limited to ``[w0, wf]``, so other
+        values outside this range are not evaluated.
+
+    References
+    ----------
+    .. [1] C. A. L. Bailer-Jones et al. (2018). Estimating Distance from Parallaxes,
+        IV, Distances to 1.33 Billion Stars in Gaia Data Release 2. The Astronomical
+        Journal, 156:58 (11pp), 2018 August. https://doi.org/10.3847/1538-3881/aacb21
+
+    .. [2] Z. Shao & L. Li (2019). Gaia Parallax of Milky Way
+        Globular Clusters: A Solution
+        of Mixture Model. https://www.researchgate.net/publication/335233416
+
+    Examples
+    --------
+    .. literalinclude :: ../../examples/synthetic/edsd.py
+        :language: python
+        :linenos:
+    .. image:: ../../examples/synthetic/edsd.png
 
     """
 
@@ -322,6 +342,68 @@ class EDSD(stats.rv_continuous):
             ],
         )
 
+    def pdf(self, x: Union[Number, Numeric1DArray]) -> Numeric1DArray:
+        """Probability density function of the EDSD distribution.
+
+        Parameters
+        ----------
+        x : Union[Number, Numeric1DArray]
+            Data to be evaluated.
+
+        Returns
+        -------
+        Numeric1DArray
+            PDF values.
+
+        Notes
+        -----
+        The PDF is defined as the density profile given in [1]_ [2]_, but it is
+        not used for random generation. Instead, a Percent Point Function
+        approximation is used.
+
+        """
+        return self._pdf(x, self.wl, self.w0, self.wf)
+
+    def cdf(self, x: Union[Number, Numeric1DArray]) -> Numeric1DArray:
+        """Cumulative distribution function.
+
+        Parameters
+        ----------
+        x : Numeric1DArray
+        Returns
+        -------
+        Numeric1DArray
+            Cumulative distribution function.
+
+        Notes
+        -----
+        The CDF is a polinomial approximation of the real CDF
+        function.
+
+        """
+        return self._cdf(x, self.wl, self.w0, self.wf)
+
+    def ppf(self, y: Union[Number, Numeric1DArray]) -> Numeric1DArray:
+        """Percent point function.
+
+        Parameters
+        ----------
+        y : Numeric1DArray
+
+        Returns
+        -------
+        Numeric1DArray
+            Percent point function.
+
+        Notes
+        -----
+        The PPF is a polinomial approximation of the real PPF. As cdf and
+        ppf are approximations, one is close to the inverse of the other,
+        but not exactly.
+
+        """
+        return self._ppf(y, self.wl, self.w0, self.wf)
+
     @beartype
     def _argcheck(self, wl: Number, w0: Number, wf: Number):
         if not (w0 < wf):
@@ -370,13 +452,10 @@ class UniformSphere(stats._multivariate.multi_rv_frozen):
 
     Attributes
     ----------
-    center :
-        _description_
-
-    Returns
-    -------
-    _type_
-        _description_
+    center : Vector3
+        Center of the sphere.
+    radius : Number
+        Radius of the sphere.
 
     """
 
@@ -391,12 +470,12 @@ class UniformSphere(stats._multivariate.multi_rv_frozen):
         Parameters
         ----------
         size : int, optional
-            number of samples to be generated, by default 1
+            Number of samples to be generated, by default 1
 
         Returns
         -------
         Vector3Array :
-            numpy numeric array of shape (size, 3) with the samples.
+            Numpy numeric array of shape (size, 3) with the samples.
 
         """
         phi = stats.uniform().rvs(size) * 2 * np.pi
@@ -418,12 +497,12 @@ class UniformSphere(stats._multivariate.multi_rv_frozen):
         Parameters
         ----------
         x : Union[Vector3, Vector3Array]
-            data to be evaluated
+            Data to be evaluated
 
         Returns
         -------
         Numeric1DArray
-            numpy numeric array of shape (size,) with the pdf values.
+            Numpy numeric array of shape (size,) with the pdf values.
 
         """
         is_inside = is_inside_sphere(self.center, self.radius, x)
@@ -442,18 +521,18 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
     Attributes
     ----------
     locs : Vector3
-        reference corner of the frustum. It is given by (ra, dec, parallax)
+        Reference corner of the frustum. It is given by (ra, dec, parallax)
         polar coordinates in ICRS system, in (degree, degree, mas).
     scales : Vector3
-        size of the frustum in (ra, dec, parallax) polar coordinates in ICRS,
+        Size of the frustum in (ra, dec, parallax) polar coordinates in ICRS,
         in (degree, degree, mas).
-    Extends
-    -------
-    scipy.stats._multivariate.multi_rv_frozen
-    Returns
-    -------
-    UniformFrustum
-        instance of the Uniform Frustum distribution.
+
+    Examples
+    --------
+    .. literalinclude :: ../../examples/synthetic/uniform_frustum.py
+        :language: python
+        :linenos:
+    .. image:: ../../examples/synthetic/uniform_frustum.png
 
     """
 
@@ -544,6 +623,11 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
         Vector3Array :
             numpy numeric array of shape (size, 3) with the samples.
 
+        Raises
+        ------
+        ValueError
+            If the given locs are not a valid ICRS coordinate.
+
         """
         extremes = self._get_vertices()
 
@@ -581,7 +665,12 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
         Returns
         -------
         Numeric1DArray :
-            numpy numeric array of shape with the pdf values.
+            PFD values.
+
+        Raises
+        ------
+        ValueError
+            If the given locs are not a valid ICRS coordinate.
 
         """
         res = np.zeros(data.shape[0])
@@ -599,11 +688,6 @@ class UniformCircle(stats._multivariate.multi_rv_frozen):
         center of the circle.
     radius : Number
         radius of the circle.
-
-    Returns
-    -------
-    UniformCircle :
-        instance of the Uniform Circle distribution.
 
     """
 
@@ -626,7 +710,7 @@ class UniformCircle(stats._multivariate.multi_rv_frozen):
         Returns
         -------
         Numeric1DArray :
-            numpy numeric array of shape with the pdf values.
+            Numpy numeric array of shape with the pdf values.
 
         """
         is_inside = is_inside_circle(self.center, self.radius, x)
@@ -646,7 +730,7 @@ class UniformCircle(stats._multivariate.multi_rv_frozen):
         Returns
         -------
         Vector2Array :
-            numpy numeric array of shape (size, 2) with the samples.
+            Numpy numeric array of shape (size, 2) with the samples.
 
         """
         theta = stats.uniform().rvs(size=size) * 2 * np.pi
@@ -666,9 +750,7 @@ class BivariateUniform(stats._multivariate.multi_rv_frozen):
         center of the bivariate uniform distribution.
     scales : Vector2
         scale of the bivariate uniform distribution.
-    Extends
-    -------
-    stats._multivariate.multi_rv_frozen
+
     Returns
     -------
     BivariateUniform :
@@ -729,9 +811,7 @@ class TrivariateUniform(stats._multivariate.multi_rv_frozen):
         center of the trivariate uniform distribution.
     scales : Vector3
         scale of the trivariate uniform distribution.
-    Extends
-    -------
-    stats._multivariate.multi_rv_frozen
+
     Returns
     -------
     TrivariateUniform :
@@ -755,7 +835,7 @@ class TrivariateUniform(stats._multivariate.multi_rv_frozen):
         Returns
         -------
         Vector3Array :
-            numpy array of shape (size, 3) with the samples.
+            Numpy array of shape (size, 3) with the samples.
 
         """
         x = stats.uniform(loc=self.locs[0], scale=self.scales[0]).rvs(size=size)
@@ -773,12 +853,12 @@ class TrivariateUniform(stats._multivariate.multi_rv_frozen):
         Parameters
         ----------
         x : Union[Vector3, Vector3Array]
-            points to be evaluated.
+            Points to be evaluated.
 
         Returns
         -------
         Numeric1DArray :
-            numpy array with the pdf values.
+            Numpy array with the pdf values.
 
         """
         pdfx = stats.uniform(loc=self.locs[0], scale=self.scales[0]).pdf(x[:, 0])
@@ -1047,10 +1127,12 @@ class Synthetic:
         The representation type, it must be "cartesian" or "spherical",
         by default is "spherical".
 
-    Returns
-    -------
-    Synthetic
-        A class instance capable of being used to generate synthetic data.
+    Examples
+    --------
+    .. literalinclude:: ../../examples/synthetic/synthetic.py
+        :language: python
+        :linenos:
+    .. image:: ../../examples/synthetic/synthetic.png
 
     """
 
@@ -1068,7 +1150,9 @@ class Synthetic:
         Returns
         -------
         pd.DataFrame
-            synthetic data
+            synthetic data with columns for the space distribution, the proper motion
+            distribution and approximations of the membership probabilities without
+            taking into account any errors.
 
         """
         self.star_field.representation_type = "cartesian"
