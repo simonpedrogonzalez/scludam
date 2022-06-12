@@ -133,7 +133,6 @@ dmypy.json
 
 *.ipynb
 *.vot
-*.csv
 scludam/mprof
 
 pruebas.py
