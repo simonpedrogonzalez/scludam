@@ -153,8 +153,6 @@ profile*
 
 typescript
 
-*.png
-
 gitconfig
 
 stylefix.sh
