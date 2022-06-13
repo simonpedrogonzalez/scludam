@@ -19,7 +19,7 @@ install:
 #  - pip install coveralls
 
 script:
-  - tox -r
+  - tox -r -vv
 
 matrix:
   include:
