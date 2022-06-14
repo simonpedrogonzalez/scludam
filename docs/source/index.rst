@@ -3,36 +3,23 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to scludam's documentation!
-===================================
-.. only:: html
+.. Welcome to scludam's documentation!
+.. ===================================
+.. .. only:: html
 
-    .. image:: _static/logo.png
-        :align: center
-        :scale: 100 %
-
-|Build Status|
-
-.. |Build Status| image:: https://travis-ci.com/simonpedrogonzalez/scludam.svg?branch=main
-   :target: https://travis-ci.com/simonpedrogonzalez/scludam
+..     .. image:: _static/logo.png
+..         :align: center
+..         :scale: 30 %
 
 
-**scludam** is a python package for downloading star catalogues data, detecting star clusters and estimating membership probabilities.
+.. include:: readme.rst
 
-| **Authors**
-| Simón Pedro González (E-mail: simon.pedro.g@gmail.com)
-
-
-Repository and Issues
----------------------
-
-https://github.com/simonpedrogonzalez/scludam
-
---------------------------------------------------------
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   readme
 
    modules
 
