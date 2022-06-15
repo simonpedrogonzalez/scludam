@@ -12,17 +12,18 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../scludam'))
+sys.path.insert(0, os.path.abspath('../../scludam/'))
 
 
 # -- Project information -----------------------------------------------------
 
+packages = ["scludam"]
 project = 'scludam'
 copyright = '2022, Simón Pedro González'
 author = 'Simón Pedro González'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.2'
+release = '0.0.3'
 
 
 # -- General configuration ---------------------------------------------------
@@ -47,10 +48,13 @@ napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
 autodoc_member_order = 'bysource'
+autodoc_mock_imports = [
+    "rpy2",
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
-
+html_static_path = ['_static']
 source_suffix = ['.rst', '.md']
 
 # List of patterns, relative to source directory, that match files and

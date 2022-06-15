@@ -6,6 +6,12 @@ sudo: true
 #  - sudo dpkg -i pandoc-2.7.3-1-amd64.deb
 #  - pandoc --version
 
+# whitelist
+branches:
+  only:
+    - main
+
+
 before_install:
   - sudo apt update
   - sudo apt install r-base -y
@@ -38,9 +44,13 @@ matrix:
       dist: xenial
       sudo: true
 
-    - python: 3.7
-      env: TOXENV=py37
-      dist: xenial
-      sudo: true
+
+    # seems to consume to much credits
+
+    # - python: 3.7
+    #   env: TOXENV=py37
+    #   dist: xenial
+    #   sudo: true
+
 #after_success:
 #  - coveralls

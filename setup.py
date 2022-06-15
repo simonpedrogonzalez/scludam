@@ -10,15 +10,16 @@ def read(fname):
 
 setup(
     name="scludam",
-    version="0.0.2",
+    version="0.0.3",
     author="Simón Pedro González",
     author_email="simon.pedro.g@gmail.com",
-    description="star cluster detection and membership estimation",
+    description="Star cluster detection and membership estimation based on GAIA data.",
     license="GPL-3",
     keywords="star cluster detection membership probabilities",
     url="http://packages.python.org/scludam",
     packages=["scludam", "tests"],
     long_description=read("README.md"),
+    long_description_content_type="text/markdown",
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Topic :: Scientific/Engineering :: Astronomy",
