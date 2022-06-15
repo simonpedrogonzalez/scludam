@@ -1,4 +1,4 @@
-scludam
+modules
 =======
 
 .. toctree::

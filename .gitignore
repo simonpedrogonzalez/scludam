@@ -146,14 +146,11 @@ scludam/test.xml
 /notebooks
 /.vscode
 
-*.svg
 *.packaging
 
 profile*
 
 typescript
-
-*.png
 
 gitconfig
 

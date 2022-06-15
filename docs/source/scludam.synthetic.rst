@@ -1,5 +1,5 @@
-scludam.synthetic module
-========================
+synthetic module
+================
 
 .. automodule:: scludam.synthetic
    :members:
