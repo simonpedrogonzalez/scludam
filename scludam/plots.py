@@ -259,4 +259,69 @@ def test_probaplot():
     print("c0so")
 
 
-# test_probaplot()
+def create_heatmaps(hist, edges, bin_shape, clusters_idx):
+    dim = len(hist.shape)
+    labels = [(np.round(edges[i] + bin_shape[i] / 2, 2))[:-1] for i in range(dim)]
+    if dim == 2:
+        data = hist
+        annot_idx = clusters_idx
+        annot = np.ndarray(shape=data.shape, dtype=str).tolist()
+        for i in range(annot_idx.shape[1]):
+            annot[annot_idx[0, i]][annot_idx[1, i]] = str(
+                round(data[annot_idx[0][i]][annot_idx[1][i]])
+            )
+        ax = sns.heatmap(
+            data, annot=annot, fmt="s", yticklabels=labels[0], xticklabels=labels[1]
+        )
+        hlines = np.concatenate((annot_idx[0], annot_idx[0] + 1))
+        vlines = np.concatenate((annot_idx[1], annot_idx[1] + 1))
+        ax.hlines(hlines, *ax.get_xlim(), color="w")
+        ax.vlines(vlines, *ax.get_ylim(), color="w")
+    else:
+        cuts = np.unique(clusters_idx[2])
+        ncuts = cuts.size
+        ncols = min(3, ncuts)
+        nrows = math.ceil(ncuts / ncols)
+        delete_last = nrows > ncuts / ncols
+        fig, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(ncols * 8, nrows * 5))
+        for row in range(nrows):
+            for col in range(ncols):
+                idx = col * nrows + row
+                if idx < cuts.size:
+                    cut_idx = cuts[idx]
+                    data = hist[:, :, cut_idx]
+                    annot_idx = clusters_idx.T[(clusters_idx.T[:, 2] == cut_idx)].T[:2]
+                    annot = np.ndarray(shape=data.shape, dtype=str).tolist()
+                    for i in range(annot_idx.shape[1]):
+                        annot[annot_idx[0, i]][annot_idx[1, i]] = str(
+                            round(data[annot_idx[0][i]][annot_idx[1][i]])
+                        )
+                    if ncuts <= 1:
+                        subplot = ax
+                    else:
+                        if nrows == 1:
+                            subplot = ax[col]
+                        else:
+                            subplot = ax[row, col]
+                    current_ax = sns.heatmap(
+                        data,
+                        annot=annot,
+                        fmt="s",
+                        yticklabels=labels[0],
+                        xticklabels=labels[1],
+                        ax=subplot,
+                    )
+                    current_ax.axes.set_xlabel("x")
+                    current_ax.axes.set_ylabel("y")
+                    current_ax.title.set_text(
+                        f"z slice at value {round(edges[2][cut_idx]+bin_shape[2]/2, 4)}"
+                    )
+                    hlines = np.concatenate((annot_idx[0], annot_idx[0] + 1))
+                    vlines = np.concatenate((annot_idx[1], annot_idx[1] + 1))
+                    current_ax.hlines(hlines, *current_ax.get_xlim(), color="w")
+                    current_ax.vlines(vlines, *current_ax.get_ylim(), color="w")
+        if delete_last:
+            ax.flat[-1].set_visible(False)
+        fig.subplots_adjust(wspace=0.1, hspace=0.3)
+        plt.tight_layout()
+    return ax

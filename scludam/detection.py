@@ -6,7 +6,7 @@ from warnings import warn
 
 import numpy as np
 from astropy.stats.sigma_clipping import sigma_clipped_stats
-from attr import attrs, attrib
+from attrs import define, field, Factory, validators
 from scipy import ndimage
 from skimage.feature import peak_local_max
 import seaborn as sns
@@ -23,8 +23,11 @@ from scludam.synthetic import (
     StarCluster,
     StarField,
     Synthetic,
+    UniformFrustum,
 )
 from scipy.stats import multivariate_normal
+
+from numbers import Number
 
 
 def get_default_mask(dim: int):
@@ -45,54 +48,35 @@ def convolve(data, mask: np.ndarray = None, c_filter: callable = None, *args, **
 
 
 # unused
-# TODO: should use mask, e.g.: not include center pixel.
-# idea: use generic_filter footprint?
-# TODO: remove
-def var_filter(data, mask=None, *args, **kwargs):
-    if mask is not None:
-        kwargs["footprint"] = mask != 0
-    return convolve(
-        data,
-        c_filter=ndimage.generic_filter,
-        function=np.var,
-        *args,
-        **kwargs,
-    )
+# def var_filter(data, mask=None, *args, **kwargs):
+#     if mask is not None:
+#         kwargs["footprint"] = mask != 0
+#     return convolve(
+#         data,
+#         c_filter=ndimage.generic_filter,
+#         function=np.var,
+#         *args,
+#         **kwargs,
+#     )
 
 
-# unused, only keep for testing
-# TODO: use mask, should not include center pixel faster
-def std_filter(data, mask=None, *args, **kwargs):
-    if mask is not None:
-        kwargs["footprint"] = mask != 0
-    return convolve(
-        data,
-        c_filter=ndimage.generic_filter,
-        function=np.std,
-        *args,
-        **kwargs,
-    )
+# unused
+# def std_filter(data, mask=None, *args, **kwargs):
+#     if mask is not None:
+#         kwargs["footprint"] = mask != 0
+#     return convolve(
+#         data,
+#         c_filter=ndimage.generic_filter,
+#         function=np.std,
+#         *args,
+#         **kwargs,
+#     )
 
 
 def fast_std_filter(data, mask, **kwargs):
     u_x2 = convolve(data, mask=mask, **kwargs)
     ux_2 = convolve(data * data, mask=mask, **kwargs)
     return (ux_2 - u_x2 * u_x2) ** 0.5
-
-
-def window3D(w):
-    # TODO: make n dimensional (ndkernel(1dkernel, ndim))
-    # TODO: make n dimensional from function (ndkernel(1dfun, bin_shape))
-    # Convert a 1D filtering kernel to 3D
-    # eg, window3D(numpy.hanning(5))
-    L = w.shape[0]
-    m1 = np.outer(np.ravel(w), np.ravel(w))
-    win1 = np.tile(m1, np.hstack([L, 1, 1]))
-    m2 = np.outer(np.ravel(w), np.ones([1, L]))
-    win2 = np.tile(m2, np.hstack([L, 1, 1]))
-    win2 = np.transpose(win2, np.hstack([1, 2, 0]))
-    win = np.multiply(win1, win2)
-    return win
 
 
 def get_histogram_bins(data: np.ndarray, bin_shape: np.ndarray, offsets: list = None):
@@ -139,7 +123,7 @@ def nyquist_offsets(bin_shape: list):
     return np.flip(combinations, axis=0)
 
 
-@attrs(auto_attribs=True)
+@define
 class Peak:
     index: np.ndarray
     significance: Union[float, int] = None
@@ -170,9 +154,9 @@ def get_most_significant_peaks(peaks: list):
     return bests
 
 
-@attrs(auto_attribs=True)
+@define
 class DetectionResult:
-    peaks: List[Peak] = attrib(factory=list)
+    peaks: List[Peak] = Factory(list)
     heatmaps = None
 
 
@@ -182,18 +166,20 @@ class PeakDetector:
         pass
 
 
-@attrs(auto_attribs=True)
+@define
 class CountPeakDetector(PeakDetector):
-    bin_shape: Union[list, np.ndarray]
-    mask: Union[list, np.ndarray] = None
-    nyquist_offset = True
-    min_count: Union[int, float] = 5
-    min_dif: Union[int, float] = 10
-    min_sigma_dif: Union[int, float] = None
-    min_significance: Union[int, float] = 1
-    max_num_peaks: Union[int, float] = np.inf
-    min_interpeak_dist: Union[int, float] = 1
-    offsets = None
+    bin_shape: Union[list, np.ndarray] = field()
+    mask: Union[list, np.ndarray] = field(default=None)
+    nyquist_offset: bool = field(default=True)
+    min_count: Number = field(default=5)
+    min_dif: Number = field(default=10)
+    min_sigma_dif: Number = field(default=None)
+    min_significance: Number = field(default=1)
+    max_num_peaks: Number = field(default=np.inf)
+    min_interpeak_dist: Number = field(default=1)
+    remove_low_density_regions: bool = field(default=True)
+    norm_mode: str = field(default="std", validator=validators.in_(["std", "approx"]))
+    _offsets = None
 
     def trim_low_density_regions(self, data: np.ndarray):
         obs, dim = data.shape
@@ -238,38 +224,41 @@ class CountPeakDetector(PeakDetector):
     def set_nyquist_offsets(self):
         dim = len(self.bin_shape)
         if not self.nyquist_offset:
-            self.offsets = np.atleast_2d(np.zeros(dim))
+            self._offsets = np.atleast_2d(np.zeros(dim))
         else:
             values = np.vstack((np.array(self.bin_shape) / 2, np.zeros(dim))).T
             combinations = np.array(np.meshgrid(*values)).T.reshape((-1, dim))
-            self.offsets = np.flip(combinations, axis=0)
+            self._offsets = np.flip(combinations, axis=0)
 
-    def detect(self, data: np.ndarray, heatmaps: bool = False):
+    def detect(self, data: np.ndarray):
         if len(data.shape) != 2:
             raise ValueError("data array must have 2 dimensions")
         obs, dim = data.shape
 
+        # mask setup
         if self.mask is None:
             self.mask = get_default_mask(dim)
         self.mask = np.array(self.mask)
         mask = self.mask
 
-        # TODO: do in init
+        # check mask and bin shape are compatible
         self.bin_shape = np.array(self.bin_shape)
         if len(mask.shape) != dim:
             raise ValueError("mask does not match data dimensions")
         if len(self.bin_shape) != dim:
             raise ValueError("bin_shape does not match data dimensions")
 
-        if self.min_count:
+        # remove points in low density regions
+        if self.remove_low_density_regions and self.min_count:
             data = self.trim_low_density_regions(data)
 
-        # TODO: do it in init
+        # set nyquist offsets
         self.set_nyquist_offsets()
 
+        # get histogram ranges and bin numbers
         bins, ranges = get_histogram_bins(data, self.bin_shape)
 
-        # set detection parameters for all runs
+        # set peak detection parameters
         peak_detection_params = {}
         if np.any(np.array(bins) < np.array(mask.shape)):
             warn(
@@ -287,37 +276,52 @@ class CountPeakDetector(PeakDetector):
 
         # detection
         peaks = []
-        for offset in self.offsets:
+        for offset in self._offsets:
             hist, edges = histogram(data, self.bin_shape, offset)
             smoothed = convolve(hist, mask=mask)
             sharp = hist - smoothed
-            std = fast_std_filter(hist, mask=mask)
-            # err_hist = sqrt(hist)
-            # because:
-            # estimate of std: std[vhat] = sqrt(vhat) = sqrt(n)
-            # error bars are given by the square root
-            # of the number of entries in each bin of the histogram
-            # err_smoothed = std(smoothed) = sqrt(smoothed)
-            # sharp = hist - smoothed so
-            # err_sharp = sqrt(err_hist^2 + err_smoothed^2 - ...)
-            # because:
-            # std[a - b] = sqrt(varianza(a) + varianza(b) - 2*covarianza(a,b))
-            # according to: https://en.wikipedia.org/wiki/Propagation_of_uncertainty
-            # covarianza(a,b) = varianza(a) * varianza(b) * corrcoef(a,b)
-            # as normalized = sharp / err_sharp
-            # +1 is added to avoid zero division errors
-            normalized = sharp / np.sqrt(hist + std**2 + 1)
+            
+            # TODO: old block
+            # std = fast_std_filter(hist, mask=mask)
+            # normalized = sharp / np.sqrt(hist + std**2 + 1)
+            
+            if self.norm_mode == "approx":
+                # approx explanation
+                # err_hist = sqrt(hist)
+                # because:
+                # estimate of std: std[vhat] = sqrt(vhat) = sqrt(n)
+                # error bars are given by the square root
+                # of the number of entries in each bin of the histogram
+                # err_smoothed = std(smoothed) = sqrt(smoothed)
+                # sharp = hist - smoothed so
+                # err_sharp = sqrt(err_hist^2 + err_smoothed^2 - ...)
+                # because:
+                # std[a - b] = sqrt(varianza(a) + varianza(b) - 2*covarianza(a,b))
+                # according to: https://en.wikipedia.org/wiki/Propagation_of_uncertainty
+                # covarianza(a,b) = varianza(a) * varianza(b) * corrcoef(a,b)
+                # as normalized = sharp / err_sharp
+                # +1 is added to avoid zero division errors
+                normalized = sharp / np.sqrt(smoothed + hist + 1)
+            elif self.norm_mode == "std":
+                # directly gettig std
+                normalized = sharp / (fast_std_filter(sharp, mask=mask) + 1)
+
+            # TODO: remove, other way of getting the std approx
+            # n4 = sharp / np.sqrt(std**2 + fast_std_filter(smoothed, mask=mask)**2 + 1)
+
+            detection_img = np.copy(normalized)
 
             if self.min_dif is not None:
                 # check for other way to implement
-                normalized[sharp < self.min_dif] = 0
+                # TODO: fix this beacuse it affects the value of the significance
+                # TODO: is it solved?
+                detection_img[sharp < self.min_dif] = 0
             if self.min_sigma_dif is not None:
-                normalized[sharp < self.min_sigma_dif * std] = 0
+                detection_img[sharp < self.min_sigma_dif * std] = 0
 
-            clusters_idx = peak_local_max(normalized, **peak_detection_params).T
+            clusters_idx = peak_local_max(detection_img, **peak_detection_params).T
 
             _, peak_count = clusters_idx.shape
-
             if peak_count != 0:
 
                 counts = sharp[tuple(clusters_idx)]
@@ -380,159 +384,20 @@ class CountPeakDetector(PeakDetector):
 
         res = DetectionResult(peaks=global_peaks)
 
-        if heatmaps:
+        # TODO: remove, calculate heatmap in other function
+        # if heatmaps:
             # it will return heatmap corresponding to last offset only
-            res.heatmaps = create_heatmaps(
-                hist,
-                edges,
-                self.bin_shape,
-                np.array([peak.index for peak in global_peaks]).T,
-            )
+            # res.heatmaps = create_heatmaps(
+            #     hist,
+            #     edges,
+            #     self.bin_shape,
+            #     np.array([peak.index for peak in global_peaks]).T,
+            # )
         return res
 
-
-def create_heatmaps(hist, edges, bin_shape, clusters_idx):
-    dim = len(hist.shape)
-    labels = [(np.round(edges[i] + bin_shape[i] / 2, 2))[:-1] for i in range(dim)]
-    if dim == 2:
-        data = hist
-        annot_idx = clusters_idx
-        annot = np.ndarray(shape=data.shape, dtype=str).tolist()
-        for i in range(annot_idx.shape[1]):
-            annot[annot_idx[0, i]][annot_idx[1, i]] = str(
-                round(data[annot_idx[0][i]][annot_idx[1][i]])
-            )
-        ax = sns.heatmap(
-            data, annot=annot, fmt="s", yticklabels=labels[0], xticklabels=labels[1]
-        )
-        hlines = np.concatenate((annot_idx[0], annot_idx[0] + 1))
-        vlines = np.concatenate((annot_idx[1], annot_idx[1] + 1))
-        ax.hlines(hlines, *ax.get_xlim(), color="w")
-        ax.vlines(vlines, *ax.get_ylim(), color="w")
-    else:
-        cuts = np.unique(clusters_idx[2])
-        ncuts = cuts.size
-        ncols = min(3, ncuts)
-        nrows = math.ceil(ncuts / ncols)
-        delete_last = nrows > ncuts / ncols
-        fig, ax = plt.subplots(ncols=ncols, nrows=nrows, figsize=(ncols * 8, nrows * 5))
-        for row in range(nrows):
-            for col in range(ncols):
-                idx = col * nrows + row
-                if idx < cuts.size:
-                    cut_idx = cuts[idx]
-                    data = hist[:, :, cut_idx]
-                    annot_idx = clusters_idx.T[(clusters_idx.T[:, 2] == cut_idx)].T[:2]
-                    annot = np.ndarray(shape=data.shape, dtype=str).tolist()
-                    for i in range(annot_idx.shape[1]):
-                        annot[annot_idx[0, i]][annot_idx[1, i]] = str(
-                            round(data[annot_idx[0][i]][annot_idx[1][i]])
-                        )
-                    if ncuts <= 1:
-                        subplot = ax
-                    else:
-                        if nrows == 1:
-                            subplot = ax[col]
-                        else:
-                            subplot = ax[row, col]
-                    current_ax = sns.heatmap(
-                        data,
-                        annot=annot,
-                        fmt="s",
-                        yticklabels=labels[0],
-                        xticklabels=labels[1],
-                        ax=subplot,
-                    )
-                    current_ax.axes.set_xlabel("x")
-                    current_ax.axes.set_ylabel("y")
-                    current_ax.title.set_text(
-                        f"z slice at value {round(edges[2][cut_idx]+bin_shape[2]/2, 4)}"
-                    )
-                    hlines = np.concatenate((annot_idx[0], annot_idx[0] + 1))
-                    vlines = np.concatenate((annot_idx[1], annot_idx[1] + 1))
-                    current_ax.hlines(hlines, *current_ax.get_xlim(), color="w")
-                    current_ax.vlines(vlines, *current_ax.get_ylim(), color="w")
-        if delete_last:
-            ax.flat[-1].set_visible(False)
-        fig.subplots_adjust(wspace=0.1, hspace=0.3)
-        plt.tight_layout()
-    return ax
-
-
-# data = np.vstack((np.arange(0, 1.1, 0.1), np.arange(0, 1.1, 0.1))).T
-# bin_shape = [.5, .5]
-# offsets = [-0.2, 0.2]
-# bins, ranges = get_histogram_bins(data, bin_shape, offsets)
-# assert np.equal(ranges, np.array([[-.05, .05], [-.05, .05]]))
-
-# test_detection()
-# rang1 = np.arange(1, 10, 1)
-# rang2 = np.array([4, 5, 6]*4)
-# var1 = np.concatenate((rang1, rang2))
-# var2 = np.concatenate((np.flip(rang2), np.flip(rang1)))
-# data will result in a diagonal histogram
-# with more density in 3 center elements
-##data = np.vstack((var1, var2)).T
-# bin_shape = [1, 1]
-# bins, _ = get_histogram_bins(data, bin_shape)
-# assert np.allclose(bins, np.array([9,9]))
-
-# mask = np.ones((3,3))/9
-# data2 has some points deleted, so the histogram
-# generated will have just the center region
-# and enough surrounding bins to use the mask given
-# data2 = CountPeakDetector(bin_shape=[1,1], mask=mask, min_count=5).trim_low_density_regions(data)
-
-# bins, _ = get_histogram_bins(data2, bin_shape)
-# assert np.allclose(bins, np.array([5,5]))
-
-# data3 = CountPeakDetector(bin_shape=[1,1], mask=mask, min_count=6).trim_low_density_regions(data)
-
-
-# print(no_outliers)
-
-
-def three_clusters_sample():
-    field_size = int(1e4)
-    cluster_size = int(1e2)
-    field = StarField(
-        pm=multivariate_normal(mean=(0.0, 0.0), cov=20),
-        space=UniformSphere(center=polar_to_cartesian((120.5, -27.5, 5)), radius=100),
-        n_stars=field_size,
-    )
-    clusters = [
-        StarCluster(
-            space=multivariate_normal(
-                mean=polar_to_cartesian([120.7, -28.5, 5]), cov=0.5
-            ),
-            pm=multivariate_normal(mean=(0.5, 0), cov=1.0 / 10),
-            n_stars=cluster_size,
-        ),
-        StarCluster(
-            space=multivariate_normal(
-                mean=polar_to_cartesian([120.8, -28.6, 5]), cov=0.5
-            ),
-            pm=multivariate_normal(mean=(4.5, 4), cov=1.0 / 10),
-            n_stars=cluster_size,
-        ),
-        StarCluster(
-            space=multivariate_normal(
-                mean=polar_to_cartesian([120.9, -28.7, 5]), cov=0.5
-            ),
-            pm=multivariate_normal(mean=(7.5, 7), cov=1.0 / 10),
-            n_stars=cluster_size,
-        ),
-    ]
-    df = Synthetic(star_field=field, clusters=clusters).rvs()
-    return df
-
-
-""" df = three_clusters_sample()[['pmra', 'pmdec', 'log10_parallax']]
-data = df.values
-result = CountPeakDetector(bin_shape=[.5, .5, .05], min_count=5, min_dif=20).detect(data, heatmaps=True)
-center1 = (.5, 0, np.log10(5))
-center2 = (4.5, 4, np.log10(5))
-center3 = (7.5, 7, np.log10(5))
-# test that the peak detector can detect peaks
-# in a simple case
-print('coso') """
+def extend_1dmask(mask, dim):
+    m1 = np.asarray(mask)
+    mi = m1
+    for i in range(dim-1):
+        mi = np.multiply.outer(mi, m1)
+    return mi / mi.sum()
