@@ -375,7 +375,7 @@ class RipleysKTest(StatTest):
         The comparison method to use to determine the rejection of H0, by default is
         "ripley". Allowed values are:
 
-        #.  "ripley": H0 rejected if ``s > ripley_factor * sqrt(area) / n`` where
+        #. "ripley": H0 rejected if ``s > ripley_factor * sqrt(area) / n`` where
 
             *   area: is the area of the 2D data set taken as a square window.
             *   n: is the number of points in the data set.

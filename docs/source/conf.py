@@ -72,8 +72,8 @@ exclude_patterns = [
     'utils.py',
     'synthetic.py',
     'shdbscan.py',
-    'detection.py',
     'hkde.py',
+    'type_utils.py'
     ]
 
 # The master toctree document.

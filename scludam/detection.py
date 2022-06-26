@@ -63,7 +63,7 @@ def default_mask(dim: int):
 
     Notes
     -----
-    The mask has the shaped defined by _[1]. The sum of the mask amounts to 1.
+    The mask has the shaped defined in [1]_. The sum of the mask amounts to 1.
 
     References
     ----------
@@ -72,8 +72,8 @@ def default_mask(dim: int):
     Examples
     --------
     .. literalinclude:: ../../examples/detection/default_mask.py
-    :language: python
-    :linenos:
+        :language: python
+        :linenos:
 
     """
     indexes = np.array(np.meshgrid(*np.tile(np.arange(5), (dim, 1)))).T.reshape(
@@ -378,9 +378,9 @@ class CountPeakDetector:
         :func:~scludam.detection.default_mask with the data dimensions.
     nyquist_offsets : bool, optional
         If True, the Nyquist frequency sampling rule is used to shift the
-        histogram edges, by default True. It helps to avoid the peak detection
+        histogram edges [2]_, by default True. It helps to avoid the peak detection
         to miss the peaks or underestimate the bin count due to an arbitrarily
-        chosen bin edge shift.
+        chosen bin edge shift. It uses :func:~scludam.detection.nyquist_offsets.
     min_count: Number, optional
         Mimimum count to be elegible for a peak, by default 5. Also used to
         ``remove_low_density_regions`` if the option is enabled.
@@ -419,20 +419,25 @@ class CountPeakDetector:
     norm_mode: str, optional
         Mode to be used to get the standard deviation used in the
         score calculation, by default "std". Can be one of the following:
-        #.  "std": Standard deviation of the ``histogram - background`` calculated
-                using the ``mask`` provided and
-                :func:`~scludam.detection.fast_std_filter`
 
-        #.  "approx": Approximation _[1] to the standard deviation taking into account
-                how the ``sharp = histogram - background`` is obtained.
+        #. "std": Standard deviation of the ``histogram - background`` calculated
+           using the ``mask`` provided and
+           :func:`~scludam.detection.fast_std_filter`
+
+        #. "approx": Approximation [1]_ to the standard deviation taking into account
+           how the ``sharp = histogram - background`` is obtained.
 
             *   An common estimate of the standard deviation of an histogram
-                    is the root square of the bin count: ``std(h) = sqrt(h)``.
+                is the root square of the bin count: ``std(h) = sqrt(h)``.
             *   According to the uncertainty propagation:
-                    if ``s = h - b``, then
-                    ``std(s) = sqrt(var(h) + var(b) - 2*cov(h,b))``.
+                if ``s = h - b``, then
+                ``std(s) = sqrt(var(h) + var(b) - 2*cov(h,b))``.
             *   Considering ``2*cov(h,b)~0``, the approximation is:
-                    ``std(s) = sqrt(h + b)``.
+                ``std(s) = sqrt(h + b)``.
+
+    References
+    ----------
+    .. [2] https://en.wikipedia.org/wiki/Nyquist_frequency
 
     Examples
     --------
