@@ -16,8 +16,13 @@
 
 """Module for density peak detection in numerical data.
 
-This module provides a class for density peak detection in numerical data, with
-some extra helper functions for tasks such as defining filtering masks.
+This module provides density peak detection over numerical data and helper functions
+for tasks such as defining filtering masks. The main API of
+the module includes :class:`~scludam.detection.CountPeakDetector`,
+:func:`~scludam.detection.default_mask` and :func:`~scludam.detection.extend_1dmask`,
+which can be direcly imported from ``scludam``. Other functions and classes can be
+imported from ``scludam.detection``.
+
 """
 
 from decimal import Decimal
@@ -49,7 +54,8 @@ def default_mask(dim: int):
     """Create a default mean mask for a given dimension.
 
     It returns a mean weighted mask with 5 elements per dimension,
-    to be used as a filter for convolution.
+    to be used as a filter for convolution. The sum of the
+    mask weights is equal to 1.
 
     Parameters
     ----------
@@ -63,11 +69,19 @@ def default_mask(dim: int):
 
     Notes
     -----
-    The mask has the shaped defined in [1]_. The sum of the mask amounts to 1.
+    The shape of the mask is chosen so it takes into account
+    the value of neighbouring bins but not the one of the bin over
+    which the mask is applied. That way, the mask is intended to be
+    produce a good estimate of the local density of the background
+    of the bin over which it is applied. This mask is used in the
+    method applied by González-Alejo (2020) [1]_.
 
     References
     ----------
-    .. [1] https://en.wikipedia.org/wiki/Mask_(image_processing)
+    .. [1] Alejo, A.D., González, J.F., González, S. P. (2020).
+        Estudio de membresı́a de cúmulos estelares utilizando Gaia DR2.
+        Cuaderno de Resúmenes 62a Reunión Anual Asociación
+        Argentina de Astronomía, Rosario, Provincia de Santa Fe, 64.
 
     Examples
     --------
@@ -242,8 +256,8 @@ def nyquist_offsets(bin_shape: Numeric1DArrayLike):
     """Get offsets for shifting a histogram.
 
     Get all possible offsets for a given bin shape, to be used
-    to shift the histogram edges following the Nyquist frequency
-    sampling rule. The offsets are calculated as the half of the
+    to shift the histogram edges following the Nyquist spatial
+    sampling interval. The offsets are calculated as the half of the
     bin shape.
 
     Parameters
@@ -290,6 +304,13 @@ def extend_1dmask(mask: ArrayLike, dim: int):
     -------
     NDArray
         Extended mask.
+
+    Examples
+    --------
+    .. literalinclude:: ../../examples/detection/extend_1dmask.py
+        :language: python
+        :linenos:
+    .. image:: ../../examples/detection/extend_1dmask.png
 
     """
     m1 = np.asarray(mask)
@@ -376,9 +397,11 @@ class CountPeakDetector:
     mask: OptionalArrayLike, optional
         Mask to be used as in the filtering operations, by default uses
         :func:~scludam.detection.default_mask with the data dimensions.
+        The mask must be of the same dimension as the data, its weights
+        must sum to 1 and it must be appropriate for smoothing.
     nyquist_offsets : bool, optional
-        If True, the Nyquist frequency sampling rule is used to shift the
-        histogram edges [2]_, by default True. It helps to avoid the peak detection
+        If True, the Nyquist spatial sampling interval is used to shift the
+        histogram edges, by default True. It helps to avoid the peak detection
         to miss the peaks or underestimate the bin count due to an arbitrarily
         chosen bin edge shift. It uses :func:~scludam.detection.nyquist_offsets.
     min_count: Number, optional
@@ -435,9 +458,63 @@ class CountPeakDetector:
             *   Considering ``2*cov(h,b)~0``, the approximation is:
                 ``std(s) = sqrt(h + b)``.
 
+    Notes
+    -----
+    The algorithm used is based in the following steps:
+
+    #. Remove the data corresponding to low density regions from the edges
+       to the center, until a dense enough bin is found,
+       as described in the ``remove_low_density_regions`` parameter.
+    #. Calculate all possible offsets for the histogram edges, using the
+       Nyquist spatial sampling interval. The region surveyed is subdivided into
+       a rectilinear grid of overlapping hypercubes separated by half the side
+       length of an individual bin [2]_ [3]_ [4]_.
+    #. Instead of creating one histogram including all possible offsets, which
+       can be very large when dimensionality increases, for each offset an
+       histogram is created. For each shifted histogram:
+
+        #.  Estimate the background density, convolving the histogram with the
+            provided ``mask``, smoothing the histogram over adjacent bins inside
+            a window defined by the mask size [2]_ [5]_ [6]_.
+        #.  Calculate the excess of data points in each bin as the difference
+            between the bin count and the background density. This is equivalent
+            to passing a high-pass filter to the histogram. The excess is considered
+            as the bin count. It should be noted that the excess count using this
+            method is usually underestimated, specially when the bin shape used
+            is not the right one.
+        #.  Calculate the score of each bin as the normalized excess count, using
+            the methods described in the ``norm_mode`` parameter.
+        #.  Use ``min_count``, ``min_sigma_dif``, ``min_dif`` and
+            ``min_interpeak_distance`` to find peaks in the n-dimensional
+            score histogram.
+
+    #. Take the peaks found in each shifted histogram and merge them into a
+       a single list, taking the higher score shift for each peak. Then the list
+       is sort in descending order by score.
+
+    The fundamental parameter of the method is ``bin_shape``, a bad choice of bin
+    shape can lead to a poor peak detection. In general, the shape must be chosen
+    considering it should be the span in each dimension of the object to be detected.
+
     References
     ----------
-    .. [2] https://en.wikipedia.org/wiki/Nyquist_frequency
+    .. [2] Schmeja, S. (2011). Identifying star clusters in a field:
+        A comparison of different algorithms. Astronomische Nachrichten,
+        332, 172-184. doi: 10.1002/asna.201011484
+    .. [3] Lada, E. A., Lada, C. J. (1995). Near-infrared images of IC
+        348 and the luminosity functions of young embedded star clusters.
+        The Astrophysical Journal, 109.
+    .. [4] Nanda Kumar, M. S., Kamath U. S., and Davis, C. J. (2004). Embedded
+        star clusters in the W51 giant molecular cloud. Monthly Notices of the
+        Royal Astronomical Society, 353, 1025–1034.
+        doi:10.1111/j.1365-2966.2004.08143.x
+    .. [5] Lada, E. A., DePoy, D. L., Evans, N. J. y Gatley, I. (1991).
+        Micron survey in the LI630 molecular cloud. The Astrophysical Journal,
+        371, 171-182.
+    .. [6] Karampelas, A., Dapergolas, A., Kontizas, E., Livanou, E., Kontizas,
+        M., Bellas-Velidis, I. y Vílchez, J. M. (2009). Star complexes and stellar
+        populations in NGC 6822: Comparison with the Magellanic Clouds.
+        Astronomy and Astrophysics, 497, 703–711.
 
     Examples
     --------
@@ -531,7 +608,7 @@ class CountPeakDetector:
             If ``remove_low_density_regions`` is used and no bin passes
             the density check, the min_count is probably too low.
         ValueError
-            If ``data``, ``bin_shape`` and ``mask`` dimensionality does not match.
+            If ``data``, ``bin_shape`` and ``mask`` dimensions do not match.
         Warns
         -----
         UserWarning
