@@ -451,12 +451,12 @@ class Query:
         aen_value : Number, optional
             astrometric excess noise threshold value, by default 2
         aen_sig_value : Number, optional
-            astrometric excess noise significance threshold value, by default 2
+            astrometric excess noise score threshold value, by default 2
         aen_name : str, optional
             column name for astrometric excess noise, by default
             config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE
         aen_sig_name : str, optional
-            column name for astrometric escess noise significance, by default
+            column name for astrometric escess noise score, by default
             config.MAIN_GAIA_ASTROMETRIC_EXCESS_NOISE_SIG
 
         Returns
@@ -468,7 +468,7 @@ class Query:
         -----
         The criteria [1]_ used is:
         *  exclude objects if
-        *   ``astrometric_excess_noise_significance > aen_sig_value AND``
+        *   ``astrometric_excess_noise_score > aen_sig_value AND``
         *   ``astrometric_excess_noise > aen_value``
 
         References

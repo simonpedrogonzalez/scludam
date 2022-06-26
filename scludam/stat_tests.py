@@ -536,8 +536,8 @@ class RipleysKTest(StatTest):
             Result of the Ripleys K test.
 
 
-        Warnings
-        --------
+        Warns
+        -----
         UserWarning
             Warns if some dataset points are repeated (exactly equal). In that case,
             the RipleysKEstimator will not be able to calculate the L function,
