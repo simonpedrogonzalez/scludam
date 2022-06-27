@@ -39,6 +39,9 @@ from scipy import ndimage
 from skimage.feature import peak_local_max
 
 from scludam.masker import RangeMasker
+from scludam.plots import peak_slice_heatmap
+from copy import deepcopy
+
 from scludam.type_utils import (
     ArrayLike,
     Numeric1DArrayLike,
@@ -47,7 +50,6 @@ from scludam.type_utils import (
     OptionalNumeric1DArrayLike,
     _type,
 )
-
 
 @beartype
 def default_mask(dim: int):
@@ -321,6 +323,8 @@ def extend_1dmask(mask: ArrayLike, dim: int):
 
 
 def _get_higher_score_offset_per_peak(indices: List, scores: List):
+    indices = indices.copy()
+    scores = scores.copy()
     if not len(indices) or not len(scores):
         return []
     if len(scores) != len(indices):
@@ -372,6 +376,10 @@ class DetectionResult:
     sigmas : Numeric1DArray
         Sigma of the detected peaks. Currently arbitrarily set
         as the bin shape in each dimension.
+    offsets : Numeric2DArray
+        Offsets used for detecting each peak.
+    indices : Numeric2DArray
+        Indices of the detected peaks in the histogram.
 
     """
 
@@ -380,6 +388,8 @@ class DetectionResult:
     scores: NDArray[np.number] = np.array([])
     counts: NDArray[np.number] = np.array([])
     edges: Numeric2DArray = np.array([])
+    offsets: Numeric2DArray = np.array([])
+    indices: Numeric2DArray = np.array([])
 
 
 # TODO: add a plot for the result
@@ -536,6 +546,8 @@ class CountPeakDetector:
     remove_low_density_regions: bool = field(default=True, validator=_type(bool))
     norm_mode: str = field(default="std", validator=validators.in_(["std", "approx"]))
     _offsets: OptionalArrayLike = None
+    _last_result: DetectionResult = None
+    _data: Numeric2DArray = None
 
     def _remove_low_density_regions(self, data: Numeric2DArray):
         obs, dim = data.shape
@@ -636,6 +648,7 @@ class CountPeakDetector:
         # remove points in low density regions
         if self.remove_low_density_regions and self.min_count:
             data = self._remove_low_density_regions(data)
+        self._data = data
 
         # set nyquist offsets
         self._set_nyquist_offsets()
@@ -666,6 +679,7 @@ class CountPeakDetector:
         g_sigmas = []
         g_counts = []
         g_indices = []
+        g_offsets = []
         for offset in self._offsets:
             hist, edges = histogram(data, self.bin_shape, offset)
             smoothed = _convolve(hist, mask=mask)
@@ -757,6 +771,7 @@ class CountPeakDetector:
                 g_edges += iter_edges
                 g_sigmas += [np.array(self.bin_shape) for _ in range(peak_count)]
                 g_counts += iter_counts.tolist()
+                g_offsets += [offset for _ in range(peak_count)]
 
         if len(g_indices) == 0:
             return DetectionResult()
@@ -773,11 +788,103 @@ class CountPeakDetector:
         g_sigmas = np.array(g_sigmas)[g_ind]
         g_indices = np.array(g_indices)[g_ind]
         g_counts = np.array(g_counts)[g_ind]
+        g_offsets = np.array(g_offsets)[g_ind]
 
-        return DetectionResult(
+        self._last_result = DetectionResult(
             centers=g_centers,
             sigmas=g_sigmas,
             scores=g_scores,
             counts=g_counts,
             edges=g_edges,
+            offsets=g_offsets,
+            indices=g_indices,
         )
+
+        # to avoid any kind of array change issue
+        return deepcopy(self._last_result)
+
+    def plot(self, peak:int=0, x:int=0, y:int=1, mode:str="c", labels:Union[str, None]=None, cut_label_prec:int=4, center_label_prec:int=4, **kwargs):
+        if self._last_result is None:
+            raise ValueError("No result available, run detect() first")
+        if self._last_result.centers.size == 0:
+            raise ValueError("No peaks detected in last run")
+        if self._last_result.centers.shape[0] < peak:
+            raise ValueError(f"No peak with index {peak} detected in last run")
+        if mode not in ["c", "b", "e", "s"]:
+            raise ValueError("Mode must be one of 'c', 'b', 'e' or 's'")
+        
+        pindex = self._last_result.indices[peak]
+        pcenter = self._last_result.centers[peak]
+        
+        hist, edges = histogram(self._data, self.bin_shape, self._last_result.offsets[peak])
+        
+        # duplicated code, pay attention if the method is changed in detect function
+        if mode != "c":
+            smoothed = _convolve(hist, mask=self.mask)
+            if mode != "b":
+                sharp = hist - smoothed
+                if mode != "e":
+                    if self.norm_mode == "approx":
+                        std = np.sqrt(smoothed + hist + 1)
+                    elif self.norm_mode == "std":
+                        std = fast_std_filter(sharp, mask=self.mask) + 1
+                    normalized = sharp / std
+                    hist = normalized
+                else:
+                    hist = sharp
+            else:
+                hist = smoothed
+
+        dim = len(self.bin_shape)
+        dims = np.arange(dim)
+        if x not in dims or y not in dims:
+            raise ValueError(f"x and y must be in a valid dimension: {dims}")
+
+        if labels is None:
+            labels = np.array([f"var{i+1}" for i in range(dim)], dtype='object')
+
+        # flip xy order because heatmap plots yx instead of xy
+        xydims = np.flip(dims[[x, y]])
+        cutdims = np.array(list(set(dims) - set(xydims)))
+
+        # transpose the axes so xy are first
+        hist = np.transpose(hist, axes=list(xydims) + list(cutdims))
+        
+        # create a 2d cut for (x,y) with the other dims fixed
+        # on the peak value
+        cut = np.array([slice(None)] * 2 + pindex[cutdims].tolist(), dtype='object')
+        hist2D = hist[tuple(cut)]
+
+        # get the edges of the 2d cut in the xy order
+        edges2D = np.array(edges, dtype='object')[xydims]
+        
+        assert hist2D.shape[0] == edges2D[0].shape[0]-1
+
+        # get the peak indices in the 2d cut in the xy order
+        pindex2D = pindex[xydims]
+
+        # get the bin_shape for xy in the correct order
+        bin_shape = self.bin_shape.copy()[xydims]
+
+        hm = peak_slice_heatmap(hist2D=hist2D, edges=edges2D, bin_shape=bin_shape, index=pindex2D, **kwargs)
+        hm.axes.set_xlabel(labels[x])
+        hm.axes.set_ylabel(labels[y])
+
+        cut_centers = [(edges[i][pindex[i]] + self.bin_shape[i] / 2) for i in cutdims]
+        cut_string = ", ".join([f"{labels[i]}={round(pcenter[i], cut_label_prec)}±{round(self.bin_shape[i]/2, cut_label_prec)}" for i in cutdims])
+        
+        mode_string = {
+            "c": "Count histogram",
+            "b": "Background histogram",
+            "e": "Excess histogram",
+            "s": "Score histogram",
+        }.get(mode, "Count histogram")
+        
+        pcenter_string = ", ".join([f"{labels[i]}={round(pcenter[i], cut_label_prec)}" for i in dims])
+
+        hm.title.set_style('italic')
+        hm.title.set_text(
+            mode_string + " sliced at " + cut_string + "\npeak"+str(peak)+"=(" + pcenter_string+")"
+        )
+        
+        return hm
