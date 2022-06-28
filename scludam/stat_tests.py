@@ -109,7 +109,7 @@ class HopkinsTest(StatTest):
         the number of points in the data set, as it is the recommended value.
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'.
-        Can be str or sklearn.neighbours.DistanceMetric.
+        Can be str or sklearn.neighbors.DistanceMetric.
     threshold : Number, optional
         Threshold to use with the Hopkins statistic value to define if H0 is rejected,
         by default is None. If set, it is used instead of the pvalue_threshold.
@@ -262,7 +262,7 @@ class DipDistTest(StatTest):
         min(n, n_samples).
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'. Can be
-        str or sklearn.neighbours.DistanceMetric.
+        str or sklearn.neighbors.DistanceMetric.
     pvalue_threshold : float, optional
         Threshold to use with the p-value to define if H0 is rejected, by default
         is ``0.05``.

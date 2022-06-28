@@ -40,7 +40,7 @@ from scipy import ndimage
 from skimage.feature import peak_local_max
 
 from scludam.masker import RangeMasker
-from scludam.plots import heatmap2D
+from scludam.plots import _heatmap2D
 from scludam.type_utils import (
     ArrayLike,
     Numeric1DArrayLike,
@@ -72,8 +72,8 @@ def default_mask(dim: int):
     Notes
     -----
     The shape of the mask is chosen so it takes into account
-    the value of neighbouring bins but not the one of the bin over
-    which the mask is applied. That way, the mask is intended to be
+    the values of neighboring bins, but not the value of the bin over
+    which the mask is applied. The mask is intended to
     produce a good estimate of the local density of the background
     of the bin over which it is applied. This mask is used in the
     method applied by González-Alejo (2020) [1]_.
@@ -140,7 +140,7 @@ def _convolve(
 def fast_std_filter(data: NDArray, mask: ArrayLike, **kwargs):
     """Fast standard deviation filter.
 
-    To be applied over a image or histogram.
+    To be applied over an image or histogram.
 
     Parameters
     ----------
@@ -156,7 +156,7 @@ def fast_std_filter(data: NDArray, mask: ArrayLike, **kwargs):
 
     Notes
     -----
-    Is possible to pass kwargs to the ndimage.convolve function.
+    Is possible to pass kwargs to the ``scipy.ndimage.convolve`` function.
     Its default border mode is 'reflect'.
 
     """
@@ -173,9 +173,9 @@ def get_histogram_bins(
 ):
     """Get histogram bins and edges given a bin shape and data.
 
-    The methods takes into account the data max and min values
-    for each dimension and the bin shape to stablish the amount
-    of bins and the edges to be used in a histogram. Half a bin
+    The method takes into account the data max and min values
+    for each dimension and the bin shape to calculate the amount
+    of bins and the edges to be used of an histogram. Half a bin
     is added to each extremum to avoid bins edges to be exactly
     on the data extremums.
 
@@ -191,7 +191,7 @@ def get_histogram_bins(
     Returns
     -------
     (Numeric1DArray, Numeric2DArray)
-        Number of bins and edges for each dimension.
+        Number of bins and edges.
 
     """
     _, dim = data.shape
@@ -244,7 +244,7 @@ def histogram(
     Returns
     -------
     (NDArray, NDArray)
-        Histogram and edges for each dimension.
+        Histogram and edges.
 
     """
     _, dim = data.shape
@@ -288,11 +288,12 @@ def _are_indices_adjacent(a: Numeric1DArrayLike, b: Numeric1DArrayLike):
 
 @beartype
 def extend_1dmask(mask: ArrayLike, dim: int):
-    """Extend a 1D filtering mask to a ND mask.
+    """Extend a 1-dimensional filtering mask to a n-dimensional mask.
 
-    From a numeric filtering 1D mask use the outer product to
-    extend it to a n-dimensional mask. The resulting mask is
-    the combination of n-dimensions 1D masks orthogonal to
+    From a numeric filtering 1D mask, the function uses the
+    outer product to
+    extend it to a n-dimensional one. The resulting mask is
+    the combination of n 1D masks orthogonal to
     each other. The sum of the resulting mask is equal to 1.
 
     Parameters
@@ -355,7 +356,7 @@ def _get_higher_score_offset_per_peak(indices: List, scores: List):
 
 @define
 class DetectionResult:
-    """Result of a detection.
+    """Result of a detection run.
 
     Attributes
     ----------
@@ -397,7 +398,7 @@ class DetectionResult:
 class CountPeakDetector:
     """Count peak detector class.
 
-    Uses an n-dimensional histogram (or "image") to detect density
+    Uses an n-dimensional histogram (array) to detect density
     peaks in the input data.
 
     Attributes
@@ -406,38 +407,38 @@ class CountPeakDetector:
         Bin shape (in each dimension) to be used to create the histogram.
     mask: OptionalArrayLike, optional
         Mask to be used as in the filtering operations, by default uses
-        :func:~scludam.detection.default_mask with the data dimensions.
-        The mask must be of the same dimension as the data, its weights
-        must sum to 1 and it must be appropriate for smoothing.
+        :func:`~scludam.detection.default_mask` with data dimensions.
+        The mask must have same dimensions as the data and its weights
+        must sum to 1 and be appropriate for smoothing.
     nyquist_offsets : bool, optional
         If True, the Nyquist spatial sampling interval is used to shift the
-        histogram edges, by default True. It helps to avoid the peak detection
-        to miss the peaks or underestimate the bin count due to an arbitrarily
-        chosen bin edge shift. It uses :func:~scludam.detection.nyquist_offsets.
+        histogram edges, by default True. It helps to underestimating
+        the bin count due to an arbitrarily
+        chosen bin edge shift. It uses :func:`~scludam.detection.nyquist_offsets`.
     min_count: Number, optional
-        Mimimum count to be elegible for a peak, by default 5. Also used to
-        ``remove_low_density_regions`` if the option is enabled.
+        Mimimum count for a bin to be elegible as a peak, by default 5. Also used to
+        ``remove_low_density_regions`` if that option is enabled.
     remove_low_density_regions : bool, optional
-        If ``True``, low density bins are removed from the histogram, by default
+        If True, low density bins are removed from the histogram, by default
         True. It removes low density bins from the edges of the histogram,
         trimming down the region of interest and reducing the size of the
         histogram, which in turn reduces memory usage for sparse data. It uses
-        the min_count value as the threshold. It also keeps bins that are in the
-        neibourhood of a valid (dense) bin so the filtering operation can be applied
+        the ``min_count`` value as the threshold. It also keeps bins that are in the
+        neigborhood of a valid (dense) bin so the filtering operation can be applied
         to the remaining bins correctly. The neighborhood is defined by the size of
         the ``mask`` to be used for the filtering operations.
     min_dif: Number, optional
-        Minimum difference between the background and the bin count to be considered
+        Minimum difference between the background and the bin count for a bin to be
         elegible as peak, by default 10. The formula used is:
         ``elegible if histogram - background > min_dif`` where ``background`` is
         obtained by using filtering the histogram with the provided ``mask``.
     min_sigma_dif: Number, optional
         Sigma value to be used to calculate difference between the background and the
-        bin count to define if a bin is elegible as peak, by default None (deactivated).
+        bin count for a bin to be elegible as peak, by default None (deactivated).
         The formula used is:
         ``elegible if histogram - background > min_sigma_dif*std`` where ``background``
         is obtained by using filtering the histogram with the provided
-        ``mask`` and ``std``
+        ``mask``. ``std``
         represents the standard deviation in a window surrounding the bin, calculated
         according to the ``norm_mode`` parameter.
     min_score: Number, optional
@@ -445,10 +446,10 @@ class CountPeakDetector:
         calculated as the standardized difference between the bin count and the
         background:
         ``score = (histogram - background) / std`` where ``background`` is obtained by
-        using filtering the histogram with the provided ``mask`` and ``std`` is
+        using filtering the histogram with the provided ``mask``. ``std`` is
         calculated according to the ``norm_mode`` parameter.
     min_interpeak_distance: int, optional
-        Minimum distance between peaks in number of bins, by default 1.
+        Minimum number of bins between peaks, by default 1.
     norm_mode: str, optional
         Mode to be used to get the standard deviation used in the
         score calculation, by default "std". Can be one of the following:
@@ -480,31 +481,31 @@ class CountPeakDetector:
        a rectilinear grid of overlapping hypercubes separated by half the side
        length of an individual bin [2]_ [3]_ [4]_.
     #. Instead of creating one histogram including all possible offsets, which
-       can be very large when dimensionality increases, for each offset an
-       histogram is created. For each shifted histogram:
+       can be very large when dimensionality increases, an histogram is created
+       for each possible offset. Per histogram, the following steps are preformed:
 
         #.  Estimate the background density, convolving the histogram with the
             provided ``mask``, smoothing the histogram over adjacent bins inside
             a window defined by the mask size [2]_ [5]_ [6]_.
         #.  Calculate the excess of data points in each bin as the difference
             between the bin count and the background density. This is equivalent
-            to passing a high-pass filter to the histogram. The excess is considered
-            as the bin count. It should be noted that the excess count using this
-            method is usually underestimated, specially when the bin shape used
-            is not the right one.
+            to applying a high-pass filter to the histogram. It should be noted
+            that the excess count using this
+            method can be poorly estimated, specially when the bin shape used
+            is not appropriate.
         #.  Calculate the score of each bin as the normalized excess count, using
             the methods described in the ``norm_mode`` parameter.
-        #.  Use ``min_count``, ``min_sigma_dif``, ``min_dif`` and
-            ``min_interpeak_distance`` to find peaks in the n-dimensional
+        #.  Apply ``min_count``, ``min_sigma_dif``, ``min_dif`` and
+            ``min_interpeak_distance`` constraints and find peaks in the n-dimensional
             score histogram.
 
     #. Take the peaks found in each shifted histogram and merge them into a
-       a single list, taking the higher score shift for each peak. Then the list
-       is sort in descending order by score.
+       a single list, taking only the higher score shift for each peak. The list
+       is sorted in descending order by score.
 
-    The fundamental parameter of the method is ``bin_shape``, a bad choice of bin
-    shape can lead to a poor peak detection. In general, the shape must be chosen
-    considering it should be the span in each dimension of the object to be detected.
+    The fundamental parameter of the method is ``bin_shape``.
+    In general, the shape must be chosen as the span in each dimension
+    of the object to be detected.
 
     References
     ----------
@@ -607,7 +608,7 @@ class CountPeakDetector:
         Parameters
         ----------
         data : Numeric2DArray
-            Numerical data to be used to detect peaks.
+            Numerical data to be used.
 
         Returns
         -------
@@ -625,7 +626,7 @@ class CountPeakDetector:
         Warns
         -----
         UserWarning
-            If histogram has too few bins in some dimension, that causes that the
+            If histogram has too few bins in some dimension, the
             filtering operations can still be applied but prone to border effects.
 
         """
@@ -951,7 +952,7 @@ class CountPeakDetector:
         # get the bin_shape for xy in the correct order
         bin_shape = self.bin_shape.copy()[xydims]
 
-        hm = heatmap2D(
+        hm = _heatmap2D(
             hist2D=hist2D, edges=edges2D, bin_shape=bin_shape, index=pindex2D, **kwargs
         )
         hm.axes.set_xlabel(labels[x])

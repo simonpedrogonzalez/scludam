@@ -49,7 +49,7 @@ data = df[["pmra", "pmdec", "log10_parallax"]].values
 detector = CountPeakDetector(bin_shape=[0.5, 0.5, 0.05])
 result = detector.detect(data)
 
-# Custom plot of third peak scores in pdec and log10_parallax
+# Custom plot of third peak scores in pmdec and log10_parallax
 detector.plot(
     peak=2,
     x=1,

@@ -327,7 +327,18 @@ def create_heatmaps(hist, edges, bin_shape, clusters_idx):
     return ax
 
 
-def heatmap2D(hist2D: np.ndarray, edges: np.ndarray, bin_shape, index=None, annot=True, annot_prec=2, annot_threshold=.1, ticks=True, tick_prec=2, **kwargs):
+def _heatmap2D(
+    hist2D: np.ndarray,
+    edges: np.ndarray,
+    bin_shape,
+    index=None,
+    annot=True,
+    annot_prec=2,
+    annot_threshold=0.1,
+    ticks=True,
+    tick_prec=2,
+    **kwargs,
+):
     # annotations
     if annot == True:
         # create annotations as value of the histogram
@@ -338,22 +349,24 @@ def heatmap2D(hist2D: np.ndarray, edges: np.ndarray, bin_shape, index=None, anno
         for i, xy in enumerate(annot_indices):
             annot[xy[0]][xy[1]] = str(annot_values[i])
         kwargs["annot"] = annot
-        kwargs["fmt"]="s"
+        kwargs["fmt"] = "s"
         annot_kws = kwargs.get("annot_kws", {})
         fontsize = annot_kws.get("fontsize", 8)
         annot_kws["fontsize"] = fontsize
         kwargs["annot_kws"] = annot_kws
-        
+
     # labels
     # set tick labels as the value of the center of the bins, not the indices
     if ticks == True:
-        labels = [np.round(edges[i] + bin_shape[i] / 2, tick_prec)[:-1] for i in range(2)]
+        labels = [
+            np.round(edges[i] + bin_shape[i] / 2, tick_prec)[:-1] for i in range(2)
+        ]
         kwargs["yticklabels"] = labels[0]
         kwargs["xticklabels"] = labels[1]
-    
+
     if kwargs.get("cmap", None) is None:
         kwargs["cmap"] = "gist_yarg_r"
-    
+
     hm = sns.heatmap(
         hist2D,
         **kwargs,
@@ -369,58 +382,70 @@ def heatmap2D(hist2D: np.ndarray, edges: np.ndarray, bin_shape, index=None, anno
         hm.set_xticklabels(hm.get_xticklabels(), rotation=45)
     return hm
 
+
 # deprecated code sample
-def heatmap_of_detection_result_all_dimensions(self, peak:int=0, mode:str="hist", labels:str=None, x=0, y=1, **kwargs):
-        if self._last_result is None:
-            raise ValueError("No result available, run detect() first")
-        if self._last_result.centers.size == 0:
-            raise ValueError("No peaks to plot")
-        
-        hist, edges = histogram(self._data, self.bin_shape, self._last_result.offsets[peak])
-        pindex = self._last_result.indices[peak]
-        
-        from scludam.plots import heatmap
-        import seaborn as sns
-        import pandas as pd
-        import matplotlib.pyplot as plt
+def heatmap_of_detection_result_all_dimensions(
+    self, peak: int = 0, mode: str = "hist", labels: str = None, x=0, y=1, **kwargs
+):
+    if self._last_result is None:
+        raise ValueError("No result available, run detect() first")
+    if self._last_result.centers.size == 0:
+        raise ValueError("No peaks to plot")
 
-        dim = len(self.bin_shape)
-        dims = np.arange(dim)
+    hist, edges = histogram(self._data, self.bin_shape, self._last_result.offsets[peak])
+    pindex = self._last_result.indices[peak]
 
-        if labels is None:
-            labels = np.array([f"var{i+1}" for i in range(dim)], dtype='object')
+    from scludam.plots import heatmap
+    import seaborn as sns
+    import pandas as pd
+    import matplotlib.pyplot as plt
 
-        df = pd.DataFrame(self._data, columns=labels)
+    dim = len(self.bin_shape)
+    dims = np.arange(dim)
 
-        g = sns.PairGrid(df)
+    if labels is None:
+        labels = np.array([f"var{i+1}" for i in range(dim)], dtype="object")
 
-        for i in range(dim):
-            for j in range(dim):
-                if i != j and i < j:
-                    # choose the dims to plot (x,y) and the dims to keep fixed
-                    xydims = dims[[i, j]]
-                    cutdims = np.array(list(set(dims) - set(xydims)))
-                    print("ploting", xydims, cutdims)
+    df = pd.DataFrame(self._data, columns=labels)
 
-                    # create a 2d cut for (x,y) with the other dims fixed
-                    # on the peak value
-                    cut = np.array([slice(None)] * dim, dtype='object')
-                    cut[cutdims] = pindex[cutdims]
-                    hist2D = hist[tuple(cut)]
+    g = sns.PairGrid(df)
 
-                    # get the edges of the 2d cut
-                    edges2D = np.array(edges, dtype='object')[xydims]
-                    # get the peak indices in the 2d cut
-                    pindex2D = pindex[xydims]
-                    if i > j:
-                        pindex = np.flip(pindex)
-                    print("pindex2D", pindex2D)
-                    
-                    xticks = i == 0
-                    yticks = j == 0 
-                    
-                    heatmap(hist2D=hist2D, edges=edges2D, bin_shape=self.bin_shape, index=pindex2D, xticks=xticks, yticks=yticks, ax=g.axes[j, i], **kwargs)
-                else:
-                    g.axes[j,i].set_visible(False)
-        plt.show()
-        print('coso')
+    for i in range(dim):
+        for j in range(dim):
+            if i != j and i < j:
+                # choose the dims to plot (x,y) and the dims to keep fixed
+                xydims = dims[[i, j]]
+                cutdims = np.array(list(set(dims) - set(xydims)))
+                print("ploting", xydims, cutdims)
+
+                # create a 2d cut for (x,y) with the other dims fixed
+                # on the peak value
+                cut = np.array([slice(None)] * dim, dtype="object")
+                cut[cutdims] = pindex[cutdims]
+                hist2D = hist[tuple(cut)]
+
+                # get the edges of the 2d cut
+                edges2D = np.array(edges, dtype="object")[xydims]
+                # get the peak indices in the 2d cut
+                pindex2D = pindex[xydims]
+                if i > j:
+                    pindex = np.flip(pindex)
+                print("pindex2D", pindex2D)
+
+                xticks = i == 0
+                yticks = j == 0
+
+                heatmap(
+                    hist2D=hist2D,
+                    edges=edges2D,
+                    bin_shape=self.bin_shape,
+                    index=pindex2D,
+                    xticks=xticks,
+                    yticks=yticks,
+                    ax=g.axes[j, i],
+                    **kwargs,
+                )
+            else:
+                g.axes[j, i].set_visible(False)
+    plt.show()
+    print("coso")
