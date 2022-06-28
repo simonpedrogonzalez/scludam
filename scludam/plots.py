@@ -339,6 +339,43 @@ def _heatmap2D(
     tick_prec=2,
     **kwargs,
 ):
+    """Create a heatmap from a 2D histogram.
+
+    Also marks index if provided. Create
+    ticklabels from bin centers and not from
+    bin indices.
+
+    Parameters
+    ----------
+    hist2D : np.ndarray
+        Histogram.
+    edges : np.ndarray
+        Edges.
+    bin_shape : _type_
+        Bin shape of the histogram.
+    index : _type_, optional
+        Index to be marked, by default None
+    annot : bool, optional
+        Use default annotations, by default True. If true,
+        annotations are created taking into account the rest
+        of annot parameters.
+    annot_prec : int, optional
+        Annotation number precision, by default 2
+    annot_threshold : float, optional
+        Only annotate cells with values bigger than
+        annot_threshold, by default 0.1
+    ticks : bool, optional
+        Create ticklabels from the bin centers, by default True
+    tick_prec : int, optional
+        Ticklabels number precision, by default 2
+
+    Returns
+    -------
+    matplotlib.axes._subplots.AxesSubplot
+        Plot. To get the figure from the result of the function,
+        use ``fig = hist2d.get_figure()``.
+
+    """
     # annotations
     if annot == True:
         # create annotations as value of the histogram
