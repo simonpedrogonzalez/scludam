@@ -25,9 +25,10 @@ imported from ``scludam.detection``.
 
 """
 
+from copy import deepcopy
 from decimal import Decimal
 from numbers import Number
-from typing import List
+from typing import List, Union
 from warnings import warn
 
 import numpy as np
@@ -39,9 +40,7 @@ from scipy import ndimage
 from skimage.feature import peak_local_max
 
 from scludam.masker import RangeMasker
-from scludam.plots import peak_slice_heatmap
-from copy import deepcopy
-
+from scludam.plots import heatmap2D
 from scludam.type_utils import (
     ArrayLike,
     Numeric1DArrayLike,
@@ -50,6 +49,7 @@ from scludam.type_utils import (
     OptionalNumeric1DArrayLike,
     _type,
 )
+
 
 @beartype
 def default_mask(dim: int):
@@ -531,6 +531,7 @@ class CountPeakDetector:
     .. literalinclude:: ../../examples/detection/count_peak_detector.py
         :language: python
         :linenos:
+    .. image:: ../../examples/detection/count_peak_detector.png
 
     """
 
@@ -774,7 +775,8 @@ class CountPeakDetector:
                 g_offsets += [offset for _ in range(peak_count)]
 
         if len(g_indices) == 0:
-            return DetectionResult()
+            self._last_result = DetectionResult()
+            return deepcopy(self._last_result)
 
         # compare same peaks in different histogram offsets
         # and return most sifnificant peak for all offsets
@@ -803,21 +805,102 @@ class CountPeakDetector:
         # to avoid any kind of array change issue
         return deepcopy(self._last_result)
 
-    def plot(self, peak:int=0, x:int=0, y:int=1, mode:str="c", labels:Union[str, None]=None, cut_label_prec:int=4, center_label_prec:int=4, **kwargs):
+    @beartype
+    def plot(
+        self,
+        peak: int = 0,
+        x: int = 0,
+        y: int = 1,
+        mode: str = "c",
+        labels: Union[List[str], None] = None,
+        cut_label_prec: int = 4,
+        center_label_prec: int = 4,
+        **kwargs,
+    ):
+        """Create a plot of the individual peaks detected.
+
+        Creates the plot using the result of the last
+        :func:`~scludam.detection.CountPeakDetector.detect` call.
+        Returns a custom seaborn heatmap plot. Passes any kwargs
+        to the plot function. The heatmap is a two dimensional
+        histogram slice, where x and y can be set, and the rest
+        of dimensions are fixed in the peak center.
+
+        Parameters
+        ----------
+        peak : int, optional
+            Index of the peak to be plotted in the result array,
+            by default 0
+        x : int, optional
+            Index of the variable that should be placed as the
+            first dimension, by default 0
+        y : int, optional
+            Index of the variable that should be placed as the
+            second dimension, by default 1
+        mode : str, optional
+            Histogram type, by default "c". Can be one of:
+
+            #. "c": Counts histogram.
+            #. "b": Background histogram.
+            #. "e": Excess histogram.
+            #. "s": Score histogram.
+
+            The meaning of each histogram can be inferred from the
+            method explained in
+            :class:`~scludam.detection.CountPeakDetector`.
+
+        labels : Union[[List[str]], None], optional
+            List of variable names, by default None. If None,
+            then the variables are called 'var1', 'var2', and so on.
+        cut_label_prec : int, optional
+            Decimal places for the cut message in the title, by default 4.
+        center_label_prec : int, optional
+            Decimal places for the center message in the title, by default 4.
+
+        Returns
+        -------
+        matplotlib.axes._subplots.AxesSubplot
+            Plot of the peak.
+
+        Raises
+        ------
+        ValueError
+            If no results are available.
+        ValueError
+            If no peaks are detected in the last result.
+        ValueError
+            Invalid peak index.
+        ValueError
+            Invalid mode.
+        ValueError
+            Invalid x or y dimensions.
+        ValueError
+            Invalid label length.
+
+        Examples
+        --------
+        .. literalinclude:: ../../examples/detection/plot.py
+            :language: python
+            :linenos:
+        .. image:: ../../examples/detection/plot1.png
+        .. image:: ../../examples/detection/plot2.png
+        """
         if self._last_result is None:
-            raise ValueError("No result available, run detect() first")
+            raise ValueError("No result available, run detect function first.")
         if self._last_result.centers.size == 0:
-            raise ValueError("No peaks detected in last run")
-        if self._last_result.centers.shape[0] < peak:
-            raise ValueError(f"No peak with index {peak} detected in last run")
+            raise ValueError("No peaks detected in last run.")
+        if self._last_result.centers.shape[0] <= peak:
+            raise ValueError(f"No peak with index {peak} detected in last run.")
         if mode not in ["c", "b", "e", "s"]:
-            raise ValueError("Mode must be one of 'c', 'b', 'e' or 's'")
-        
+            raise ValueError("Mode must be one of 'c', 'b', 'e' or 's'.")
+
         pindex = self._last_result.indices[peak]
         pcenter = self._last_result.centers[peak]
-        
-        hist, edges = histogram(self._data, self.bin_shape, self._last_result.offsets[peak])
-        
+
+        hist, edges = histogram(
+            self._data, self.bin_shape, self._last_result.offsets[peak]
+        )
+
         # duplicated code, pay attention if the method is changed in detect function
         if mode != "c":
             smoothed = _convolve(hist, mask=self.mask)
@@ -838,10 +921,12 @@ class CountPeakDetector:
         dim = len(self.bin_shape)
         dims = np.arange(dim)
         if x not in dims or y not in dims:
-            raise ValueError(f"x and y must be in a valid dimension: {dims}")
+            raise ValueError("x and y must be valid dimensions.")
 
         if labels is None:
-            labels = np.array([f"var{i+1}" for i in range(dim)], dtype='object')
+            labels = np.array([f"var{i+1}" for i in range(dim)], dtype="object")
+        elif len(labels) != dim:
+            raise ValueError("labels must have n_dim elements.")
 
         # flip xy order because heatmap plots yx instead of xy
         xydims = np.flip(dims[[x, y]])
@@ -849,16 +934,16 @@ class CountPeakDetector:
 
         # transpose the axes so xy are first
         hist = np.transpose(hist, axes=list(xydims) + list(cutdims))
-        
+
         # create a 2d cut for (x,y) with the other dims fixed
         # on the peak value
-        cut = np.array([slice(None)] * 2 + pindex[cutdims].tolist(), dtype='object')
+        cut = np.array([slice(None)] * 2 + pindex[cutdims].tolist(), dtype="object")
         hist2D = hist[tuple(cut)]
 
         # get the edges of the 2d cut in the xy order
-        edges2D = np.array(edges, dtype='object')[xydims]
-        
-        assert hist2D.shape[0] == edges2D[0].shape[0]-1
+        edges2D = np.array(edges, dtype="object")[xydims]
+
+        assert hist2D.shape[0] == edges2D[0].shape[0] - 1
 
         # get the peak indices in the 2d cut in the xy order
         pindex2D = pindex[xydims]
@@ -866,25 +951,39 @@ class CountPeakDetector:
         # get the bin_shape for xy in the correct order
         bin_shape = self.bin_shape.copy()[xydims]
 
-        hm = peak_slice_heatmap(hist2D=hist2D, edges=edges2D, bin_shape=bin_shape, index=pindex2D, **kwargs)
+        hm = heatmap2D(
+            hist2D=hist2D, edges=edges2D, bin_shape=bin_shape, index=pindex2D, **kwargs
+        )
         hm.axes.set_xlabel(labels[x])
         hm.axes.set_ylabel(labels[y])
 
-        cut_centers = [(edges[i][pindex[i]] + self.bin_shape[i] / 2) for i in cutdims]
-        cut_string = ", ".join([f"{labels[i]}={round(pcenter[i], cut_label_prec)}±{round(self.bin_shape[i]/2, cut_label_prec)}" for i in cutdims])
-        
+        cut_values = [round(pcenter[i], cut_label_prec) for i in dims]
+        cut_edges = [round(self.bin_shape[i] / 2, cut_label_prec) for i in dims]
+        cut_string = ", ".join(
+            [f"{labels[i]}={cut_values[i]}±{cut_edges[i]}" for i in cutdims]
+        )
+
         mode_string = {
             "c": "Count histogram",
             "b": "Background histogram",
             "e": "Excess histogram",
             "s": "Score histogram",
         }.get(mode, "Count histogram")
-        
-        pcenter_string = ", ".join([f"{labels[i]}={round(pcenter[i], cut_label_prec)}" for i in dims])
 
-        hm.title.set_style('italic')
-        hm.title.set_text(
-            mode_string + " sliced at " + cut_string + "\npeak"+str(peak)+"=(" + pcenter_string+")"
+        pcenter_string = ", ".join(
+            [f"{labels[i]}={round(pcenter[i], cut_label_prec)}" for i in dims]
         )
-        
+
+        hm.title.set_style("italic")
+        hm.title.set_text(
+            mode_string
+            + " sliced at "
+            + cut_string
+            + "\npeak"
+            + str(peak)
+            + "=("
+            + pcenter_string
+            + ")"
+        )
+
         return hm

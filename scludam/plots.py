@@ -369,12 +369,6 @@ def heatmap2D(hist2D: np.ndarray, edges: np.ndarray, bin_shape, index=None, anno
         hm.set_xticklabels(hm.get_xticklabels(), rotation=45)
     return hm
 
-
-def heatmap_slice(**kwargs):
-
-
-
-
 # deprecated code sample
 def heatmap_of_detection_result_all_dimensions(self, peak:int=0, mode:str="hist", labels:str=None, x=0, y=1, **kwargs):
         if self._last_result is None:

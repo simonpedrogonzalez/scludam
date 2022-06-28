@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import seaborn as sns
 from scipy.signal.windows import gaussian as gaus_win
 from scipy.stats import multivariate_normal
 from utils import assert_eq_warn_message, squarediff
@@ -242,6 +243,32 @@ def are_same_centers(centers1, centers2, bin_shape):
     return not len(centers2) and np.all(np.array(res1))
 
 
+def det_res_has_shape(result, n, d):
+    if n == 0:
+        return np.all(
+            [
+                result.centers.size == n,
+                result.scores.size == n,
+                result.indices.size == n,
+                result.sigmas.size == n,
+                result.counts.size == n,
+                result.edges.size == n,
+                result.offsets.size == n,
+            ]
+        )
+    return np.all(
+        [
+            result.centers.shape == (n, d),
+            result.scores.shape == (n,),
+            result.indices.shape == (n, d),
+            result.sigmas.shape == (n, d),
+            result.counts.shape == (n,),
+            result.edges.shape == (n, d, 2),
+            result.offsets.shape == (n, d),
+        ]
+    )
+
+
 def test_extend_1dmask():
     win = gaus_win(10, 1)
     assert np.allclose(extend_1dmask(win, 1), win / win.sum())
@@ -377,20 +404,6 @@ def test_nyquist_offsets(bin_shape, correct):
     assert np.allclose(nyquist_offsets(bin_shape), correct)
 
 
-# # TODO? remove
-# @pytest.mark.parametrize(
-#     "index1, index2, correct",
-#     [
-#         ((0, 0, 0), (0, 0, 0), True),
-#         ((0, 0, 0), (0, 1, 0), True),
-#         ((0, 0, 0), (1, 1, 1), True),
-#         ((0, 0, 0), (0, 0, 2), False),
-#     ],
-# )
-# def test_peak_is_adjacent(index1, index2, correct):
-#     assert Peak(np.array(index1)).is_adjacent(Peak(np.array(index2))) == correct
-
-
 # TODO? remove
 @pytest.mark.parametrize(
     "index1, index2, correct",
@@ -428,48 +441,6 @@ def test_get_higher_score_offset_per_peak(indices, scores, correct):
 def test_get_higher_score_different_length():
     with pytest.raises(ValueError, match="must have the same length"):
         _get_higher_score_offset_per_peak([(0, 0, 0)], [1, 2])
-
-
-# TODO: remove
-# @pytest.mark.parametrize(
-#     "peaks, expected",
-#     [
-#         (
-#             [
-#                 Peak(np.array([0, 0]), score=3),
-#                 Peak(np.array([0, 1]), score=2),
-#                 Peak(np.array([1, 2]), score=6),
-#                 Peak(np.array([2, 2]), score=7),
-#             ],
-#             [[0, 0], [2, 2]],
-#         ),
-#         (
-#             [
-#                 Peak(np.array([0, 1]), score=3),
-#                 Peak(np.array([0, 2]), score=3),
-#             ],
-#             [[0, 1]],
-#         ),
-#         (
-#             [
-#                 Peak((0, 0, 0), score=1),
-#                 Peak((1, 1, 1), score=2),
-#                 Peak((0, 0, 2), score=3),
-#                 Peak((0, 1, 2), score=4),
-#             ],
-#             [[1, 1, 1], [0, 1, 2]],
-#         )
-#         ([], []),
-#     ],
-# )
-# def test__get_highest_score_offset_per_peak(peaks, expected):
-#     result = _get_highest_score_offset_per_peak(peaks)
-#     assert np.allclose(np.array(expected), np.array([p.index for p in result])
-#     for peak in result:
-
-#         assert peak.index.tolist() in expected
-#         expected.remove(peak.index))
-#     assert len(expected) == 0
 
 
 @pytest.mark.parametrize(
@@ -519,16 +490,6 @@ def test_count_based_outlier_removal_high_min_count():
 def test_detect_errors(data, mask, bin_shape):
     with pytest.raises(ValueError):
         CountPeakDetector(bin_shape=bin_shape, mask=mask).detect(data)
-
-
-# def test_detect_warnings():
-#     with pytest.warns(UserWarning):
-#         CountPeakDetector(bin_shape=[1, 5], mask=np.ones((3, 3)) / 9).detect(
-#             diagonal1_data()
-#         )
-
-
-# test if convolve with mask really works
 
 
 def test_low_variance_warns_too_few_bins(low_variance_in_plx_sample):
@@ -595,11 +556,7 @@ def test_multiple_clusters(three_clusters_sample):
     result = CountPeakDetector(bin_shape=[0.5, 0.5, 0.05]).detect(data)
     centers = result.centers.tolist()
     assert are_same_centers(real_centers, centers, [0.5, 0.5, 0.05])
-    assert result.centers.shape[0] == 3
-    assert result.scores.shape[0] == 3
-    assert result.edges.shape[0] == 3
-    assert result.counts.shape[0] == 3
-    assert result.sigmas.shape[0] == 3
+    assert det_res_has_shape(result, 3, 3)
     assert np.allclose(
         result.sigmas, np.repeat(np.array([0.5, 0.5, 0.05])[:, np.newaxis], 3, axis=1).T
     )
@@ -610,5 +567,76 @@ def test_no_cluster_sample_yields_no_found_peaks(no_clusters_sample):
     result = CountPeakDetector(
         bin_shape=[0.5, 0.5, 0.05], remove_low_density_regions=False
     ).detect(data)
-    assert result.centers.size == 0
-    assert result.scores.size == 0
+    assert det_res_has_shape(result, 0, 3)
+
+
+def test_max_num_peaks(three_clusters_sample):
+    data = three_clusters_sample[["pmra", "pmdec", "log10_parallax"]].values
+    result = CountPeakDetector(
+        bin_shape=[0.5, 0.5, 0.05],
+        max_num_peaks=2,
+    ).detect(data)
+    assert det_res_has_shape(result, 2, 3)
+
+
+def test_detector_plot_error_no_result_available():
+    with pytest.raises(
+        ValueError, match="No result available, run detect function first"
+    ):
+        CountPeakDetector(bin_shape=[0.5, 0.5, 0.05]).plot()
+
+
+def test_detector_plot_peak_out_of_range(one_cluster_sample):
+    data = one_cluster_sample[["pmra", "pmdec", "log10_parallax"]].values
+    with pytest.raises(ValueError, match="No peak with index 1 detected in last run."):
+        detector = CountPeakDetector(bin_shape=[0.5, 0.5, 0.05])
+        detector.detect(data)
+        detector.plot(peak=1)
+
+
+def test_detector_plot_mode_error(one_cluster_sample):
+    data = one_cluster_sample[["pmra", "pmdec", "log10_parallax"]].values
+    with pytest.raises(ValueError, match="Mode must be one of 'c', 'b', 'e' or 's'."):
+        detector = CountPeakDetector(bin_shape=[0.5, 0.5, 0.05])
+        detector.detect(data)
+        detector.plot(mode="x")
+
+
+def test_detector_plot_error_no_peak_detected(no_clusters_sample):
+    data = no_clusters_sample[["pmra", "pmdec", "log10_parallax"]].values
+    with pytest.raises(ValueError, match="No peaks detected in last run."):
+        detector = CountPeakDetector(bin_shape=[0.5, 0.5, 0.05], min_count=0)
+        detector.detect(data)
+        detector.plot()
+
+
+def test_detector_plot_error_invalid_dims(one_cluster_sample):
+    data = one_cluster_sample[["pmra", "pmdec", "log10_parallax"]].values
+    with pytest.raises(ValueError, match="x and y must be valid dimensions."):
+        detector = CountPeakDetector(bin_shape=[0.5, 0.5, 0.05])
+        detector.detect(data)
+        detector.plot(x=-1, y=-1)
+
+
+# more cases can be generated, because the function has many parameters
+# but those are the basic cases, and each comparison generates an
+# image
+@pytest.mark.parametrize(
+    "peak, x, y, mode",
+    [
+        (0, 0, 1, "c"),
+        (1, 2, 1, "b"),
+        (2, 1, 2, "s"),
+        (0, 2, 0, "e"),
+    ],
+)
+@pytest.mark.mpl_image_compare
+def test_detector_plot_images(peak, x, y, mode, three_clusters_sample):
+    sns.set(font_scale=0.5)
+    data = three_clusters_sample[["pmra", "pmdec", "log10_parallax"]].values
+    detector = CountPeakDetector(bin_shape=[0.5, 0.5, 0.05])
+    detector.detect(data)
+    fig = detector.plot(
+        peak=peak, x=x, y=y, mode=mode, annot_kws={"fontsize": 4}
+    ).get_figure()
+    return fig
