@@ -16,8 +16,6 @@
 
 """Module for helper plotting functions."""
 
-"""
-
 import os
 import sys
 from copy import deepcopy
