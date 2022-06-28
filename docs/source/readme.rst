@@ -62,6 +62,9 @@ Currently **scludam** is a work in progress. Modules and features already includ
 * 
   **synthetic**\ : classes that can be used to generate synthetic astrometric samples by specifying the distributions to use and parameter values.
 
+* 
+  **detection**\ : classes that can be used to detect the presence of a cluster in a sample.
+
 ----
 
 Requirements
