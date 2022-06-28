@@ -11,7 +11,6 @@ Submodules
    scludam.fetcher
    scludam.stat_tests
    scludam.synthetic
-   scludam.type_utils
 
 Module contents
 ---------------
