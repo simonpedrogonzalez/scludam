@@ -14,33 +14,73 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Module for helper masking functions.
-
-"""
+"""Module for helper masking functions."""
 
 from abc import abstractmethod
 from typing import Union
 
-from attrs import define
 import numpy as np
-
-from sklearn.metrics import pairwise_distances
+from attrs import define
 from scipy.spatial import ConvexHull
+from sklearn.metrics import pairwise_distances
 
 from scludam.synthetic import is_inside_circle, is_inside_sphere
 
 
 class DataMasker:
+    """Abstract class for data masking."""
+
     @abstractmethod
     def mask(self, data) -> np.ndarray:
+        """Mask data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Data to mask.
+
+        Returns
+        -------
+        np.ndarray
+            Boolean array.
+
+        """
         pass
 
 
 @define
 class RangeMasker(DataMasker):
+    """Mask data outsude a hypercube according to limits.
+
+    Attributes
+    ----------
+    limits : Union[np.ndarray, list]
+        Limits of the hypercube as
+        ``[[dim1_min, dim1_max], [dim2_min, dim2_max], ...]``.
+
+    """
+
     limits: Union[list, np.ndarray]
 
     def mask(self, data: np.ndarray):
+        """Mask the data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            data to be masked.
+
+        Returns
+        -------
+        np.ndarray
+            Mask as 1D boolean array
+
+        Raises
+        ------
+        ValueError
+            If limits do not have the correct shape.
+
+        """
         # mask data outside a hypercube according to limits
         # data and limits must be in order
         obs, dims = data.shape
@@ -60,10 +100,41 @@ class RangeMasker(DataMasker):
 
 @define
 class CenterMasker(DataMasker):
+    """Mask from data center and radius.
+
+    Only works for 2d or 3d.
+
+    Attributes
+    ----------
+    center: Union[np.ndarray, list]
+        Center of the mask.
+    radius: float
+        Radius of the mask.
+
+    """
+
     center: Union[list, np.ndarray]
     radius: Union[int, float]
 
     def mask(self, data: np.ndarray):
+        """Mask the data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            data to be masked.
+
+        Returns
+        -------
+        np.ndarray
+            Mask as 1D boolean array
+
+        Raises
+        ------
+        ValueError
+            If center has incorrect shape.
+
+        """
         # Crop data in a circle or sphere according to limits
         # takes into account first 2 or 3 dims
         obs, dims = data.shape
@@ -83,12 +154,54 @@ class CenterMasker(DataMasker):
 
 @define
 class DistanceMasker(DataMasker):
+    """Mask data according to distance from center.
+
+    Get a percentage of the observations closest or
+    furthest from  and to the center.
+
+    Attributes
+    ----------
+    center : Union[np.ndarray, list, str]
+        Center, if str, it must be "geometric", by default "geometric".
+        Geometric center is the center of the data given its ranges.
+    percentage : float
+        Percentage of observations to take, by default 10.
+    metric : str
+        Metric to use for distance calculation, by default "euclidean".
+    mode : str
+        Mode of the mask, by default "closest". Can be one of
+        "closest" or "furthest".
+
+    """
+
     center: Union[list, np.ndarray, str] = "geometric"
     percentage: Union[int, float] = 10
     metric: str = "euclidean"
     mode: str = "furthest"
 
     def mask(self, data: np.ndarray):
+        """Mask the data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Data to mask
+
+        Returns
+        -------
+        np.ndarray
+            Mask as 1D boolean array
+
+
+
+        Raises
+        ------
+        NotImplementedError
+            center kind not implemented.
+        ValueError
+            Mode is invalid
+
+        """
         if isinstance(self.center, str):
             if self.center == "geometric":
                 center = data.min(axis=0) + (data.max(axis=0) - data.min(axis=0)) / 2
@@ -111,10 +224,36 @@ class DistanceMasker(DataMasker):
 
 @define
 class CrustMasker(DataMasker):
+    """Mask data according to crust.
+
+    The crust is calculated as the convex hull of the data.
+
+    Attributes
+    ----------
+    percentage : float
+        Percentage of observations to take, by default 10.
+    mode : str
+        Mode of the calculation, by default "crust".
+        Can only be "crust".
+
+    """
+
     percentage: Union[int, float] = 10
     mode: str = "crust"
 
     def mask(self, data: np.ndarray):
+        """Mask the data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Data to mask
+        Returns
+        -------
+        np.ndarray
+            Mask as a 1D boolean array
+
+        """
         n = data.shape[0]
         n_obs = int(np.round(self.percentage / 100 * n))
         ch = ConvexHull(data)

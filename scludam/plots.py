@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Module for helper plotting functions.
+"""Module for helper plotting functions."""
 
 """
 
@@ -397,7 +397,7 @@ def _heatmap2D(
 
     """
     # annotations
-    if annot == True:
+    if annot:
         # create annotations as value of the histogram
         # but only for those bins that are above a certain threshold
         annot_indices = np.argwhere(hist2D.round(annot_prec) > annot_threshold)
@@ -414,7 +414,7 @@ def _heatmap2D(
 
     # labels
     # set tick labels as the value of the center of the bins, not the indices
-    if ticks == True:
+    if ticks:
         labels = [
             np.round(edges[i] + bin_shape[i] / 2, tick_prec)[:-1] for i in range(2)
         ]

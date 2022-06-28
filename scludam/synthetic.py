@@ -527,7 +527,7 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
         Size of the frustum in (ra, dec, parallax) polar coordinates in ICRS,
         in (degree, degree, mas).
     max_size_per_iter: int, optional
-        Maximum number of samples to be generated per iteration, by default 
+        Maximum number of samples to be generated per iteration, by default
         1e7. A bigger value can reduce the amount of time needed to
         generate the sample, but take more memory.
 
@@ -641,7 +641,10 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
 
         data = np.array([])
 
-        size_per_iter = min(int((ymax-ymin)*(xmax-xmin)*(zmax-zmin) / self._volume() * size), self.max_size_per_iter)
+        size_per_iter = min(
+            int((ymax - ymin) * (xmax - xmin) * (zmax - zmin) / self._volume() * size),
+            self.max_size_per_iter,
+        )
 
         while data.shape[0] < size:
             x = stats.uniform(loc=xmin, scale=xmax - xmin).rvs(size=size_per_iter)
