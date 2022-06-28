@@ -1,19 +1,12 @@
-import os
-import sys
 from abc import abstractmethod
 from typing import Union
 
-from attr import attrs
-
+from attrs import define
 import numpy as np
 
 from sklearn.metrics import pairwise_distances
 from scipy.spatial import ConvexHull
-from matplotlib import pyplot as plt
-import seaborn as sns
 
-
-sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
 from scludam.synthetic import is_inside_circle, is_inside_sphere
 
 
@@ -23,7 +16,7 @@ class DataMasker:
         pass
 
 
-@attrs(auto_attribs=True)
+@define
 class RangeMasker(DataMasker):
     limits: Union[list, np.ndarray]
 
@@ -45,7 +38,7 @@ class RangeMasker(DataMasker):
         return mask
 
 
-@attrs(auto_attribs=True)
+@define
 class CenterMasker(DataMasker):
     center: Union[list, np.ndarray]
     radius: Union[int, float]
@@ -68,7 +61,7 @@ class CenterMasker(DataMasker):
             return is_inside_sphere(center, radius, data[:, 0:3])
 
 
-@attrs(auto_attribs=True)
+@define
 class DistanceMasker(DataMasker):
     center: Union[list, np.ndarray, str] = "geometric"
     percentage: Union[int, float] = 10
@@ -96,7 +89,7 @@ class DistanceMasker(DataMasker):
             raise ValueError("Invalid mode")
 
 
-@attrs(auto_attribs=True)
+@define
 class CrustMasker(DataMasker):
     percentage: Union[int, float] = 10
     mode: str = "crust"
