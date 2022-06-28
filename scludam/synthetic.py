@@ -526,6 +526,10 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
     scales : Vector3
         Size of the frustum in (ra, dec, parallax) polar coordinates in ICRS,
         in (degree, degree, mas).
+    max_size_per_iter: int, optional
+        Maximum number of samples to be generated per iteration, by default 
+        1e7. A bigger value can reduce the amount of time needed to
+        generate the sample, but take more memory.
 
     Examples
     --------
@@ -539,6 +543,7 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
     locs: Vector3 = field(validator=_type(Vector3))
     scales: Vector3 = field(validator=_type(Vector3))
     dim: int = field(default=3, init=False)
+    max_size_per_iter: int = field(default=int(1e7), validator=_type(int))
 
     def _get_vertices(self):
         vertices = np.array(
@@ -635,10 +640,13 @@ class UniformFrustum(stats._multivariate.multi_rv_frozen):
         xmin, ymin, zmin = tuple(extremes.min(axis=0))
 
         data = np.array([])
+
+        size_per_iter = min(int((ymax-ymin)*(xmax-xmin)*(zmax-zmin) / self._volume() * size), self.max_size_per_iter)
+
         while data.shape[0] < size:
-            x = stats.uniform(loc=xmin, scale=xmax - xmin).rvs(size=size)
-            y = stats.uniform(loc=ymin, scale=ymax - ymin).rvs(size=size)
-            z = stats.uniform(loc=zmin, scale=zmax - zmin).rvs(size=size)
+            x = stats.uniform(loc=xmin, scale=xmax - xmin).rvs(size=size_per_iter)
+            y = stats.uniform(loc=ymin, scale=ymax - ymin).rvs(size=size_per_iter)
+            z = stats.uniform(loc=zmin, scale=zmax - zmin).rvs(size=size_per_iter)
             current_data = np.array([x, y, z]).T
             current_data = current_data[self._is_inside_shape(current_data)]
             if data.shape[0] == 0:
