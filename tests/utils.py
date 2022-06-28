@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 
@@ -15,5 +16,10 @@ def assert_eq_err_message(record, message):
     assert record.value.args[0] == message
 
 
+# pytest.wars(... match="message") is funky in some cases
 def assert_eq_warn_message(record, message):
     assert record[0].message.args[0] == message
+
+
+def squarediff(a, b):
+    return np.sum((np.asarray(a) - np.asarray(b)) ** 2)

@@ -109,7 +109,7 @@ class HopkinsTest(StatTest):
         the number of points in the data set, as it is the recommended value.
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'.
-        Can be str or sklearn.neighbours.DistanceMetric.
+        Can be str or sklearn.neighbors.DistanceMetric.
     threshold : Number, optional
         Threshold to use with the Hopkins statistic value to define if H0 is rejected,
         by default is None. If set, it is used instead of the pvalue_threshold.
@@ -262,7 +262,7 @@ class DipDistTest(StatTest):
         min(n, n_samples).
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'. Can be
-        str or sklearn.neighbours.DistanceMetric.
+        str or sklearn.neighbors.DistanceMetric.
     pvalue_threshold : float, optional
         Threshold to use with the p-value to define if H0 is rejected, by default
         is ``0.05``.
@@ -375,7 +375,7 @@ class RipleysKTest(StatTest):
         The comparison method to use to determine the rejection of H0, by default is
         "ripley". Allowed values are:
 
-        #.  "ripley": H0 rejected if ``s > ripley_factor * sqrt(area) / n`` where
+        #. "ripley": H0 rejected if ``s > ripley_factor * sqrt(area) / n`` where
 
             *   area: is the area of the 2D data set taken as a square window.
             *   n: is the number of points in the data set.
@@ -536,8 +536,8 @@ class RipleysKTest(StatTest):
             Result of the Ripleys K test.
 
 
-        Warnings
-        --------
+        Warns
+        -----
         UserWarning
             Warns if some dataset points are repeated (exactly equal). In that case,
             the RipleysKEstimator will not be able to calculate the L function,

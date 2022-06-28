@@ -52,6 +52,7 @@ setup(
             "pytest-pep8",
             "pytest-cov",
             "pytest-mock",
+            "pytest-mpl",
             "flake8",
             "black>=22.3.0",
             "isort",
