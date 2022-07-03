@@ -68,16 +68,22 @@ class SHDBSCAN:
         default=None,
         validator=validators.optional([validators.ge(0), validators.le(1)]),
     )
-
+    noise_proba_mode: str = field(
+        default="score", validator=validators.in_(["score", "outlier", "conservative"])
+    )
+    cluster_proba_mode: str = field(
+        default="soft", validator=validators.in_(["soft", "hard"])
+    )
+    outlier_scores: np.ndarray = None
     @min_cluster_size.validator
     def min_cluster_size_validator(self, attribute, value):
         if value is None:
             if self.clusterer is None:
                 raise ValueError(
-                    "either min_cluster_size or clusterer must be provided"
+                    "Either min_cluster_size or clusterer must be provided."
                 )
         elif value < 1:
-            raise ValueError("min_cluster_size must be greater than 1")
+            raise ValueError("min_cluster_size must be greater than 1.")
 
     def cluster(self, data: np.ndarray):
 
@@ -148,7 +154,6 @@ class SHDBSCAN:
 
         """
         one_hot_code = one_hot_encode(self.clusterer.labels_)
-
         # in case no noise points are found, add a column of zeros for noise
         if not np.any(self.unique_labels == -1):
             one_hot_code = np.vstack(
@@ -158,62 +163,99 @@ class SHDBSCAN:
         n, n_classes = one_hot_code.shape
         n_clusters = n_classes - 1
 
+        # get sanitized outlier scores
         outlier_scores = np.copy(self.clusterer.outlier_scores_)
-        # sanitization just in case
         outlier_scores[outlier_scores == -np.inf] = 0
         outlier_scores[outlier_scores == np.inf] = 1
 
+        # if quantile is used, set mode to "outlier" and
+        # scale the outlier scores considering that
+        # scores > quantile(scores, q) are outliers, so
+        # new score is 1 for them, and the others get
+        # rescaled with max = quantile(scores, q) and min = 0
         if self.outlier_quantile is not None:
+            # self.outlier_quantile is a float between 0 and 1
+            # self.outlier_quantile = 0 == self.outlier_quantile = None
             # use quantile to determine scale outlier score
             # if we consider outlier for score > quantile
             # then we scale de outlier score with that threshold
             # as being the defining point when p(outlier) = 1
             top = np.quantile(outlier_scores, self.outlier_quantile)
             outlier_scores[outlier_scores > top] = top
-            outlier_scores = (
-                MinMaxScaler().fit_transform(outlier_scores.reshape(-1, 1)).ravel()
-            )
+            outlier_scores /= top
+            # last line is equivalent to
+            # outlier_scores = (
+            #     MinMaxScaler().fit_transform(outlier_scores.reshape(-1, 1)).ravel()
+            # )
+            # considering that we want data in 0,1 interval and that
+            # we want to use 0 as min, instead of outlier_scores.min()
+            # as the inf limit for outlier_scores should be fixed in 0
+            # no mather the values of the outlier_scores.
+            self.noise_proba_mode = "outlier"
 
-        if self.clusterer.allow_single_cluster:
-            noise_proba = np.vstack(
-                (
-                    one_hot_code[:, 0],
-                    outlier_scores,
-                    1 - self.clusterer.probabilities_,
-                )
-            ).max(0)
-            cluster_proba = 1 - noise_proba
-        else:
+        self.outlier_scores = outlier_scores
+        noise_score_arrays = [1 - self.clusterer.probabilities_]
+
+        if self.noise_proba_mode == "outlier":
+            # take into account outlier_scores as indicative
+            # of noise
+            noise_score_arrays.append(outlier_scores)
+
+        if self.noise_proba_mode == "conservative":
+            # take into account labels
+            # so no point classified as noise can
+            # have any cluster probability
+            noise_score_arrays.append(one_hot_code[:, 0])
+
+        noise_proba = np.vstack(noise_score_arrays).max(0)
+
+        # array with the repeated sum of cluster proba to multiply
+        cluster_proba_sum = np.tile((1 - noise_proba), (n_clusters, 1)).T
+
+        if (
+            not self.clusterer.allow_single_cluster
+            and self.cluster_proba_mode == "soft"
+        ):
+            # can calculate membership vectors and soft mode selected
             membership = all_points_membership_vectors(self.clusterer)
-            noise_proba = np.vstack(
-                (
-                    1 - membership.sum(axis=1),
-                    one_hot_code[:, 0],
-                    outlier_scores,
-                    1 - self.clusterer.probabilities_,
-                )
-            ).max(0)
-
-            cluster_proba = np.zeros((n, n_clusters))
-
-            # way 1: get cl_proba from crude membership vector
-            # problem: some points have high membership for different clusters (e.g. (c1: .3, cl2: .3, cl3: .3) )
-            # those points, instead of being between clusters, are actually inside one of them
-            # and make no sense. That significantly affects how the populations are estimated in the next phases
-            """ full_cl_proba = (membership * membership.sum(axis=1, keepdims=True) / np.tile((1 - noise_proba), (self.n_classes-1, 1)).T)
-            cluster_proba[1-noise_proba > 0] = full_cl_proba[1-noise_proba > 0] """
-
-            # way 2: hard classify among clusters, so probs look like (noise: .8, cluster1: .2, cluster2: 0)
-            # problem: when a point is really .5/.5 between 2 clusters, like in the middle point, it would be considererd
-            # 1/0
-            cluster_proba = (
-                one_hot_code[:, 1:] * np.tile((1 - noise_proba), (n_clusters, 1)).T
+            # calculate membership only considering clusters, no noise
+            only_cluster_membership = np.zeros_like(membership)
+            non_zero_cluster_mem = ~np.isclose(self.clusterer.probabilities_, 0)
+            only_cluster_membership[non_zero_cluster_mem] = membership[
+                non_zero_cluster_mem
+            ] / self.clusterer.probabilities_[non_zero_cluster_mem][
+                :, np.newaxis
+            ].repeat(
+                n_clusters, axis=1
             )
+            # scale membership taking noise into account so noise + cluster = 1
+            # if noise_proba = 1 - probabilities_ (mode=score)
+            # then this is not necessary but the result is nevertheless correct.
+            cluster_proba = only_cluster_membership * cluster_proba_sum
+
+            # check for the possible errors in membership vector
+            # and fix them. This error should not happen often
+            # but can happen.
+            # This part of the code can be removed when hdbscan is fixed
+            # https://github.com/scikit-learn-contrib/hdbscan/issues/246
+            # the probability diff is absorbed by the cluster_proba
+            # because the origin of the error is in the cluster membership
+            has_error = ~np.isclose(noise_proba + cluster_proba.sum(axis=1), 1)
+            if np.any(has_error):
+                diff = 1 - (noise_proba[has_error] + cluster_proba[has_error].sum(axis=1))
+                diff_per_cluster = diff / n_clusters
+                cluster_proba[has_error] += diff_per_cluster
+        else:
+            # can't calculate membership vectors, or hard mode selected
+            # in this mode, no point can have a mixture of cluster proba
+            # so it is classifying the points as either one cluster
+            # or another.
+            cluster_proba = one_hot_code[:, 1:] * cluster_proba_sum
 
         if len(cluster_proba.shape) == 1:
             cluster_proba = np.atleast_2d(cluster_proba).T
 
-        proba = np.zeros((n, n_classes))
+        proba = np.empty((n, n_classes))
         proba[:, 0] = noise_proba
         proba[:, 1:] = cluster_proba
         assert np.allclose(proba.sum(axis=1), 1)
@@ -575,3 +617,50 @@ def test_clusterer_parameter(iris):
 
 # test_clusterer_parameter(iris())
  """
+# from sklearn.datasets import load_iris
+
+# iris= np.unique(load_iris().data, axis=0)
+
+# shdbscan = SHDBSCAN(
+#     outlier_quantile=0.1,
+#     min_cluster_size=30,
+#     min_samples=10,
+#     auto_allow_single_cluster=True,
+# ).fit(iris)
+# assert shdbscan.n_classes == 3
+# assert shdbscan.proba.shape == (iris.shape[0], 3)
+# assert shdbscan.labels.max() == 1
+# assert shdbscan.labels.min() == -1\
+#
+#np.all(shdbscan.proba[:,0] >= os)
+#     sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
+#     sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(160)
+#     sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(160)
+#     sample4 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(160)
+#     return np.concatenate((sample, sample2, sample3, sample4))
+
+
+# shdbscan = SHDBSCAN(min_cluster_size=90, auto_allow_single_cluster=True).fit(
+#     three_clusters_sample(), centers=[(0.75, 0.75), (0.25, 0.25)]
+# )
+# print("coso")
+# def one_cluster_sample():
+#     from scludam.synthetic import BivariateUniform
+#     from scipy.stats import multivariate_normal
+#     sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
+#     sample2 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(500)
+#     return np.concatenate((sample, sample2))
+# shdbscan = SHDBSCAN(min_cluster_size=500, noise_proba_mode='score', cluster_proba_mode='soft').fit(one_cluster_sample())
+# assert_shdbscan_result_ok(shdbscan, 2, one_cluster_sample.shape[0])
+
+
+
+# shdbscan = SHDBSCAN(min_cluster_size=90, outlier_quantile=.9).fit(three_clusters_sample())
+# maxos = np.quantile(shdbscan.clusterer.outlier_scores_, .9)
+# minos = 0
+# os = shdbscan.clusterer.outlier_scores_
+# os[os > maxos] = maxos
+# os = os / maxos
+# assert shdbscan.noise_proba_mode == 'outlier'
+# assert np.allclose(shdbscan.outlier_scores, os)
+# assert np.all(shdbscan.proba[:,0] >= os)
