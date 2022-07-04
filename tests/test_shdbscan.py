@@ -238,3 +238,8 @@ def test_outlier_quantile(three_clusters_sample):
     assert shdbscan.noise_proba_mode == 'outlier'
     assert np.allclose(shdbscan.outlier_scores, os)
     assert np.all(shdbscan.proba[:,0] >= os)
+
+def test_validity_index(three_clusters_sample):
+    from hdbscan.validity import validity_index
+    shdbscan = SHDBSCAN(min_cluster_size=90).fit(three_clusters_sample)
+    assert np.allclose(validity_index(three_clusters_sample, shdbscan.labels), shdbscan.validity_index())
