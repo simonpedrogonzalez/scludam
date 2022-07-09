@@ -1,82 +1,108 @@
-from scipy.stats import multivariate_normal
+# scludam, Star CLUster Detection And Membership estimation package
+# Copyright (C) 2022  Simón Pedro González
 
-import os
-import sys
-from copy import deepcopy
-from typing import Union
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-import numpy as np
-import pandas as pd
-import seaborn as sns
-from attrs import define, validators, field
-from hdbscan import HDBSCAN, all_points_membership_vectors
-from hdbscan.validity import validity_index
-from sklearn.base import ClassifierMixin, ClusterMixin, TransformerMixin
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import (
-    accuracy_score,
-    confusion_matrix,
-    normalized_mutual_info_score,
-    pairwise_distances,
-)
-import pandas as pd
-from sklearn.preprocessing import RobustScaler
-from astropy.table.table import Table
-from astropy.stats.sigma_clipping import sigma_clipped_stats
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+"""Module for clustering of numerical data based on the HDBSCAN method.
+
+This module provides a wrapper class for HDBSCAN that adds some extra functionality
+regarding:
+*  Calculation of probability like scores from the soft clustering method.
+*  Cluster selection based on geometric centers.
+*  Custom plots to visualize the results.
+
+References
+----------
+.. [1]  HDBSCAN: Hierarchical density-based spatial clustering of applications with noise.
+
+"""
 
 from itertools import permutations
+from typing import Callable, Optional, Union
 
-sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
-from scludam.plots import (
-    membership_plot,
-    membership_3d_plot,
-    probaplot,
-    uniprobaplot,
-    tsneplot,
+import numpy as np
+import seaborn as sns
+from astropy.stats.sigma_clipping import sigma_clipped_stats
+from attrs import define, field, validators
+from hdbscan import HDBSCAN, all_points_membership_vectors
+from hdbscan.validity import validity_index
+from sklearn.base import TransformerMixin
+from sklearn.metrics import pairwise_distances
+
+from scludam.type_utils import (
+    Numeric1DArray,
+    Numeric2DArray,
+    Numeric2DArrayLike,
+    OptionalNumeric2DArrayLike,
+    _type,
 )
-from scludam.plot_gauss_err import plot_kernels
-from scludam.utils import combinations, Colnames
-from scludam.synthetic import BivariateUniform
-from scludam.hkde import HKDE, PluginSelector, pair_density_plot
-from scludam.masker import RangeMasker, DistanceMasker, CrustMasker
+
+from scludam.plots import (
+    pairprobaplot,
+    scatter3dprobaplot,
+    surfprobaplot,
+    tsneprobaplot,
+)
 from scludam.utils import one_hot_encode
 
 
 @define
 class SHDBSCAN:
+    # input attrs
     clusterer: HDBSCAN = None
-    min_cluster_size: int = field(default=None)
-    allow_single_cluster: bool = False
-    auto_allow_single_cluster: bool = False
-    min_samples: int = None
-    centers: list = None
-    metric: str = "euclidean"
-    data: np.ndarray = None
-    n: int = None
-    d: int = None
-    n_classes: int = None
-    proba: np.ndarray = None
-    scaler: TransformerMixin = None  # RobustScaler()
-    centers_provided: bool = False
-    labels: np.ndarray = None
-    unique_labels: np.ndarray = None
-    clusters: bool = None
-    noise_found: bool = None
-    outlier_quantile: float = field(
+    min_cluster_size: Optional[int] = field(
+        default=None, validator=_type(Optional[int])
+    )
+    allow_single_cluster: bool = field(default=False, validator=_type(bool))
+    auto_allow_single_cluster: bool = field(default=False, validator=_type(bool))
+    min_samples: Optional[int] = field(default=None, validator=_type(Optional[int]))
+    metric: Union[str, Callable] = field(default="euclidean")
+    outlier_quantile: Optional[float] = field(
         default=None,
-        validator=validators.optional([validators.ge(0), validators.le(1)]),
+        validator=[
+            _type(Optional[float]),
+            validators.optional([validators.ge(0), validators.le(1)]),
+        ],
     )
     noise_proba_mode: str = field(
-        default="score", validator=validators.in_(["score", "outlier", "conservative"])
+        default="score",
+        validator=[_type(str), validators.in_(["score", "outlier", "conservative"])],
     )
     cluster_proba_mode: str = field(
-        default="soft", validator=validators.in_(["soft", "hard"])
+        default="soft", validator=[_type(str), validators.in_(["soft", "hard"])]
     )
-    outlier_scores: np.ndarray = None
+    scaler: Optional[TransformerMixin] = field(
+        default=None, validator=_type(Optional[TransformerMixin])
+    )  # RobustScaler()
+
+    # internal attrs
+    _data: Numeric2DArray = None
+    _centers_provided: bool = False
+    _centers: OptionalNumeric2DArrayLike = None
+    _n: int = None
+    _d: int = None
+    _unique_labels: np.ndarray = None
+
+    # output attrs
+    n_classes: int = None
+    proba: Numeric2DArray = None
+    labels: Numeric1DArray = None
+    outlier_scores: Numeric1DArray = None
+
     @min_cluster_size.validator
-    def min_cluster_size_validator(self, attribute, value):
+    def _min_cluster_size_validator(self, attribute, value):
         if value is None:
             if self.clusterer is None:
                 raise ValueError(
@@ -85,9 +111,9 @@ class SHDBSCAN:
         elif value < 1:
             raise ValueError("min_cluster_size must be greater than 1.")
 
-    def cluster(self, data: np.ndarray):
+    def _cluster(self, data: Numeric2DArray):
 
-        if self.centers is not None or self.auto_allow_single_cluster:
+        if self._centers is not None or self.auto_allow_single_cluster:
             allow_single_cluster = False
         else:
             allow_single_cluster = self.allow_single_cluster
@@ -131,16 +157,13 @@ class SHDBSCAN:
     # get the most "conservative" cluster probabilities
     # accounting for outlier scores and labeling given
     # by the clusterer
-    def get_proba(self):
+    def _get_proba(self):
 
-        """
-
-        Outlier score is an implementation of GLOSH, it catches local
-        outliers as well as just points that are far away from everything.
-        Thus a point can be "in" a cluster, and have a label, but be sufficiently far
-        from an otherwise very dense core that is is anomalous in that local region
-        of space (i.e. it is weird to have a point there when almost everything else
-        is far more tightly grouped).
+        """Outlier score is an implementation of GLOSH, it catches local outliers as
+        well as just points that are far away from everything. Thus a point can be "in"
+        a cluster, and have a label, but be sufficiently far from an otherwise very
+        dense core that is is anomalous in that local region of space (i.e. it is weird
+        to have a point there when almost everything else is far more tightly grouped).
 
         The probabilties are slightly misnamed. It is essentially a "cluster membership score"
         that is, if the point is in a cluster how relatively well tied to the cluster is it?
@@ -155,7 +178,7 @@ class SHDBSCAN:
         """
         one_hot_code = one_hot_encode(self.clusterer.labels_)
         # in case no noise points are found, add a column of zeros for noise
-        if not np.any(self.unique_labels == -1):
+        if not np.any(self._unique_labels == -1):
             one_hot_code = np.vstack(
                 (np.zeros(one_hot_code.shape[0]), one_hot_code.T)
             ).T
@@ -181,6 +204,10 @@ class SHDBSCAN:
             # then we scale de outlier score with that threshold
             # as being the defining point when p(outlier) = 1
             top = np.quantile(outlier_scores, self.outlier_quantile)
+            if top == 0:
+                raise ValueError(
+                    "outlier_quantile selected is too low, the value for it is 0."
+                )
             outlier_scores[outlier_scores > top] = top
             outlier_scores /= top
             # last line is equivalent to
@@ -242,7 +269,9 @@ class SHDBSCAN:
             # because the origin of the error is in the cluster membership
             has_error = ~np.isclose(noise_proba + cluster_proba.sum(axis=1), 1)
             if np.any(has_error):
-                diff = 1 - (noise_proba[has_error] + cluster_proba[has_error].sum(axis=1))
+                diff = 1 - (
+                    noise_proba[has_error] + cluster_proba[has_error].sum(axis=1)
+                )
                 diff_per_cluster = diff / n_clusters
                 cluster_proba[has_error] += diff_per_cluster
         else:
@@ -261,13 +290,18 @@ class SHDBSCAN:
         assert np.allclose(proba.sum(axis=1), 1)
         return proba
 
-    def center_based_cluster_selection(self, data, labels, input_centers):
+    def _center_based_cluster_selection(
+        self,
+        data: Numeric2DArray,
+        labels: Numeric1DArray,
+        input_centers: Numeric2DArrayLike,
+    ):
 
         # compares input cluster centers with obtained cluster centers
         # if input cluster centers are less than obtained, then select
         # onbtained clusters that match input centers the best
 
-        cluster_labels = self.unique_labels[self.unique_labels != -1]
+        cluster_labels = self._unique_labels[self._unique_labels != -1]
         cluster_centers = np.array(
             [
                 [
@@ -278,7 +312,7 @@ class SHDBSCAN:
                         maxiters=None,
                         sigma=1,
                     )[1]
-                    for i in range(self.d)
+                    for i in range(self._d)
                 ]
                 for label in cluster_labels
             ]
@@ -326,7 +360,7 @@ class SHDBSCAN:
         new_labels = np.copy(labels)
         new_labels[~np.isin(labels, best_solution)] = -1
 
-        posteriors = self.get_proba()
+        posteriors = self._get_proba()
 
         noise_proba = posteriors[
             :,
@@ -342,7 +376,7 @@ class SHDBSCAN:
         new_n_classes = short.shape[0] + 1
 
         # create new posteriors array
-        new_posteriors = np.zeros((self.n, new_n_classes))
+        new_posteriors = np.zeros((self._n, new_n_classes))
         new_posteriors[:, 0] = noise_proba
         new_posteriors[:, 1:] = cluster_proba
 
@@ -354,313 +388,118 @@ class SHDBSCAN:
 
         return new_labels, new_posteriors
 
-    def scale(self, data, centers):
+    def _scale(self, data: Numeric2DArray, centers: OptionalNumeric2DArrayLike):
         self.scaler.fit(data)
         data = self.scaler.transform(data)
-        if self.centers_provided:
+        if self._centers_provided:
             centers = self.scaler.transform(centers)
         return data, centers
 
-    def fit(self, data: np.ndarray, centers: np.ndarray = None):
+    def fit(self, data: Numeric2DArray, centers: OptionalNumeric2DArrayLike = None):
 
-        self.data = np.atleast_2d(np.asarray(data))
+        self._data = np.atleast_2d(np.asarray(data))
 
         if centers is not None:
-            self.centers = np.atleast_2d(np.asarray(centers))
-            if self.centers.shape[0] <= 0:
-                self.centers_provided = False
+            self._centers = np.atleast_2d(np.asarray(centers))
+            if self._centers.shape[0] <= 0:
+                self._centers_provided = False
             else:
-                if self.centers.shape[1] != self.data.shape[1]:
+                if self._centers.shape[1] != self._data.shape[1]:
                     raise ValueError(
                         "Provided centers have different number of dimensions than data"
                     )
                 else:
-                    self.centers_provided = True
+                    self._centers_provided = True
         else:
-            self.centers_provided = False
+            self._centers_provided = False
 
-        self.n, self.d = self.data.shape
+        self._n, self._d = self._data.shape
 
         if self.scaler:
-            self.data, self.centers = self.scale(self.data, self.centers)
+            self._data, self._centers = self._scale(self._data, self._centers)
 
-        self.cluster(self.data)
+        self._cluster(self._data)
 
         self.labels = self.clusterer.labels_
-        self.unique_labels = np.sort(np.unique(self.labels))
-        self.n_classes = self.unique_labels.shape[0]
+        self._unique_labels = np.sort(np.unique(self.labels))
+        self.n_classes = self._unique_labels.shape[0]
 
         # case only noise or only 1 cluster with no noise
         if self.n_classes == 1:
             self.proba = one_hot_encode(self.labels)
             return self
 
-        n_clusters = self.unique_labels[self.unique_labels != -1].shape[0]
+        n_clusters = self._unique_labels[self._unique_labels != -1].shape[0]
         # case cluster selection required
         if (
             not self.clusterer.allow_single_cluster
-            and self.centers_provided
-            and self.centers.shape[0] < n_clusters
+            and self._centers_provided
+            and self._centers.shape[0] < n_clusters
         ):
-            self.labels, self.proba = self.center_based_cluster_selection(
-                self.data, self.labels, self.centers
+            self.labels, self.proba = self._center_based_cluster_selection(
+                self._data, self.labels, self._centers
             )
         else:
-            self.proba = self.get_proba()
+            self.proba = self._get_proba()
             self.labels = np.argmax(self.proba, axis=1) - 1
 
-        self.unique_labels = np.sort(np.unique(self.labels))
-        self.n_classes = self.unique_labels.shape[0]
+        self._unique_labels = np.sort(np.unique(self.labels))
+        self.n_classes = self._unique_labels.shape[0]
 
-        if not np.any(self.unique_labels == -1):
+        if not np.any(self._unique_labels == -1):
             # noise label should always be present even if there is no noise
             # because probability column is included
-            self.unique_labels = np.array([-1] + list(self.unique_labels))
+            self._unique_labels = np.array([-1] + list(self._unique_labels))
 
         return self
 
     def validity_index(self, **kwargs):
-        return validity_index(self.data, self.labels, **kwargs)
+        return validity_index(self._data, self.labels, **kwargs)
 
-    def plot(self, **kwargs):
-        return probaplot(data=self.data, proba=self.proba, labels=self.labels, **kwargs)
+    def pairplot(self, **kwargs):
+        return pairprobaplot(
+            data=self._data, proba=self.proba, labels=self.labels, **kwargs
+        )
 
     def tsneplot(self, **kwargs):
-        return tsneplot(data=self.data, proba=self.proba, **kwargs)
-
-    def memplot(self, label=0, **kwargs):
-        return membership_plot(
-            data=self.data,
-            posteriors=self.proba[:, label + 1],
-            labels=self.labels,
-            **kwargs
+        return tsneprobaplot(
+            data=self._data, proba=self.proba, labels=self.labels, **kwargs
         )
 
-    def plot3d(self, label=0, **kwargs):
-        return membership_3d_plot(
-            self.data, self.proba[:, label + 1], self.labels + 1, **kwargs
-        )
+    def scatter3dplot(self, **kwargs):
+        return scatter3dprobaplot(self._data, self.proba, **kwargs)
 
-    def plot_out_dist(self, **kwargs):
+    def surfplot(self, **kwargs):
+        return surfprobaplot(self._data, self.proba, **kwargs)
+
+    def outlierplot(self, **kwargs):
         outlier_scores = self.clusterer.outlier_scores_[
             np.isfinite(self.clusterer.outlier_scores_)
         ]
-        ax = sns.distplot(outlier_scores, rug=True, kde_kws={"cut": 0}, **kwargs)
+        rug = kwargs.get("rug", True)
+        kwargs["rug"] = rug
+        color = kwargs.get("color", "darkcyan")
+        kwargs["color"] = color
+        kde_kws = kwargs.get("kde_kws", {})
+        cut = kde_kws.get("cut", 0)
+        kde_kws["cut"] = cut
+        kwargs["kde_kws"] = kde_kws
+        ax = sns.distplot(outlier_scores, **kwargs)
+        ax.set_xlabel("Outlier score")
+        if self.outlier_quantile is not None:
+            x = np.quantile(outlier_scores, self.outlier_quantile)
+            ax.axvline(
+                x,
+                color=color,
+                linestyle="--",
+            )
+            y = ax.get_yticks()[-1] / 2
+            ax.text(
+                x + 0.01,
+                y,
+                f"quantile: {self.outlier_quantile:.4f}\nvalue: {x:.4f}",
+                color=color,
+                verticalalignment="center",
+            )
+
         return ax
-
-
-""" 
-def iris():
-    from sklearn.datasets import load_iris
-
-    return load_iris().data
-
-
-def plot3d(data, z, c):
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    ax.scatter3D(data[:, 0], data[:, 1], z, c=c)
-    return ax
-
-
-def plot3d_s(data, z):
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    ax.plot_trisurf(
-        data[:, 0], data[:, 1], z, cmap="viridis", linewidth=0, antialiased=False
-    )
-    return ax
-
-
-def uniform_sample():
-    return BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(1000)
-
-
-def one_cluster_sample():
-    sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(900)
-    sample2 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(100)
-    return np.concatenate((sample, sample2))
-
-
-def two_clusters_sample():
-    sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(800)
-    sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(100)
-    sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(100)
-    return np.concatenate((sample, sample2, sample3))
-
-
-def test_0c():
-    # no cluster should be found
-    data = uniform_sample()
-    s = SHDBSCAN(min_cluster_size=100).fit(data)
-    s.plot()
-    plt.show()
-    print("coso")
-
-
-def test_0c_force():
-    # cluster is found because it is forced
-    data = uniform_sample()
-    s = SHDBSCAN(min_cluster_size=100, auto_allow_single_cluster=True).fit(
-        data
-    )  # or allow_single_cluster=True
-    s.plot()
-    plt.show()
-    print("coso")
-
-
-def test_1c():
-    # no cluster is found
-    data = one_cluster_sample()
-    s = SHDBSCAN(min_cluster_size=100).fit(data)
-    s.plot()
-    plt.show()
-    print("coso")
-
-
-def test_1c_force():
-    # cluster is found because it is forced
-    data = one_cluster_sample()
-    s = SHDBSCAN(
-        min_cluster_size=100, auto_allow_single_cluster=True, outlier_quantile=0.9
-    ).fit(data)
-    s.plot()
-    plt.show()
-    all_points_membership_vectors(s.clusterer)
-    print("coso")
-
-
-def test_2c():
-    # asc founds 1 cluster
-    # not asc founds 2 clusters
-    # aasc founds 2 clusters
-    data = two_clusters_sample()
-    s = SHDBSCAN(
-        min_cluster_size=100, auto_allow_single_cluster=True, outlier_quantile=0.9
-    ).fit(data)
-    validity_index(s.data, s.labels)
-    s.plot()
-    plt.show()
-    print("coso")
-
-
-def test_2c_center():
-    # finds correct cluster
-    data = two_clusters_sample()
-    s = SHDBSCAN(
-        min_cluster_size=100, auto_allow_single_cluster=True, outlier_quantile=0.9
-    ).fit(data, centers=np.array(((0.25, 0.25))))
-    s.plot()
-    plt.show()
-    print("coso")
-
-
-def test_iris():
-    data = iris()
-    s = SHDBSCAN(min_cluster_size=20, auto_allow_single_cluster=True).fit(data)
-    s.tsneplot()
-    plt.show()
-    print("coso")
-
-
-# test_iris()
-
-
-def test_no_clusters_aasc(uniform_sample):
-    shdbscan = SHDBSCAN(min_cluster_size=100, auto_allow_single_cluster=True).fit(
-        uniform_sample
-    )
-    assert shdbscan.n_classes == 2
-    assert shdbscan.proba.shape == (uniform_sample.shape[0], 2)
-
-
-# test_no_clusters_aasc(uniform_sample())
-
-
-def three_clusters_sample():
-    sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
-    sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(160)
-    sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(160)
-    sample4 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(160)
-    return np.concatenate((sample, sample2, sample3, sample4))
-
-
-def test_three_clusters_two_centers(three_clusters_sample):
-    shdbscan = SHDBSCAN(min_cluster_size=80, auto_allow_single_cluster=True).fit(
-        three_clusters_sample, centers=[(0.75, 0.75), (0.5, 0.5)]
-    )
-    assert shdbscan.n_classes == 3
-    assert shdbscan.proba.shape == (three_clusters_sample.shape[0], 3)
-    # found correct one and cluster order preserved
-    center = three_clusters_sample[shdbscan.labels == 0].mean(axis=0)
-    assert center - np.array([0.25, 0.25]) < center - np.array([0.75, 0.75])
-    center2 = three_clusters_sample[shdbscan.labels == 1].mean(axis=0)
-    assert center2 - np.array([0.75, 0.75]) < center2 - np.array([0.25, 0.25])
-
-
-# test_three_clusters_two_centers(three_clusters_sample())
-
-
-def test_clusterer_parameter(iris):
-    shdbscan = SHDBSCAN(
-        clusterer=HDBSCAN(
-            min_cluster_size=30,
-            min_samples=10,
-            allow_single_cluster=True,
-        ),
-        auto_allow_single_cluster=True,
-    ).fit(iris)
-    assert shdbscan.n_classes == 3
-    assert shdbscan.proba.shape == (iris.shape[0], 3)
-    assert shdbscan.clusterer.min_cluster_size == 30
-    assert shdbscan.clusterer.min_samples == 10
-    assert shdbscan.clusterer.allow_single_cluster == False
-
-
-# test_clusterer_parameter(iris())
- """
-# from sklearn.datasets import load_iris
-
-# iris= np.unique(load_iris().data, axis=0)
-
-# shdbscan = SHDBSCAN(
-#     outlier_quantile=0.1,
-#     min_cluster_size=30,
-#     min_samples=10,
-#     auto_allow_single_cluster=True,
-# ).fit(iris)
-# assert shdbscan.n_classes == 3
-# assert shdbscan.proba.shape == (iris.shape[0], 3)
-# assert shdbscan.labels.max() == 1
-# assert shdbscan.labels.min() == -1\
-#
-#np.all(shdbscan.proba[:,0] >= os)
-#     sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
-#     sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(160)
-#     sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(160)
-#     sample4 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(160)
-#     return np.concatenate((sample, sample2, sample3, sample4))
-
-
-# shdbscan = SHDBSCAN(min_cluster_size=90, auto_allow_single_cluster=True).fit(
-#     three_clusters_sample(), centers=[(0.75, 0.75), (0.25, 0.25)]
-# )
-# print("coso")
-# def one_cluster_sample():
-#     from scludam.synthetic import BivariateUniform
-#     from scipy.stats import multivariate_normal
-#     sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
-#     sample2 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(500)
-#     return np.concatenate((sample, sample2))
-# shdbscan = SHDBSCAN(min_cluster_size=500, noise_proba_mode='score', cluster_proba_mode='soft').fit(one_cluster_sample())
-# assert_shdbscan_result_ok(shdbscan, 2, one_cluster_sample.shape[0])
-
-
-
-# shdbscan = SHDBSCAN(min_cluster_size=90, outlier_quantile=.9).fit(three_clusters_sample())
-# maxos = np.quantile(shdbscan.clusterer.outlier_scores_, .9)
-# minos = 0
-# os = shdbscan.clusterer.outlier_scores_
-# os[os > maxos] = maxos
-# os = os / maxos
-# assert shdbscan.noise_proba_mode == 'outlier'
-# assert np.allclose(shdbscan.outlier_scores, os)
-# assert np.all(shdbscan.proba[:,0] >= os)
