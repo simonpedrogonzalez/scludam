@@ -15,9 +15,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Module for clustering of numerical data based on the HDBSCAN method.
+"""Module for clustering of numerical data based on the HDBSCAN[1]_, [2]_ method.
 
-This module provides a wrapper class for HDBSCAN that adds some extra functionality
+This module provides a wrapper class for HDBSCAN[3]_ that adds some extra functionality
 regarding:
 *  Calculation of probability like scores from the soft clustering method.
 *  Cluster selection based on geometric centers.
@@ -25,8 +25,14 @@ regarding:
 
 References
 ----------
-.. [1]  HDBSCAN: Hierarchical density-based spatial clustering of applications with noise.
-
+.. [1] McInnes, L., Healy, J., Astels, S. (2017). HDBSCAN: Hierarchical
+    density based clustering. Journal of Open Source Software, 2, 11.
+.. [2] Campello R.J.G.B., Moulavi D. y Sander J. (2013). Density-Based
+    Clustering Based on Hierarchical Density Estimates. Advances in
+    Knowledge Discovery and Data Mining, PAKDD 2013, Lecture Notes
+    in Computer Science, 7819. doi: 10.1007/978-3-642-37456-2_14
+.. [3] HDBSCAN: Hierarchical density-based spatial clustering of
+    applications with noise. https://hdbscan.readthedocs.io/en/latest/
 """
 
 from itertools import permutations
@@ -41,6 +47,12 @@ from hdbscan.validity import validity_index
 from sklearn.base import TransformerMixin
 from sklearn.metrics import pairwise_distances
 
+from scludam.plots import (
+    pairprobaplot,
+    scatter3dprobaplot,
+    surfprobaplot,
+    tsneprobaplot,
+)
 from scludam.type_utils import (
     Numeric1DArray,
     Numeric2DArray,
@@ -48,34 +60,117 @@ from scludam.type_utils import (
     OptionalNumeric2DArrayLike,
     _type,
 )
-
-from scludam.plots import (
-    pairprobaplot,
-    scatter3dprobaplot,
-    surfprobaplot,
-    tsneprobaplot,
-)
 from scludam.utils import one_hot_encode
 
 
 @define
 class SHDBSCAN:
+    """Soft Hierarchical Density-Based Spatial Clustering of Applications with Noise.
+
+    Class that wraps the HDBSCAN class to provide soft clustering
+    calculations and plots.
+
+    Attributes
+    ----------
+    min_cluster_size : Optional[int]
+        Minimum size of cluster. Argument passed to HDBSCAN[3]_, by default None.
+        It is mandatory to provide this argument if the ``clusterer`` attribute
+        is not provided.
+    allow_single_cluster : bool
+        Whether to allow single cluster or not, by default False.
+        Argument passed to HDBSCAN[3]_. In case that the data only
+        contains one cluster and noise, the hierarchical clustering
+        algorithm will not identify the cluster unless this option
+        is set to ``True``.
+    auto_allow_single_cluster : bool
+        If True, HDBSCAN will automatically toggle ``allow_single_cluster``
+        to True if no clusters are found, to return at least 1 cluster. By
+        default False.
+    min_samples : Optional[int]
+        Minimum number of samples in a cluster, by default None.
+        Argument passed to HDBSCAN[3]_
+    metric : Union[str, Callable]
+        Metric to be used in HDBSCAN[3]_, by default "euclidean".
+    noise_proba_mode : str
+        How to calculate the noise probability, by default "score".
+        Valid options are:
+
+        * "score": Use only HDBSCAN[3]_ cluster membership scores to calculate
+            noise probability, as ``score = 1 - cluster_membership_score``,
+            where ``cluster_membership_score`` is the HDBSCAN[3]_
+            ``probabilities_`` value, which indicates how tied is
+            a point to any of the clusters.
+        * "outlier": Use ``scores`` as in the "score" option, and ``outlier_scores``
+            to calculate the noise probability, as
+            ``noise_proba = max(score, outlier_score)``.
+            Outlier scores are calculated by HDBSCAN[3]_ using the GLOSH[3]_ algorithm.
+        * "conservative": Same method as the "outlier" option but does not
+            allow for any point classified as noise to
+            have a ``noise_proba`` lower than 1.
+
+    cluster_proba_mode : str
+        How to calculate the cluster probability, by default "soft".
+        Valid options are:
+
+        * "soft": Use the HDBSCAN[3]_ ``all_points_membership_vectors`` to calculate
+            cluster probability, allowing for a point to be a member of multiple
+            clusters.
+        * "hard": Does not allow for a point to be a member of multiple clusters.
+            A point can be considered noise or member of only one cluster.
+
+    outlier_quantile : Optional[float]
+        Quantile of outlier scores to be used as a threshold that defines a point
+        as outlier, classified as noise, by default None.
+        It must be a value between 0 and 1. If provided,
+        ``noise_proba_mode`` is set to "outlier".
+        It scales HDBSCAN[3]_ outlier scores so
+        any point with an outlier score higher
+        than the value of the provided quantile will
+        be considered as noise.
+
+    scaler : Optional[sklearn.base.TransformerMixin]
+        Scaler to be used to scale the data before clustering, by default None.
+
+    clusterer : Optional[hdbscan.HDBSCAN[3]_]
+        HDBSCAN clusterer to be used, by default None. Used if more control is needed
+        over the clustering algorithm. It is mandatory to provide this argument if
+        the ``min_cluster_size`` attribute is not provided.
+
+    n_classes : int
+        Number of detected classes in the data sample. Only available after the
+        :func:`~scludam.shdbscan.SHDBSCAN.fit` method is called.
+    labels : Numeric1DArray
+        Labels of the data sample. Only available after the
+        :func:`~scludam.shdbscan.SHDBSCAN.fit` method is called. Noise
+        points are labeled as -1, and the rest of the points are labeled
+        with the cluster index.
+    proba : Numeric2DArray
+        Probability of each point to belog to each class, including. Only available after the
+        :func:`~scludam.shdbscan.SHDBSCAN.fit` method is called. Array of shape
+        ``(n_samples, n_classes)``. The first column corresponds to the noise class.
+    outlier_scores : Numeric1DArray
+        Outlier scores of each point. Only available after the
+        :func:`~scludam.shdbscan.SHDBSCAN.fit` method is called.
+
+    Raises
+    ------
+    ValueError
+        If the ``min_cluster_size`` nor the ``clusterer`` attributes are provided.
+
+    References
+    ----------
+    .. [4] GLOSH
+
+    """
+
     # input attrs
-    clusterer: HDBSCAN = None
     min_cluster_size: Optional[int] = field(
         default=None, validator=_type(Optional[int])
     )
-    allow_single_cluster: bool = field(default=False, validator=_type(bool))
     auto_allow_single_cluster: bool = field(default=False, validator=_type(bool))
+    allow_single_cluster: bool = field(default=False, validator=_type(bool))
     min_samples: Optional[int] = field(default=None, validator=_type(Optional[int]))
     metric: Union[str, Callable] = field(default="euclidean")
-    outlier_quantile: Optional[float] = field(
-        default=None,
-        validator=[
-            _type(Optional[float]),
-            validators.optional([validators.ge(0), validators.le(1)]),
-        ],
-    )
     noise_proba_mode: str = field(
         default="score",
         validator=[_type(str), validators.in_(["score", "outlier", "conservative"])],
@@ -83,9 +178,19 @@ class SHDBSCAN:
     cluster_proba_mode: str = field(
         default="soft", validator=[_type(str), validators.in_(["soft", "hard"])]
     )
+    outlier_quantile: Optional[float] = field(
+        default=None,
+        validator=[
+            _type(Optional[float]),
+            validators.optional([validators.ge(0), validators.le(1)]),
+        ],
+    )
     scaler: Optional[TransformerMixin] = field(
         default=None, validator=_type(Optional[TransformerMixin])
-    )  # RobustScaler()
+    )
+    clusterer: Optional[HDBSCAN] = field(
+        default=None, validator=_type(Optional[HDBSCAN])
+    )
 
     # internal attrs
     _data: Numeric2DArray = None
@@ -396,7 +501,38 @@ class SHDBSCAN:
         return data, centers
 
     def fit(self, data: Numeric2DArray, centers: OptionalNumeric2DArrayLike = None):
+        """Fit the clusterer to the data.
 
+        It uses the provided configuration to identify clusters,
+        classify the data and provide membership probabilities. The results
+        are stored in the :class:`~scludam.shdbscan.SHDBSCAN` instance. The resulting
+        attributes are :attr:`~scludam.shdbscan.SHDBSCAN.n_classes`,
+        :attr:`~scludam.shdbscan.SHDBSCAN.labels`,
+        :attr:`~scludam.shdbscan.SHDBSCAN.proba`,
+        :attr:`~scludam.shdbscan.SHDBSCAN.outlier_scores`.
+
+        Parameters
+        ----------
+        data : Numeric2DArray
+            Data to be clustered.
+        centers : OptionalNumeric2DArrayLike, optional
+            Array of centers of clusters, by default None. If provided,
+            only the clusters with the centers more geometricaly close to the
+            provided centers will be considered. This option is useful for
+            ignoring clusters in a multiple cluster scenario.
+
+        Returns
+        -------
+        SHDBSCAN
+            Fitted instance of the :class:`~scludam.shdbscan.SHDBSCAN` class.
+
+        Raises
+        ------
+        ValueError
+            If the dimensions of the centers array do not match the dimensions
+            of the data array.
+
+        """
         self._data = np.atleast_2d(np.asarray(data))
 
         if centers is not None:
@@ -453,26 +589,158 @@ class SHDBSCAN:
 
         return self
 
+    def _is_fitted(self):
+        return (
+            self.labels is not None
+            and self.proba is not None
+            and self._data is not None
+        )
+
     def validity_index(self, **kwargs):
+        """Compute the validity index of the clustering.
+
+        Calculates HDBSCAN density validity index[3]_ for the
+        labels obtained from the clustering. ``kwargs`` are passed to
+        the HDBSCAN ``validity_index`` method.
+
+        Returns
+        -------
+        float
+            Density based cluster validity index between -1 and 1. A
+            higher value means a better clustering.
+        Numeric1DArray
+            Array of cluster validity indices for each cluster, only if
+            ``per_cluster_scores`` kwarg is set to True.
+
+        Raises
+        ------
+        Exception
+            If the clustering has not been performed yet.
+
+        References
+        ----------
+        .. [3] https://hdbscan.readthedocs.io/en/latest/api.html?highlight=validity_index#hdbscan.validity.validity_index
+
+        """
+        if not self._is_fitted():
+            raise Exception("Clusterer not fitted. Try excecuting fit function first.")
         return validity_index(self._data, self.labels, **kwargs)
 
     def pairplot(self, **kwargs):
+        """Plot the clustering results in a pairplot.
+
+         It uses the :func:`~scludam.plots.pairprobaplot`. The colors
+        of the points are based on the class labels. The sizes
+        of the points reresent the probability of belonging to
+        the most probable class.
+
+        Returns
+        -------
+        seaborn.PairGrid
+            Pairplot of the clustering results.
+
+        Raises
+        ------
+        Exception
+            If the clustering has not been performed yet.
+
+        """
+        if not self._is_fitted():
+            raise Exception("Clusterer not fitted. Try excecuting fit function first.")
         return pairprobaplot(
             data=self._data, proba=self.proba, labels=self.labels, **kwargs
         )
 
     def tsneplot(self, **kwargs):
+        """Plot the clustering results in a t-SNE plot.
+
+        It uses the :func:`~scludam.plots.tsneprobaplot` function.
+        It represents the data in a 2 dimensional space using t-SNE.
+        The colors of the points are based on the class labels.
+        The sizes of the points represent the probability of belonging
+        to the most probable class.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Plot of the clustering results.
+        Raises
+        ------
+        Exception
+            If the clustering has not been performed yet.
+
+        """
+        if not self._is_fitted():
+            raise Exception("Clusterer not fitted. Try excecuting fit function first.")
         return tsneprobaplot(
             data=self._data, proba=self.proba, labels=self.labels, **kwargs
         )
 
     def scatter3dplot(self, **kwargs):
+        """Plot the clustering results in a 3D scatter plot.
+
+        It uses the :func:`~scludam.plots.scatter3dprobaplot` function.
+        It represents the data in a 3 dimensional space using the
+        variables given by the user. The colors of the points are
+        based on the class labels. The sizes of the points represent
+        the probability of belonging to the most probable class.
+
+        Returns
+        -------
+        matplotlib.collections.PathCollection
+            Plot of the clustering results.
+        Raises
+        ------
+        Exception
+            If the clustering has not been performed yet.
+
+        """
+        if not self._is_fitted():
+            raise Exception("Clusterer not fitted. Try excecuting fit function first.")
         return scatter3dprobaplot(self._data, self.proba, **kwargs)
 
     def surfplot(self, **kwargs):
+        """Plot the clustering results in a 3D surface plot.
+
+        It uses the :func:`~scludam.plots.surfprobaplot` function.
+        The heights of the surface and colors of the points represent
+        the probability of belonging to the most probable cluster,
+        excluding the noise class. The data is represented in two
+        dimensions, given by the user.
+
+        Returns
+        -------
+        matplotlib.collections.PathCollection
+            Plot of the clustering results.
+
+        """
         return surfprobaplot(self._data, self.proba, **kwargs)
 
     def outlierplot(self, **kwargs):
+        """Plot the distribution of outlier scores.
+
+        Includes an indicator of ``outlier_quantile`` if provided.
+        It is useful for choosing an appropriate value for
+        ``outlier_quantile``. Uses seaborn displot function[4]_.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            Plot of the outlier scores distribution.
+
+        Raises
+        ------
+        Exception
+            If the clustering has not been performed yet or no
+            outlier scores were calculated.
+
+        References
+        ----------
+        .. [3] https://seaborn.pydata.org/generated/seaborn.distplot.html?highlight=distplot#seaborn.distplot
+
+        """
+        if not self._is_fitted() or not self.outlier_scores:
+            raise Exception("Clusterer not fitted or no outlier were calculated.")
         outlier_scores = self.clusterer.outlier_scores_[
             np.isfinite(self.clusterer.outlier_scores_)
         ]

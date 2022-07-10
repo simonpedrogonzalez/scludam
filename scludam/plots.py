@@ -23,9 +23,11 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.manifold import TSNE
+from scludam.type_utils import Numeric2DArray, NumericArray, ArrayLike
+from numbers import Number
 
 
-def prepare_data_to_plot(
+def _prepare_data_to_plot(
     data: Union[np.ndarray, pd.DataFrame], cols: Optional[List[str]] = None
 ):
     if isinstance(data, np.ndarray):
@@ -40,7 +42,35 @@ def prepare_data_to_plot(
     return data
 
 
-def color_from_proba(proba, palette):
+def color_from_proba(proba: Numeric2DArray, palette: str):
+    """Create color list from palette and probabilities
+
+    It desaturates the colors given the probabilities
+
+    Parameters
+    ----------
+    proba : Numeric2DArray
+        Membership probability array of shape
+        (n_points, n_classes).
+    palette : str
+        Name of seaborn palette.
+
+    Returns
+    -------
+    List
+        Color list of length n_points where
+        each point has a color according to the
+        class it belongs.
+    List
+        Desaturated color list of length n_points
+        where each point has a color according
+        to the class it belongs. The saturation
+        is higher if the probability is closer to
+        1 and lower if it is closer to 1 / n_classes.
+    List
+        Color list of length n_classes, defining
+        a color for each class.
+    """
     _, n_classes = proba.shape
     color_palette = sns.color_palette(palette, proba.shape[1])
     c = [color_palette[np.argmax(x)] for x in proba]
@@ -55,17 +85,58 @@ def color_from_proba(proba, palette):
 
 
 def scatter3dprobaplot(
-    data: Union[np.ndarray, pd.DataFrame],
-    proba,
-    cols: list = None,
-    x=0,
-    y=1,
-    z=2,
+    data: Union[Numeric2DArray, pd.DataFrame],
+    proba: Numeric2DArray,
+    cols: Optional[List[str]] = None,
+    x: int = 0,
+    y: int = 1,
+    z: int = 2,
     palette: str = "viridis",
     desaturate: bool = True,
     **kwargs,
 ):
-    data = prepare_data_to_plot(data, cols)
+    """Create a 3D probability plot.
+
+    It represents the provided data in x,
+    y and z. It passes kwargs to matplotlib scatter3D[1]_
+
+    Parameters
+    ----------
+    data : Union[Numeric2DArray, pd.DataFrame]
+        Data to be plotted.
+    proba : Numeric2DArray
+        Array of membership probabilities, of shape
+        (n_points, n_classes)
+    cols : List[str], optional
+        List of ordered column names, by default None.
+        Used if data is provided as numpy array.
+    x : int, optional
+        Index of the x variable, by default 0.
+    y : int, optional
+        Index of the y variable, by default 1.
+    z : int, optional
+        Index of the z variable, by default 2.
+    palette : str, optional
+        Seaborn palette string, by default "viridis"
+    desaturate : bool, optional
+        If True, desaturate colors according to probability,
+        by default True.
+
+    Returns
+    -------
+    matplotlib.collections.PathCollection
+        Plot of the clustering results.
+
+    Raises
+    ------
+    ValueError
+        If data has less than 3 columns.
+
+    References
+    ----------
+    .. [1]_ https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.mplot3d.axes3d.Axes3D.html?highlight=scatter3d#mpl_toolkits.mplot3d.axes3d.Axes3D.scatter3D
+    """
+    data = _prepare_data_to_plot(data, cols)
     cols = data.columns
     data = data.values
     if data.shape[1] < 3:
@@ -91,15 +162,50 @@ def scatter3dprobaplot(
 
 
 def surfprobaplot(
-    data: Union[pd.DataFrame, np.ndarray],
-    proba: np.ndarray,
-    x=0,
-    y=1,
+    data: Union[pd.DataFrame, Numeric2DArray],
+    proba: Numeric2DArray,
+    x: int = 0,
+    y: int = 1,
     palette: str = "viridis",
-    cols=None,
+    cols: Optional[List[str]] = None,
     **kwargs,
 ):
-    data = prepare_data_to_plot(data, cols)
+    """Create surface 3D probability plot.
+
+    It represents the provided data in x
+    y. It passes kwargs to matplotlib plot_trisurf[2]_.
+
+    Parameters
+    ----------
+    data : Union[pd.DataFrame, Numeric2DArray]
+        _description_
+    proba : np.ndarray
+        _description_
+    x : int, optional
+        Index of the x variable, by default 0
+    y : int, optional
+        Index of the y variable, by default 1
+    palette : str, optional
+        Seaborn palette string, by default "viridis"
+    cols : List[str], optional
+        List of ordered column names, by default None.
+
+    Returns
+    -------
+    _type_
+        _description_
+
+    Raises
+    ------
+    ValueError
+        _description_
+    ValueError
+        _description_
+    References
+    ----------
+    .. _[2] https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.mplot3d.axes3d.Axes3D.html?highlight=plot_trisurf#mpl_toolkits.mplot3d.axes3d.Axes3D.plot_trisurf
+    """
+    data = _prepare_data_to_plot(data, cols)
     cols = data.columns
     data = data.values
     if data.shape[1] < 2:
@@ -129,7 +235,7 @@ def surfprobaplot(
 
 
 def pairprobaplot(
-    data: Union[np.ndarray, pd.DataFrame],
+    data: Union[Numeric2DArray, pd.DataFrame],
     proba,
     labels,
     cols: list = None,
@@ -139,8 +245,46 @@ def pairprobaplot(
     plot_kws=None,
     **kwargs,
 ):
+    """_summary_
 
-    df = prepare_data_to_plot(data, cols)
+    _extended_summary_
+
+    Parameters
+    ----------
+    data : Union[Numeric2DArray, pd.DataFrame]
+        _description_
+    proba : _type_
+        _description_
+    labels : _type_
+        _description_
+    cols : list, optional
+        _description_, by default None
+    palette : str, optional
+        _description_, by default "viridis_r"
+    diag_kind : str, optional
+        _description_, by default "kde"
+    diag_kws : _type_, optional
+        _description_, by default None
+    plot_kws : _type_, optional
+        _description_, by default None
+
+    Returns
+    -------
+    _type_
+        _description_
+
+    Raises
+    ------
+    ValueError
+        _description_
+
+
+    References
+    ----------
+    .. [4] https://seaborn.pydata.org/generated/seaborn.pairplot.html
+    """
+
+    df = _prepare_data_to_plot(data, cols)
     df["Label"] = labels.astype(str)
     hue_order = np.sort(np.unique(labels))[::-1].astype(str).tolist()
     df["Proba"] = proba.max(axis=1)
@@ -188,11 +332,32 @@ def pairprobaplot(
 
 
 def tsneprobaplot(
-    data: Union[pd.DataFrame, np.ndarray],
+    data: Union[pd.DataFrame, Numeric2DArray],
     labels: np.ndarray,
     proba: np.ndarray,
     **kwargs,
 ):
+    """_summary_
+
+    _extended_summary_
+
+    Parameters
+    ----------
+    data : Union[pd.DataFrame, Numeric2DArray]
+        _description_
+    labels : np.ndarray
+        _description_
+    proba : np.ndarray
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    References
+    ----------
+    https://seaborn.pydata.org/generated/seaborn.scatterplot.html?highlight=scatterplot#seaborn.scatterplot
+    """
     if isinstance(data, pd.DataFrame):
         data = data.values
     projection = TSNE().fit_transform(data)
@@ -217,15 +382,15 @@ def tsneprobaplot(
 
 
 def _heatmap2D(
-    hist2D: np.ndarray,
-    edges: np.ndarray,
-    bin_shape,
-    index=None,
-    annot=True,
-    annot_prec=2,
-    annot_threshold=0.1,
-    ticks=True,
-    tick_prec=2,
+    hist2D: NumericArray,
+    edges: ArrayLike,
+    bin_shape: ArrayLike,
+    index:ArrayLike=None,
+    annot:bool=True,
+    annot_prec:int=2,
+    annot_threshold:Number=0.1,
+    ticks:bool=True,
+    tick_prec:int=2,
     **kwargs,
 ):
     """Create a heatmap from a 2D histogram.
