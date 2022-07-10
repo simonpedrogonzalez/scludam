@@ -16,6 +16,7 @@
 
 """Module for helper plotting functions."""
 
+from numbers import Number
 from typing import List, Optional, Union
 
 import matplotlib.pyplot as plt
@@ -23,12 +24,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.manifold import TSNE
-from scludam.type_utils import Numeric2DArray, NumericArray, ArrayLike
-from numbers import Number
+
+from scludam.type_utils import ArrayLike, Numeric1DArray, Numeric2DArray, NumericArray
 
 
 def _prepare_data_to_plot(
-    data: Union[np.ndarray, pd.DataFrame], cols: Optional[List[str]] = None
+    data: Union[Numeric2DArray, pd.DataFrame], cols: Optional[List[str]] = None
 ):
     if isinstance(data, np.ndarray):
         obs, dims = data.shape
@@ -43,7 +44,7 @@ def _prepare_data_to_plot(
 
 
 def color_from_proba(proba: Numeric2DArray, palette: str):
-    """Create color list from palette and probabilities
+    """Create color list from palette and probabilities.
 
     It desaturates the colors given the probabilities
 
@@ -70,6 +71,7 @@ def color_from_proba(proba: Numeric2DArray, palette: str):
     List
         Color list of length n_classes, defining
         a color for each class.
+
     """
     _, n_classes = proba.shape
     color_palette = sns.color_palette(palette, proba.shape[1])
@@ -98,7 +100,7 @@ def scatter3dprobaplot(
     """Create a 3D probability plot.
 
     It represents the provided data in x,
-    y and z. It passes kwargs to matplotlib scatter3D[1]_
+    y and z. It passes kwargs to matplotlib scatter3D [1]_
 
     Parameters
     ----------
@@ -108,7 +110,7 @@ def scatter3dprobaplot(
         Array of membership probabilities, of shape
         (n_points, n_classes)
     cols : List[str], optional
-        List of ordered column names, by default None.
+        List of ordered column names, by default ``None``.
         Used if data is provided as numpy array.
     x : int, optional
         Index of the x variable, by default 0.
@@ -119,8 +121,8 @@ def scatter3dprobaplot(
     palette : str, optional
         Seaborn palette string, by default "viridis"
     desaturate : bool, optional
-        If True, desaturate colors according to probability,
-        by default True.
+        If ``True``, desaturate colors according to probability,
+        by default ``True``.
 
     Returns
     -------
@@ -134,8 +136,9 @@ def scatter3dprobaplot(
 
     References
     ----------
-    .. [1]_ https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.mplot3d.axes3d.Axes3D.html?highlight=scatter3d#mpl_toolkits.mplot3d.axes3d.Axes3D.scatter3D
-    """
+    .. [1] https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.mplot3d.axes3d.Axes3D.html?highlight=scatter3d#mpl_toolkits.mplot3d.axes3d.Axes3D.scatter3D
+
+    """  # noqa: E501
     data = _prepare_data_to_plot(data, cols)
     cols = data.columns
     data = data.values
@@ -173,14 +176,14 @@ def surfprobaplot(
     """Create surface 3D probability plot.
 
     It represents the provided data in x
-    y. It passes kwargs to matplotlib plot_trisurf[2]_.
+    y. It passes kwargs to matplotlib plot_trisurf [2]_.
 
     Parameters
     ----------
     data : Union[pd.DataFrame, Numeric2DArray]
-        _description_
-    proba : np.ndarray
-        _description_
+        Data to be plotted.
+    proba : Numeric2DArray
+        Membership probability array.
     x : int, optional
         Index of the x variable, by default 0
     y : int, optional
@@ -188,30 +191,32 @@ def surfprobaplot(
     palette : str, optional
         Seaborn palette string, by default "viridis"
     cols : List[str], optional
-        List of ordered column names, by default None.
+        List of ordered column names, by default ``None``.
 
     Returns
     -------
-    _type_
-        _description_
+    matplotlib.collections.PathCollection
+        Plot of the clustering results.
 
     Raises
     ------
     ValueError
-        _description_
+        If data has less than 2 columns.
     ValueError
-        _description_
+        If x or y parameters are invalid.
+
     References
     ----------
-    .. _[2] https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.mplot3d.axes3d.Axes3D.html?highlight=plot_trisurf#mpl_toolkits.mplot3d.axes3d.Axes3D.plot_trisurf
-    """
+    .. [2] https://matplotlib.org/stable/api/_as_gen/mpl_toolkits.mplot3d.axes3d.Axes3D.html?highlight=plot_trisurf#mpl_toolkits.mplot3d.axes3d.Axes3D.plot_trisurf
+
+    """  # noqa: E501
     data = _prepare_data_to_plot(data, cols)
     cols = data.columns
     data = data.values
     if data.shape[1] < 2:
         raise ValueError("Data must have at least 2 columns.")
     if x == y or x >= data.shape[1] or y >= data.shape[1]:
-        raise ValueError("Invalid x and y parameters.")
+        raise ValueError("Invalid x, y parameters.")
     if proba.shape[1] == 1:
         z = proba.ravel()
     else:
@@ -236,54 +241,55 @@ def surfprobaplot(
 
 def pairprobaplot(
     data: Union[Numeric2DArray, pd.DataFrame],
-    proba,
-    labels,
-    cols: list = None,
+    proba: Numeric2DArray,
+    labels: Numeric1DArray,
+    cols: Optional[List[str]] = None,
     palette: str = "viridis_r",
-    diag_kind="kde",
-    diag_kws=None,
-    plot_kws=None,
+    diag_kind: str = "kde",
+    diag_kws: Optional[dict] = None,
+    plot_kws: Optional[dict] = None,
     **kwargs,
 ):
-    """_summary_
+    """Pairplot of the data and the membership probabilities.
 
-    _extended_summary_
+    It passes kwargs, diag_kws and plot_kws to seaborn pairplot [3]_
+    function.
 
     Parameters
     ----------
     data : Union[Numeric2DArray, pd.DataFrame]
-        _description_
-    proba : _type_
-        _description_
-    labels : _type_
-        _description_
-    cols : list, optional
-        _description_, by default None
+        Data to be plotted.
+    proba : Numeric2DArray
+        Membership probability array.
+    labels : Numeric1DArray
+        Labels of the data.
+    cols : List[str], optional
+        Column names, by default ``None``
     palette : str, optional
-        _description_, by default "viridis_r"
+        Seaborn palette, by default "viridis_r"
     diag_kind : str, optional
-        _description_, by default "kde"
-    diag_kws : _type_, optional
-        _description_, by default None
-    plot_kws : _type_, optional
-        _description_, by default None
+        Kind of plot for diagonal, by default "kde".
+        Valid values are "hist" and "kde".
+    diag_kws : dict, optional
+        Additional arguments for diagonal plots, by default ``None``
+    plot_kws : dict, optional
+        Additional arguments for off-diagonal plots, by default ``None``
 
     Returns
     -------
-    _type_
-        _description_
+    seaborn.PairGrid
+        Pairplot.
 
     Raises
     ------
     ValueError
-        _description_
-
+        Invalid diag_kind.
 
     References
     ----------
-    .. [4] https://seaborn.pydata.org/generated/seaborn.pairplot.html
-    """
+    .. [3] https://seaborn.pydata.org/generated/seaborn.pairplot.html
 
+    """
     df = _prepare_data_to_plot(data, cols)
     df["Label"] = labels.astype(str)
     hue_order = np.sort(np.unique(labels))[::-1].astype(str).tolist()
@@ -333,30 +339,32 @@ def pairprobaplot(
 
 def tsneprobaplot(
     data: Union[pd.DataFrame, Numeric2DArray],
-    labels: np.ndarray,
-    proba: np.ndarray,
+    labels: Numeric1DArray,
+    proba: Numeric2DArray,
     **kwargs,
 ):
-    """_summary_
+    """Plot of data and membership probabilities using t-SNE projection.
 
-    _extended_summary_
+    It pases kwargs to seaborn scatterplot [4]_ function.
 
     Parameters
     ----------
     data : Union[pd.DataFrame, Numeric2DArray]
-        _description_
-    labels : np.ndarray
-        _description_
-    proba : np.ndarray
-        _description_
+        Data to be plotted.
+    labels : Numeric1DArray
+        Labels of the data.
+    proba : Numeric2DArray
+        Membership probability array.
 
     Returns
     -------
-    _type_
-        _description_
+    matplotlib.axes.Axes
+        T-SNE projected plot.
+
     References
     ----------
-    https://seaborn.pydata.org/generated/seaborn.scatterplot.html?highlight=scatterplot#seaborn.scatterplot
+    .. [4] https://seaborn.pydata.org/generated/seaborn.scatterplot.html
+
     """
     if isinstance(data, pd.DataFrame):
         data = data.values
@@ -381,54 +389,57 @@ def tsneprobaplot(
     )
 
 
-def _heatmap2D(
+def heatmap2D(
     hist2D: NumericArray,
     edges: ArrayLike,
     bin_shape: ArrayLike,
-    index:ArrayLike=None,
-    annot:bool=True,
-    annot_prec:int=2,
-    annot_threshold:Number=0.1,
-    ticks:bool=True,
-    tick_prec:int=2,
+    index: ArrayLike = None,
+    annot: bool = True,
+    annot_prec: int = 2,
+    annot_threshold: Number = 0.1,
+    ticks: bool = True,
+    tick_prec: int = 2,
     **kwargs,
 ):
     """Create a heatmap from a 2D histogram.
 
     Also marks index if provided. Create
     ticklabels from bin centers and not from
-    bin indices.
+    bin indices. kwargs are passed to seaborn.heatmap [5]_.
 
     Parameters
     ----------
-    hist2D : np.ndarray
+    hist2D : NumericArray
         Histogram.
-    edges : np.ndarray
+    edges : ArrayLike
         Edges.
-    bin_shape : _type_
+    bin_shape : ArrayLike
         Bin shape of the histogram.
-    index : _type_, optional
-        Index to be marked, by default None
+    index : ArrayLike, optional
+        Index to be marked, by default ``None``
     annot : bool, optional
-        Use default annotations, by default True. If true,
+        Use default annotations, by default ``True``. If true,
         annotations are created taking into account the rest
         of annot parameters.
     annot_prec : int, optional
         Annotation number precision, by default 2
-    annot_threshold : float, optional
+    annot_threshold : Number, optional
         Only annotate cells with values bigger than
         annot_threshold, by default 0.1
     ticks : bool, optional
-        Create ticklabels from the bin centers, by default True
+        Create ticklabels from the bin centers, by default ``True``
     tick_prec : int, optional
         Ticklabels number precision, by default 2
 
     Returns
     -------
     matplotlib.axes._subplots.AxesSubplot
-        Plot. To get the figure from the result of the function,
-        use ``fig = hist2d.get_figure()``.
+        Heatmap. To get the figure from the result of the function,
+        use ``fig = heatmap2D.get_figure()``.
 
+    References
+    ----------
+    .. [5] https://seaborn.pydata.org/generated/seaborn.heatmap.html
     """
     # annotations
     if annot:
@@ -474,284 +485,334 @@ def _heatmap2D(
     return hm
 
 
-# deprecated code samples
+def heatmap_of_detection_result_all_dimensions(
+    self, peak: int = 0, mode: str = "hist", labels: str = None, x=0, y=1, **kwargs
+):
+    if self._last_result is None:
+        raise ValueError("No result available, run detect() first")
+    if self._last_result.centers.size == 0:
+        raise ValueError("No peaks to plot")
+
+    hist, edges = histogram(
+          self._data,
+          self.bin_shape,
+          self._last_result.offsets[peak])
+    pindex = self._last_result.indices[peak]
+
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    import seaborn as sns
+
+    from scludam.plots import heatmap
+
+    dim = len(self.bin_shape)
+    dims = np.arange(dim)
+
+    if labels is None:
+        labels = np.array([f"var{i+1}" for i in range(dim)], dtype="object")
+
+    df = pd.DataFrame(self._data, columns=labels)
+
+    g = sns.PairGrid(df)
+
+    for i in range(dim):
+        for j in range(dim):
+            if i != j and i < j:
+                # choose the dims to plot (x,y) and the dims to keep fixed
+                xydims = dims[[i, j]]
+                cutdims = np.array(list(set(dims) - set(xydims)))
+                print("ploting", xydims, cutdims)
+
+                # create a 2d cut for (x,y) with the other dims fixed
+                # on the peak value
+                cut = np.array([slice(None)] * dim, dtype="object")
+                cut[cutdims] = pindex[cutdims]
+                hist2D = hist[tuple(cut)]
+
+                # get the edges of the 2d cut
+                edges2D = np.array(edges, dtype="object")[xydims]
+                # get the peak indices in the 2d cut
+                pindex2D = pindex[xydims]
+                if i > j:
+                    pindex = np.flip(pindex)
+                print("pindex2D", pindex2D)
+
+                xticks = i == 0
+                yticks = j == 0
+
+                heatmap(
+                    hist2D=hist2D,
+                    edges=edges2D,
+                    bin_shape=self.bin_shape,
+                    index=pindex2D,
+                    xticks=xticks,
+                    yticks=yticks,
+                    ax=g.axes[j, i],
+                    **kwargs,
+                )
+            else:
+                g.axes[j, i].set_visible(False)
+    plt.show()
+    print("coso")
+
+def create_heatmaps(hist, edges, bin_shape, clusters_idx):
+    dim = len(hist.shape)
+    labels = [(np.round(edges[i] + bin_shape[i] / 2, 2))[:-1] for i in range(dim)]
+    if dim == 2:
+        data = hist
+        annot_idx = clusters_idx
+        annot = np.ndarray(shape=data.shape, dtype=str).tolist()
+        for i in range(annot_idx.shape[1]):
+            annot[annot_idx[0, i]][annot_idx[1, i]] = str(
+                round(data[annot_idx[0][i]][annot_idx[1][i]])
+            )
+        ax = sns.heatmap(
+            data, annot=annot, fmt="s", yticklabels=labels[0], xticklabels=labels[1]
+        )
+        hlines = np.concatenate((annot_idx[0], annot_idx[0] + 1))
+        vlines = np.concatenate((annot_idx[1], annot_idx[1] + 1))
+        ax.hlines(hlines, *ax.get_xlim(), color="w")
+        ax.vlines(vlines, *ax.get_ylim(), color="w")
+    else:
+        cuts = np.unique(clusters_idx[2])
+        ncuts = cuts.size
+        ncols = min(3, ncuts)
+        nrows = math.ceil(ncuts / ncols)
+        delete_last = nrows > ncuts / ncols
+        fig, ax = plt.subplots(ncols=ncols, nrows=nrows,
+                              figsize=(ncols * 8, nrows * 5))
+        for row in range(nrows):
+            for col in range(ncols):
+                idx = col * nrows + row
+                if idx < cuts.size:
+                    cut_idx = cuts[idx]
+                    data = hist[:, :, cut_idx]
+                    annot_idx = clusters_idx.T[
+                          (clusters_idx.T[:, 2] == cut_idx)
+                          ].T[:2]
+                    annot = np.ndarray(shape=data.shape, dtype=str).tolist()
+                    for i in range(annot_idx.shape[1]):
+                        annot[annot_idx[0, i]][annot_idx[1, i]] = str(
+                            round(data[annot_idx[0][i]][annot_idx[1][i]])
+                        )
+                    if ncuts <= 1:
+                        subplot = ax
+                    else:
+                        if nrows == 1:
+                            subplot = ax[col]
+                        else:
+                            subplot = ax[row, col]
+                    current_ax = sns.heatmap(
+                        data,
+                        annot=annot,
+                        fmt="s",
+                        yticklabels=labels[0],
+                        xticklabels=labels[1],
+                        ax=subplot,
+                    )
+                    current_ax.axes.set_xlabel("x")
+                    current_ax.axes.set_ylabel("y")
+                    # current_ax.title.set_text(
+                    #     f"z slice at value {
+                    #        round(edges[2][cut_idx]+bin_shape[2]/2, 4)
+                    #       }"
+                    # )
+                    hlines = np.concatenate((annot_idx[0], annot_idx[0] + 1))
+                    vlines = np.concatenate((annot_idx[1], annot_idx[1] + 1))
+                    current_ax.hlines(hlines, *current_ax.get_xlim(), color="w")
+                    current_ax.vlines(vlines, *current_ax.get_ylim(), color="w")
+        if delete_last:
+            ax.flat[-1].set_visible(False)
+        fig.subplots_adjust(wspace=0.1, hspace=0.3)
+        plt.tight_layout()
+    return ax
+
+def uniprobaplot_single(x, proba, statistic="median", bins=100, **kwargs):
+    result = binned_statistic(x, proba, bins=bins, statistic=statistic)
+    edges = result.bin_edges
+    span_half = (edges[1] - edges[0]) / 2
+    centers = edges[:-1] + span_half
+    ax = sns.lineplot(x=centers, y=result.statistic, **kwargs)
+    ax.fill_between(centers, result.statistic, alpha=0.5)
+    return ax
 
 
-# def heatmap_of_detection_result_all_dimensions(
-#     self, peak: int = 0, mode: str = "hist", labels: str = None, x=0, y=1, **kwargs
-# ):
-#     if self._last_result is None:
-#         raise ValueError("No result available, run detect() first")
-#     if self._last_result.centers.size == 0:
-#         raise ValueError("No peaks to plot")
+def uniprobaplot(x, proba, **kwargs):
+    ax = uniprobaplot_single(x, proba[:, 0], **kwargs)
+    if not kwargs.get("ax"):
+        kwargs["ax"] = ax
+    for i in range(proba.shape[1] - 1):
+        uniprobaplot_single(x, proba[:, i + 1], **kwargs)
+    return ax
 
-#     hist, edges = histogram(
-#           self._data,
-#           self.bin_shape,
-#           self._last_result.offsets[peak])
-#     pindex = self._last_result.indices[peak]
+def membership_plot(
+    data: Union[np.ndarray, pd.DataFrame],
+    posteriors,
+    labels=None,
+    colnames: list = None,
+    palette: str = "viridis",
+    corner=True,  # breaks colorbar
+    marker="o",
+    alpha=0.5,
+    density_intervals=4,
+    density_mode="stack",
+    size=None,
+):
 
-#     import matplotlib.pyplot as plt
-#     import pandas as pd
-#     import seaborn as sns
+    sns.set_style("darkgrid")
+    if isinstance(data, np.ndarray):
+        obs, dims = data.shape
+        data = pd.DataFrame(data)
+        if colnames is not None:
+            data.columns = colnames
+        else:
+            data.columns = [f"var {i+1}" for i in range(dims)]
 
-#     from scludam.plots import heatmap
+    if labels is None and density_intervals is not None:
+        if isinstance(density_intervals, int):
+            density_intervals = np.linspace(0, 1, density_intervals + 1)
+        labels = pd.cut(x=posteriors, bins=density_intervals, include_lowest=True)
+        ticks = np.array([interval.right for interval in labels.categories.values])
+        if density_mode == "stack":
+            # reverse order in which stacked graf will appear
+            hue_order = np.flip(labels.categories.astype(str))
+            labels = labels.astype(str)
+            if palette.endswith("_r"):
+                diag_palette = palette.strip("_r")
+            else:
+                diag_palette = palette + "_r"
+            diag_kws = {
+                "hue": labels,
+                "hue_order": hue_order,
+                "multiple": density_mode,
+                "palette": sns.color_palette(diag_palette, n_colors=len(hue_order)),
+                "linewidth": 0,
+                "cut": 0,
+            }
+        else:
+            diag_kws = {
+                "hue": labels,
+                "multiple": density_mode,
+                "palette": palette,
+                "linewidth": 0,
+                "cut": 0,
+            }
+    else:
+        ticks = np.arange(0, 1, 0.1)
+        diag_kws = {
+            "hue": labels,
+            "multiple": density_mode,
+            "palette": palette,
+            "linewidth": 0,
+            "cut": 0,
+        }
 
-#     dim = len(self.bin_shape)
-#     dims = np.arange(dim)
+    sm = plt.cm.ScalarMappable(cmap=sns.color_palette(palette, as_cmap=True))
+    sm.set_array([])
 
-#     if labels is None:
-#         labels = np.array([f"var{i+1}" for i in range(dim)], dtype="object")
+    plot_kws = {
+        "hue": posteriors,
+        "hue_norm": (0, 1),
+        "marker": marker,
+        "alpha": alpha,
+        "palette": palette,
+    }
 
-#     df = pd.DataFrame(self._data, columns=labels)
+    if size is not None:
+        plot_kws["size"] = size
 
-#     g = sns.PairGrid(df)
-
-#     for i in range(dim):
-#         for j in range(dim):
-#             if i != j and i < j:
-#                 # choose the dims to plot (x,y) and the dims to keep fixed
-#                 xydims = dims[[i, j]]
-#                 cutdims = np.array(list(set(dims) - set(xydims)))
-#                 print("ploting", xydims, cutdims)
-
-#                 # create a 2d cut for (x,y) with the other dims fixed
-#                 # on the peak value
-#                 cut = np.array([slice(None)] * dim, dtype="object")
-#                 cut[cutdims] = pindex[cutdims]
-#                 hist2D = hist[tuple(cut)]
-
-#                 # get the edges of the 2d cut
-#                 edges2D = np.array(edges, dtype="object")[xydims]
-#                 # get the peak indices in the 2d cut
-#                 pindex2D = pindex[xydims]
-#                 if i > j:
-#                     pindex = np.flip(pindex)
-#                 print("pindex2D", pindex2D)
-
-#                 xticks = i == 0
-#                 yticks = j == 0
-
-#                 heatmap(
-#                     hist2D=hist2D,
-#                     edges=edges2D,
-#                     bin_shape=self.bin_shape,
-#                     index=pindex2D,
-#                     xticks=xticks,
-#                     yticks=yticks,
-#                     ax=g.axes[j, i],
-#                     **kwargs,
-#                 )
-#             else:
-#                 g.axes[j, i].set_visible(False)
-#     plt.show()
-#     print("coso")
-
-# def create_heatmaps(hist, edges, bin_shape, clusters_idx):
-#     dim = len(hist.shape)
-#     labels = [(np.round(edges[i] + bin_shape[i] / 2, 2))[:-1] for i in range(dim)]
-#     if dim == 2:
-#         data = hist
-#         annot_idx = clusters_idx
-#         annot = np.ndarray(shape=data.shape, dtype=str).tolist()
-#         for i in range(annot_idx.shape[1]):
-#             annot[annot_idx[0, i]][annot_idx[1, i]] = str(
-#                 round(data[annot_idx[0][i]][annot_idx[1][i]])
-#             )
-#         ax = sns.heatmap(
-#             data, annot=annot, fmt="s", yticklabels=labels[0], xticklabels=labels[1]
-#         )
-#         hlines = np.concatenate((annot_idx[0], annot_idx[0] + 1))
-#         vlines = np.concatenate((annot_idx[1], annot_idx[1] + 1))
-#         ax.hlines(hlines, *ax.get_xlim(), color="w")
-#         ax.vlines(vlines, *ax.get_ylim(), color="w")
-#     else:
-#         cuts = np.unique(clusters_idx[2])
-#         ncuts = cuts.size
-#         ncols = min(3, ncuts)
-#         nrows = math.ceil(ncuts / ncols)
-#         delete_last = nrows > ncuts / ncols
-#         fig, ax = plt.subplots(ncols=ncols, nrows=nrows,
-#                               figsize=(ncols * 8, nrows * 5))
-#         for row in range(nrows):
-#             for col in range(ncols):
-#                 idx = col * nrows + row
-#                 if idx < cuts.size:
-#                     cut_idx = cuts[idx]
-#                     data = hist[:, :, cut_idx]
-#                     annot_idx = clusters_idx.T[
-#                           (clusters_idx.T[:, 2] == cut_idx)
-#                           ].T[:2]
-#                     annot = np.ndarray(shape=data.shape, dtype=str).tolist()
-#                     for i in range(annot_idx.shape[1]):
-#                         annot[annot_idx[0, i]][annot_idx[1, i]] = str(
-#                             round(data[annot_idx[0][i]][annot_idx[1][i]])
-#                         )
-#                     if ncuts <= 1:
-#                         subplot = ax
-#                     else:
-#                         if nrows == 1:
-#                             subplot = ax[col]
-#                         else:
-#                             subplot = ax[row, col]
-#                     current_ax = sns.heatmap(
-#                         data,
-#                         annot=annot,
-#                         fmt="s",
-#                         yticklabels=labels[0],
-#                         xticklabels=labels[1],
-#                         ax=subplot,
-#                     )
-#                     current_ax.axes.set_xlabel("x")
-#                     current_ax.axes.set_ylabel("y")
-#                     current_ax.title.set_text(
-#                         f"z slice at value {
-#                            round(edges[2][cut_idx]+bin_shape[2]/2, 4)
-#                           }"
-#                     )
-#                     hlines = np.concatenate((annot_idx[0], annot_idx[0] + 1))
-#                     vlines = np.concatenate((annot_idx[1], annot_idx[1] + 1))
-#                     current_ax.hlines(hlines, *current_ax.get_xlim(), color="w")
-#                     current_ax.vlines(vlines, *current_ax.get_ylim(), color="w")
-#         if delete_last:
-#             ax.flat[-1].set_visible(False)
-#         fig.subplots_adjust(wspace=0.1, hspace=0.3)
-#         plt.tight_layout()
-#     return ax
-
-# is it useful?
-# def uniprobaplot_single(x, proba, statistic="median", bins=100, **kwargs):
-#     result = binned_statistic(x, proba, bins=bins, statistic=statistic)
-#     edges = result.bin_edges
-#     span_half = (edges[1] - edges[0]) / 2
-#     centers = edges[:-1] + span_half
-#     ax = sns.lineplot(x=centers, y=result.statistic, **kwargs)
-#     ax.fill_between(centers, result.statistic, alpha=0.5)
-#     return ax
+    grid = sns.pairplot(
+        data,
+        plot_kws=plot_kws,
+        diag_kind="kde",
+        diag_kws=diag_kws,
+    )
+    plt.colorbar(sm, ax=grid.axes, ticks=ticks)
+    # its done this way to avoid map_lower error when having
+    # different hues for diag and non diag elements
+    if corner:
+        for i in np.vstack(np.triu_indices(data.shape[1])).T:
+            grid.axes[i[0], i[1]].set_visible(False)
+    return grid
 
 
-# def uniprobaplot(x, proba, **kwargs):
-#     ax = uniprobaplot_single(x, proba[:, 0], **kwargs)
-#     if not kwargs.get("ax"):
-#         kwargs["ax"] = ax
-#     for i in range(proba.shape[1] - 1):
-#         uniprobaplot_single(x, proba[:, i + 1], **kwargs)
-#     return ax
+def membership_3d_plot(
+    data: Union[np.ndarray, pd.DataFrame],
+    posteriors,
+    colnames: list = None,
+    var_index=(1, 2, 3),
+    palette: str = "viridis",
+    alpha=0.5,
+    marker="o",
+    marker_size=40,
+):
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    cmap = ListedColormap(sns.color_palette(palette, 256).as_hex())
+    if len(var_index) != 3:
+        raise ValueError()
+    var_index = np.array(var_index) - 1
+    ax.scatter3D(
+        data[:, var_index[0]],
+        data[:, var_index[1]],
+        data[:, var_index[2]],
+        s=marker_size,
+        marker=marker,
+        cmap=cmap,
+        c=posteriors,
+        alpha=alpha,
+    )
+    return fig, ax
 
-# def membership_plot(
-#     data: Union[np.ndarray, pd.DataFrame],
-#     posteriors,
-#     labels=None,
-#     colnames: list = None,
-#     palette: str = "viridis",
-#     corner=True,  # breaks colorbar
-#     marker="o",
-#     alpha=0.5,
-#     density_intervals=4,
-#     density_mode="stack",
-#     size=None,
-# ):
+def plot3d_s(data, z):
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    ax.plot_trisurf(
+        data[:, 0], data[:, 1], z, cmap="viridis", linewidth=0, antialiased=False
+    )
+    return ax
 
-#     sns.set_style("darkgrid")
-#     if isinstance(data, np.ndarray):
-#         obs, dims = data.shape
-#         data = pd.DataFrame(data)
-#         if colnames is not None:
-#             data.columns = colnames
-#         else:
-#             data.columns = [f"var {i+1}" for i in range(dims)]
+def probaplot(
+    data: Union[np.ndarray, pd.DataFrame],
+    proba,
+    labels=None,
+    colnames: list = None,
+    palette: str = "viridis",
+    corner=True,
+    marker="o",
+    multiple="layer",
+    diag_kind="kde",
+    size=None,
+    alpha=1,
+):
 
-#     if labels is None and density_intervals is not None:
-#         if isinstance(density_intervals, int):
-#             density_intervals = np.linspace(0, 1, density_intervals + 1)
-#         labels = pd.cut(x=posteriors, bins=density_intervals, include_lowest=True)
-#         ticks = np.array([interval.right for interval in labels.categories.values])
-#         if density_mode == "stack":
-#             # reverse order in which stacked graf will appear
-#             hue_order = np.flip(labels.categories.astype(str))
-#             labels = labels.astype(str)
-#             if palette.endswith("_r"):
-#                 diag_palette = palette.strip("_r")
-#             else:
-#                 diag_palette = palette + "_r"
-#             diag_kws = {
-#                 "hue": labels,
-#                 "hue_order": hue_order,
-#                 "multiple": density_mode,
-#                 "palette": sns.color_palette(diag_palette, n_colors=len(hue_order)),
-#                 "linewidth": 0,
-#                 "cut": 0,
-#             }
-#         else:
-#             diag_kws = {
-#                 "hue": labels,
-#                 "multiple": density_mode,
-#                 "palette": palette,
-#                 "linewidth": 0,
-#                 "cut": 0,
-#             }
-#     else:
-#         ticks = np.arange(0, 1, 0.1)
-#         diag_kws = {
-#             "hue": labels,
-#             "multiple": density_mode,
-#             "palette": palette,
-#             "linewidth": 0,
-#             "cut": 0,
-#         }
+    sns.set_style("darkgrid")
+    if isinstance(data, np.ndarray):
+        obs, dims = data.shape
+        data = pd.DataFrame(data)
+        if colnames is not None:
+            data.columns = colnames
+        else:
+            data.columns = [f"var {i+1}" for i in range(dims)]
 
-#     sm = plt.cm.ScalarMappable(cmap=sns.color_palette(palette, as_cmap=True))
-#     sm.set_array([])
+    c, proba_c, color_palette = color_from_proba(proba, palette)
 
-#     plot_kws = {
-#         "hue": posteriors,
-#         "hue_norm": (0, 1),
-#         "marker": marker,
-#         "alpha": alpha,
-#         "palette": palette,
-#     }
+    diag_kws = {"hue": labels, "multiple": multiple, "palette": color_palette}
 
-#     if size is not None:
-#         plot_kws["size"] = size
+    plot_kws = {"marker": marker, "c": proba_c, "alpha": alpha}
 
-#     grid = sns.pairplot(
-#         data,
-#         plot_kws=plot_kws,
-#         diag_kind="kde",
-#         diag_kws=diag_kws,
-#     )
-#     plt.colorbar(sm, ax=grid.axes, ticks=ticks)
-#     # its done this way to avoid map_lower error when having
-#     # different hues for diag and non diag elements
-#     if corner:
-#         for i in np.vstack(np.triu_indices(data.shape[1])).T:
-#             grid.axes[i[0], i[1]].set_visible(False)
-#     return grid
+    if size is not None:
+        plot_kws["size"] = size
 
+    grid = sns.pairplot(
+        data,
+        plot_kws=plot_kws,
+        diag_kind=diag_kind,
+        diag_kws=diag_kws,
+    )
 
-# def membership_3d_plot(
-#     data: Union[np.ndarray, pd.DataFrame],
-#     posteriors,
-#     colnames: list = None,
-#     var_index=(1, 2, 3),
-#     palette: str = "viridis",
-#     alpha=0.5,
-#     marker="o",
-#     marker_size=40,
-# ):
-#     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-#     cmap = ListedColormap(sns.color_palette(palette, 256).as_hex())
-#     if len(var_index) != 3:
-#         raise ValueError()
-#     var_index = np.array(var_index) - 1
-#     ax.scatter3D(
-#         data[:, var_index[0]],
-#         data[:, var_index[1]],
-#         data[:, var_index[2]],
-#         s=marker_size,
-#         marker=marker,
-#         cmap=cmap,
-#         c=posteriors,
-#         alpha=alpha,
-#     )
-#     return fig, ax
+    # its done this way to avoid map_lower error when
+    # having different hues for diag and non diag elements
+    if corner:
+        for i in np.vstack(np.triu_indices(data.shape[1])).T:
+            grid.axes[i[0], i[1]].set_visible(False)
+
+    return grid

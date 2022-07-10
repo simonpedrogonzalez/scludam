@@ -1,5 +1,5 @@
-fetcher module
-==============
+scludam.fetcher module
+======================
 
 .. automodule:: scludam.fetcher
    :members:

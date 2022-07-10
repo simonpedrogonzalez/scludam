@@ -40,7 +40,7 @@ from scipy import ndimage
 from skimage.feature import peak_local_max
 
 from scludam.masker import RangeMasker
-from scludam.plots import _heatmap2D
+from scludam.plots import heatmap2D
 from scludam.type_utils import (
     ArrayLike,
     Numeric1DArrayLike,
@@ -186,7 +186,7 @@ def get_histogram_bins(
     bin_shape : Numeric1DArrayLike
         Bin shape (each dimension) to be used.
     offsets : OptionalNumeric1DArrayLike, optional
-        Offsets to be added to the edges, by default None
+        Offsets to be added to the edges, by default ``None``
 
     Returns
     -------
@@ -239,7 +239,7 @@ def histogram(
     bin_shape : Numeric1DArrayLike
         Bin shape (in each dimension) to be used.
     offsets : OptionalNumeric1DArrayLike, optional
-        Offsets to shift the edges of the histogram, by default None
+        Offsets to shift the edges of the histogram, by default ``None``
 
     Returns
     -------
@@ -411,15 +411,15 @@ class CountPeakDetector:
         The mask must have same dimensions as the data and its weights
         must sum to 1 and be appropriate for smoothing.
     nyquist_offsets : bool, optional
-        If True, the Nyquist spatial sampling interval is used to shift the
-        histogram edges, by default True. It helps to underestimating
+        If ``True``, the Nyquist spatial sampling interval is used to shift the
+        histogram edges, by default ``True``. It helps to underestimating
         the bin count due to an arbitrarily
         chosen bin edge shift. It uses :func:`~scludam.detection.nyquist_offsets`.
     min_count: Number, optional
         Mimimum count for a bin to be elegible as a peak, by default 5. Also used to
         ``remove_low_density_regions`` if that option is enabled.
     remove_low_density_regions : bool, optional
-        If True, low density bins are removed from the histogram, by default
+        If ``True``, low density bins are removed from the histogram, by default
         True. It removes low density bins from the edges of the histogram,
         trimming down the region of interest and reducing the size of the
         histogram, which in turn reduces memory usage for sparse data. It uses
@@ -434,7 +434,7 @@ class CountPeakDetector:
         obtained by using filtering the histogram with the provided ``mask``.
     min_sigma_dif: Number, optional
         Sigma value to be used to calculate difference between the background and the
-        bin count for a bin to be elegible as peak, by default None (deactivated).
+        bin count for a bin to be elegible as peak, by default ``None`` (deactivated).
         The formula used is:
         ``elegible if histogram - background > min_sigma_dif*std`` where ``background``
         is obtained by using filtering the histogram with the provided
@@ -851,7 +851,7 @@ class CountPeakDetector:
             :class:`~scludam.detection.CountPeakDetector`.
 
         labels : Union[[List[str]], None], optional
-            List of variable names, by default None. If None,
+            List of variable names, by default ``None``. If ``None``,
             then the variables are called 'var1', 'var2', and so on.
         cut_label_prec : int, optional
             Decimal places for the cut message in the title, by default 4.
@@ -952,7 +952,7 @@ class CountPeakDetector:
         # get the bin_shape for xy in the correct order
         bin_shape = self.bin_shape.copy()[xydims]
 
-        hm = _heatmap2D(
+        hm = heatmap2D(
             hist2D=hist2D, edges=edges2D, bin_shape=bin_shape, index=pindex2D, **kwargs
         )
         hm.axes.set_xlabel(labels[x])
