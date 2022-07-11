@@ -6,6 +6,7 @@ from io import BytesIO
 from itertools import chain
 from random import shuffle
 
+import numpy as np
 import pytest
 
 from scludam.utils import Colnames, one_hot_encode

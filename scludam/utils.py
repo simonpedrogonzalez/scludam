@@ -15,6 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """Module for helper functions."""
+import itertools
+from typing import Callable, List, Optional, Tuple, Type, Union
 
 import numpy as np
 from attr import attrs
