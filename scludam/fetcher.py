@@ -156,9 +156,9 @@ def search_table(search_query: str = None, only_names: bool = False, **kwargs):
     Parameters
     ----------
     search_query : str, optional
-        query to match, by default None
+        query to match, by default ``None``
     only_names : bool, optional
-        return only table names and descriptions, by default False
+        return only table names and descriptions, by default ``False``
 
     Returns
     -------
@@ -597,7 +597,7 @@ class Query:
         Parameters
         ----------
         dump_to_file : bool
-            If True, results will be stored in file, false by default.
+            If ``True``, results will be stored in file, false by default.
         output_file : str
             Name of the output file if dump_to_file is True.
 
@@ -631,7 +631,7 @@ class Query:
         Parameters
         ----------
         dump_to_file : bool
-            If True, results will be stored in file, false by default.
+            If ``True``, results will be stored in file, false by default.
         output_file : str
             Name of the output file if dump_to_file is True.
 

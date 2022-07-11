@@ -28,6 +28,7 @@ Currently **scludam** is a work in progress. Modules and features already includ
 
 - **detection**: classes that can be used to detect the presence of a cluster in a sample.
 
+- **shdbscan**: soft clustering based on the **HDBSCAN** algorithm.
 
 --------------------------------------------------------------------------------
 
@@ -52,12 +53,18 @@ Full dependencies list:
 - diptest>=0.4.2
 - typing_extensions>=4.2.0
 
-### User Installation
-Install from PyPi (with your environment activated):
+### User install in a Conda environment
+Create a conda environment named ``myscludamenv`` with python3.8 and ``scludam`` installed
+```
+conda create --name myscludamenv python=3.8 pip --yes
+conda activate myscludamenv
+python -m pip install scludam
+```
 
-        $ python -m pip install scludam
+### User install
+Install from PyPi:
+```python -m pip install scludam```
 
-### Dev Installation
+### Dev install
 Clone the repo and run the following command in the cloned directory (with your environment activated):
-
-        $ python -m pip install -e .[dev]
+```python -m pip install -e .[dev]```

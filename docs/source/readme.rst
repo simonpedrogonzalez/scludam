@@ -32,7 +32,6 @@ scludam (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership e
    :target: https://tldrlegal.com/license/gnu-lesser-general-public-license-v3-(lgpl-3)
    :alt: License
 
-
 **scludam** (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership estimation) is a Python package for GAIA catalogues **data fetching**\ , **star cluster detection** and **star cluster membership estimation**.
 
 Repository and issues
@@ -65,6 +64,9 @@ Currently **scludam** is a work in progress. Modules and features already includ
 * 
   **detection**\ : classes that can be used to detect the presence of a cluster in a sample.
 
+* 
+  **shdbscan**\ : soft clustering based on the **HDBSCAN** algorithm.
+
 ----
 
 Requirements
@@ -92,21 +94,25 @@ Full dependencies list:
 * diptest>=0.4.2
 * typing_extensions>=4.2.0
 
-User Installation
-^^^^^^^^^^^^^^^^^
+User install in a Conda environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Install from PyPi (with your environment activated):
+Create a conda environment named ``myscludamenv`` with python3.8 and ``scludam`` installed
 
 .. code-block::
 
-       $ python -m pip install scludam
+   conda create --name myscludamenv python=3.8 pip --yes
+   conda activate myscludamenv
+   python -m pip install scludam
 
+User install
+^^^^^^^^^^^^
 
-Dev Installation
-^^^^^^^^^^^^^^^^
+Install from PyPi:
+``python -m pip install scludam``
+
+Dev install
+^^^^^^^^^^^
 
 Clone the repo and run the following command in the cloned directory (with your environment activated):
-
-.. code-block::
-
-       $ python -m pip install -e .[dev]
+``python -m pip install -e .[dev]``

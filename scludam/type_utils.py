@@ -52,10 +52,11 @@ Vector3Array = Annotated[
 
 ArrayLike = Union[NDArray, List, Tuple]
 OptionalArrayLike = Union[None, ArrayLike]
+NumericArray = NDArray[np.number]
 Numeric2DArray = Annotated[NDArray[np.number], IsAttr["ndim", IsEqual[2]]]
 Numeric1DArray = Annotated[NDArray[np.number], IsAttr["ndim", IsEqual[1]]]
 
-Numeric1DArrayLike = Union[Numeric1DArray, List[Number], Tuple[Number]]
+Numeric1DArrayLike = Union[Numeric1DArray, List[Number], Tuple[Number, ...]]
 Numeric2DArrayLike = Union[
     Numeric2DArray, List[Numeric1DArrayLike], Tuple[Numeric1DArrayLike]
 ]
