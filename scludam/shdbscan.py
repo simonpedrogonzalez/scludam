@@ -531,7 +531,7 @@ class SHDBSCAN:
 
         It uses the provided configuration to identify clusters,
         classify the data and provide membership probabilities. The results
-        are stored in the :class:`~scludam.shdbscan.SHDBSCAN` instance. The 
+        are stored in the :class:`~scludam.shdbscan.SHDBSCAN` instance. The
         attributes storing results are :attr:`~scludam.shdbscan.SHDBSCAN.n_classes`,
         :attr:`~scludam.shdbscan.SHDBSCAN.labels`,
         :attr:`~scludam.shdbscan.SHDBSCAN.proba` and
