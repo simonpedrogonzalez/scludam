@@ -1,5 +1,5 @@
-stat\_tests module
-==================
+scludam.stat\_tests module
+==========================
 
 .. automodule:: scludam.stat_tests
    :members:

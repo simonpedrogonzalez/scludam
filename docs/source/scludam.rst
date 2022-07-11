@@ -9,6 +9,8 @@ Submodules
 
    scludam.detection
    scludam.fetcher
+   scludam.plots
+   scludam.shdbscan
    scludam.stat_tests
    scludam.synthetic
 
