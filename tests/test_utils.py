@@ -1,4 +1,4 @@
-"""Test data utils module"""
+"""Test data utils module."""
 
 import os
 import re
@@ -8,7 +8,7 @@ from random import shuffle
 
 import pytest
 
-from scludam.utils import Colnames
+from scludam.utils import Colnames, one_hot_encode
 
 cols = [
     "col1",
@@ -110,4 +110,13 @@ def test_get_corr_names(fixture_name, filter_names, correct, request):
     assert (
         Colnames(request.getfixturevalue(fixture_name)).get_corr_names(filter_names)
         == correct
+    )
+
+
+def test_one_hot_encode():
+    labels = [0, 1, 1, 1, 0, 2]
+    result = one_hot_encode(labels)
+    assert np.allclose(
+        result,
+        np.array([[1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [1, 0, 0], [0, 0, 1]]),
     )
