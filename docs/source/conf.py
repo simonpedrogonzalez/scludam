@@ -24,7 +24,7 @@ copyright = "2022, Simón Pedro González"
 author = "Simón Pedro González"
 
 # The full version, including alpha/beta/rc tags
-release = "0.1.0"
+release = "0.2.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -47,9 +47,9 @@ napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
 autodoc_member_order = "bysource"
-autodoc_mock_imports = [
-    "rpy2",
-]
+# autodoc_mock_imports = [
+#     "rpy2",
+# ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -66,10 +66,7 @@ exclude_patterns = [
     "membership.py",
     "pipeline.py",
     "plot_gauss_err.py",
-    "rutils.py",
     "utils.py",
-    "synthetic.py",
-    "hkde.py",
     "type_utils.py",
 ]
 
