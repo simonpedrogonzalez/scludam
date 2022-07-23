@@ -15,11 +15,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """Module for helper functions."""
-import itertools
 from typing import List, Union
 
 import numpy as np
-from attr import attrs
+from attrs import define
 from ordered_set import OrderedSet
 
 from scludam.type_utils import Numeric1DArray
@@ -52,18 +51,54 @@ def one_hot_encode(labels: Numeric1DArray):
     return one_hot
 
 
-@attrs(auto_attribs=True, init=False)
+@define
 class Colnames:
+    """Class for column names.
+
+    Stores column names as an ordered set and allows some operations on them.
+
+    """
+
     names: OrderedSet
 
     def __init__(self, names: List[str]):
         self.names = OrderedSet(names)
 
     def exclude(self, names: Union[list, str]):
-        names = names.parse_to_list()
+        """Exclude names from the set.
+
+        Parameters
+        ----------
+        names : Union[list, str]
+            Names to exclude from the original set.
+
+        Returns
+        -------
+        List[str]
+            Column names after exclusion.
+
+        """
+        names = names._parse_to_list()
         return list(self.names - OrderedSet(names))
 
     def get_data_names(self, names: Union[list, str] = None):
+        """Get names of data columns.
+
+        A column is considered data if it does not
+        end with "_error" or "_corr".
+
+        Parameters
+        ----------
+        names : Union[list, str], optional
+            List of names to filter, by default None.
+            If None, all names are used.
+
+        Returns
+        -------
+        List[str]
+            Column names.
+
+        """
         data = [
             name
             for name in list(self.names)
@@ -71,14 +106,32 @@ class Colnames:
         ]
         if names is None:
             return data
-        names = self.parse_to_list(names)
+        names = self._parse_to_list(names)
         return list(OrderedSet(names).intersection(data))
 
     def get_error_names(self, names: Union[list, str] = None):
+        """Get names of error columns.
+
+        A column is considered error if it ends with "_error".
+
+        Parameters
+        ----------
+        names : Union[list, str], optional
+            List of data column names to filter, by default None.
+            If None, the function returns error columns
+            found. If not, the function returns error columns
+            of the names in the list.
+
+        Returns
+        -------
+        List[str]
+            Error column names.
+
+        """
         errors = [name for name in list(self.names) if name.endswith("_error")]
         if names is None:
             names = list(self.names)
-        names = self.get_data_names(self.parse_to_list(names))
+        names = self.get_data_names(self._parse_to_list(names))
         sorted_errors = []
         for name in names:
             for err in errors:
@@ -92,10 +145,28 @@ class Colnames:
         return sorted_errors, missing_errors
 
     def get_corr_names(self, names: Union[list, str] = None):
+        """Get names of correlation columns.
+
+        A column is considered correlation if it ends with "_corr".
+
+        Parameters
+        ----------
+        names : Union[list, str], optional
+            List of data column names to filter, by default None.
+            If None, the function returns correlation columns
+            found. If not, the function returns correlation columns
+            related to the data column names in the list.
+
+        Returns
+        -------
+        List[str]
+            Correlation column names.
+
+        """
         correlations = [name for name in list(self.names) if name.endswith("_corr")]
         if names is None:
             names = list(self.names)
-        names = self.get_data_names(self.parse_to_list(names))
+        names = self.get_data_names(self._parse_to_list(names))
 
         names_with_corr = []
         for name in names:
@@ -135,81 +206,7 @@ class Colnames:
         sorted_correlations = [sc for sc in sorted_correlations if sc != ""]
         return sorted_correlations, missing_correlations
 
-    def parse_to_list(self, names: Union[list, str]):
+    def _parse_to_list(self, names: Union[list, str]):
         if isinstance(names, str):
             names = [names]
         return names
-
-
-def sorted_corr(variables: list, correlations: list):
-    vc = variables
-    vc_count = len(variables)
-    corr_matrix = np.ndarray(
-        shape=(vc_count, vc_count),
-        dtype=f"|S{max([len(c) for c in variables + correlations])}",
-    )
-    for i1, var1 in enumerate(vc):
-        for i2, var2 in enumerate(vc):
-            corr1 = f"{var1}_{var2}_corr"
-            corr2 = f"{var2}_{var1}_corr"
-            corr = (
-                corr1
-                if corr1 in correlations
-                else corr2
-                if corr2 in correlations
-                else ""
-            )
-            corr_matrix[i1, i2] = corr
-    return list(corr_matrix[np.tril_indices(vc_count, k=-1)].astype(str))
-
-
-def sorted_err(variables: list, errors: list):
-    ordered_errors = []
-    for var in variables:
-        for err in errors:
-            if err.startswith(var):
-                ordered_errors.append(err)
-                errors.remove(err)
-                break
-    return ordered_errors
-
-
-def subset(data: np.ndarray, limits: list):
-    for i in range(len(limits)):
-        data = data[(data[:, i] > limits[i][0]) & (data[:, i] < limits[i][1])]
-    return data
-
-
-def combinations(items: list):
-    return list(itertools.product(*items))
-
-
-def dict_combinations(items: list):
-    """items is a list of dicts."""
-    return combinations([[{k: v} for (k, v) in d.items()] for d in items])
-
-
-def indices(arrays: Union[tuple, np.ndarray]):
-
-    if isinstance(arrays, np.ndarray):
-        if len(arrays.shape) == 1:
-            return tuple(arrays)
-        else:
-            return tuple(map(tuple, tuple(arrays)))
-
-    arrays = list(arrays)
-    shape = None
-    for i, arg in enumerate(arrays):
-        if isinstance(arg, np.ndarray):
-            if len(arg.shape) != 1:
-                raise ValueError("arrays must be of 1 dimension")
-            if shape is not None and shape != arg.shape:
-                raise ValueError("arrays must have same shape")
-            shape = arg.shape
-            arrays[i] = arg.astype(int)
-
-    for i, arg in enumerate(arrays):
-        if isinstance(arg, int):
-            arrays[i] = np.ones(shape, dtype=int) * arg
-
-    return tuple(map(tuple, np.vstack(tuple(arrays))))

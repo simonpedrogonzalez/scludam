@@ -531,7 +531,7 @@ class HKDE:
             account for each dimension, by default 50. Note that
             data dimensions and grid resolution determine how many
             points are evaluated, as ``eval_points=gr**dims``. A high
-            ``gr`` value can result in a long computation time. 
+            ``gr`` value can result in a long computation time.
         figsize : Tuple[int, int], optional
             Figure size, by default (8, 6)
         cols : Optional[str], optional
@@ -546,7 +546,8 @@ class HKDE:
         ------
         Exception
             If the KDE model is not fitted yet.
-        """        
+
+        """
         if not self._is_fitted():
             raise Exception("Model not fitted. Try excecuting fit function first.")
         # prepare data to plot

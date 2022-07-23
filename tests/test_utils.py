@@ -1,9 +1,3 @@
-"""Test data utils module."""
-
-import os
-import re
-from io import BytesIO
-from itertools import chain
 from random import shuffle
 
 import numpy as np

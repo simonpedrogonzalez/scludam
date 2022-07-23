@@ -185,3 +185,5 @@ scludam/deprecated_plots.py
 steps.txt
 
 *.prof
+
+*.old

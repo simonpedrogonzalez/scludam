@@ -27,10 +27,10 @@ from itertools import permutations
 sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
 
 from scludam.hkde import HKDE, PluginSelector
-from scludam.utils import combinations, Colnames
+from scludam.utils import Colnames
 from scludam.masker import RangeMasker, DistanceMasker, CrustMasker
 from scludam.plot_gauss_err import plot_kernels
-from scludam.plots import plot3d_s, membership_3d_plot, membership_plot, probaplot
+# from scludam.plots import plot3d_s, membership_3d_plot, membership_plot, probaplot
 
 
 @attrs(auto_attribs=True)
@@ -420,19 +420,19 @@ class DBME:
 
         return fig, axes
 
-    def membership_plot(self, label=0, **kwargs):
-        return membership_plot(self.data, self.posteriors[:, label + 1], **kwargs)
+    # def membership_plot(self, label=0, **kwargs):
+    #     return membership_plot(self.data, self.posteriors[:, label + 1], **kwargs)
 
-    def class_plot(self, **kwargs):
-        return membership_plot(self.data, self.labels + 1, self.labels, **kwargs)
+    # def class_plot(self, **kwargs):
+    #     return membership_plot(self.data, self.labels + 1, self.labels, **kwargs)
 
-    def membership_3d_plot(self, label=0, **kwargs):
-        return membership_3d_plot(self.data, self.posteriors[:, label + 1], **kwargs)
+    # def membership_3d_plot(self, label=0, **kwargs):
+    #     return membership_3d_plot(self.data, self.posteriors[:, label + 1], **kwargs)
 
-    def probaplot(self, **kwargs):
-        return probaplot(
-            data=self.data, proba=self.posteriors, labels=self.labels, **kwargs
-        )
+    # def probaplot(self, **kwargs):
+    #     return probaplot(
+    #         data=self.data, proba=self.posteriors, labels=self.labels, **kwargs
+    #     )
 
 
 # def parametric(data, labels, priors):
