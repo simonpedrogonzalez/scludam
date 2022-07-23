@@ -31,17 +31,17 @@ matrix:
   include:
     - python: 3.8
       env: TOXENV=style
-      dist: xenial
+      dist: focal
       sudo: true
 
     - python: 3.8
       env: TOXENV=coverage
-      dist: xenial
+      dist: focal
       sudo: true
 
     - python: 3.8
       env: TOXENV=py38
-      dist: xenial
+      dist: focal
       sudo: true
 
 
