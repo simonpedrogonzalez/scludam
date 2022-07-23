@@ -2,9 +2,13 @@ import numpy as np
 import pytest
 from astropy.table.table import Table
 from scipy.stats._multivariate import multi_rv_frozen
+from sklearn.datasets import load_iris
 from utils import raises_exception
-from scludam.hkde import HKDE, PluginSelector, r as rsession
-from scludam.rutils import load_r_packages, disable_r_console_output, disable_r_warnings
+
+from scludam import HKDE
+from scludam.hkde import PluginSelector
+from scludam.hkde import r as rsession
+from scludam.rutils import disable_r_console_output, disable_r_warnings, load_r_packages
 from scludam.utils import Colnames
 
 disable_r_console_output()
@@ -24,8 +28,8 @@ w = np.ones(n)
 
 @pytest.fixture
 def kskde():
-    from rpy2.robjects import numpy2ri, r
-    from rpy2.robjects import default_converter, conversion
+    from rpy2.robjects import default_converter, numpy2ri, r
+
     # from rpy2.robjects import numpy2ri
     from rpy2.robjects.conversion import localconverter
 
@@ -95,7 +99,7 @@ class TestBandwidths:
             ),
         ],
     )
-    def test_plugin_bandwidth(
+    def test_plugin_bandwidth__build_r_command_and_returns_correct_result(
         self,
         nstage,
         pilot,
@@ -110,7 +114,7 @@ class TestBandwidths:
                 exception,
                 lambda: PluginSelector(
                     nstage=nstage, pilot=pilot, binned=binned, diag=diag
-                ).build_r_command(data),
+                )._build_r_command(data),
             )
             # verify command
             assert command == correct_command
@@ -127,7 +131,7 @@ class TestBandwidths:
 
             bw = PluginSelector(
                 nstage=nstage, pilot=pilot, binned=binned, diag=diag
-            ).get_bandwidth(data)
+            ).get_bw(data)
             assert np.all(np.isclose(correct_result, bw))
 
 
@@ -167,7 +171,7 @@ class TestHKDE:
     def test_get_bw_matrices(self, bw, exception, correct):
         result = raises_exception(
             exception,
-            lambda: HKDE(bw=bw, d=d, n=n).set_weights(w).get_bw_matrices(data),
+            lambda: HKDE(bw=bw, d=d, n=n).set_weights(w)._get_bw_matrices(data),
         )
         if exception is None:
             assert result.shape == (n, d, d)
@@ -202,7 +206,7 @@ class TestHKDE:
     )
     def test_get_corr_matrices(self, corr_param, exception, correct):
         result = raises_exception(
-            exception, lambda: HKDE(d=d, n=n).get_corr_matrices(corr_param)
+            exception, lambda: HKDE(d=d, n=n)._get_corr_matrices(corr_param)
         )
         if exception is None:
             assert result.shape == (n, d, d)
@@ -247,7 +251,7 @@ class TestHKDE:
     def test_get_err_matrices(self, err_param, corr_param, exception, correct):
         result = raises_exception(
             exception,
-            lambda: HKDE(d=d, n=n).get_err_matrices(err_param, corr_param),
+            lambda: HKDE(d=d, n=n)._get_err_matrices(err_param, corr_param),
         )
         if exception is None:
             assert result.shape == (n, d, d)
@@ -273,7 +277,7 @@ class TestHKDE:
     )
     def test_get_cov_matrices(self, err_param, corr_param, correct):
         # no error
-        result = HKDE(bw=np.diag(np.ones(d) * 2), d=d, n=n).get_cov_matrices(
+        result = HKDE(bw=np.diag(np.ones(d) * 2), d=d, n=n)._get_cov_matrices(
             data, err_param, corr_param
         )
         assert result.shape == (n, d, d)
@@ -299,29 +303,40 @@ class TestHKDE:
         result = raises_exception(exception, lambda: HKDE(n=n).set_weights(weights))
         if exception is None:
             assert isinstance(result, HKDE)
-            assert result.n_eff == n_eff
-            assert np.allclose(result.eff_mask, eff_mask)
-            assert np.allclose(weights, result.weights)
+            assert result._n_eff == n_eff
+            assert np.allclose(result._eff_mask, eff_mask)
+            assert np.allclose(weights, result._weights)
 
     def test_fit(self):
         hkde = HKDE().fit(data=data, err=err, corr=corr, weights=w)
-        assert hkde.n == n
-        assert hkde.d == d
-        assert np.allclose(hkde.weights, w)
-        assert hkde.kernels.shape == (n,)
-        assert isinstance(hkde.kernels[0], multi_rv_frozen)
-        assert hkde.covariances.shape == (n, d, d)
-        assert hkde.check_is_fitted()
+        assert hkde._n == n
+        assert hkde._d == d
+        assert np.allclose(hkde._weights, w)
+        assert hkde._kernels.shape == (n,)
+        assert isinstance(hkde._kernels[0], multi_rv_frozen)
+        assert hkde._covariances.shape == (n, d, d)
+        assert hkde._is_fitted()
 
     def test_basic_pdf(self, kskde):
         pdf, H = kskde
         hkde = HKDE().fit(data=data)
         result = hkde.pdf(data, leave1out=False)
         assert result.shape == (n,)
-        assert np.allclose(hkde.covariances[0], H)
+        assert np.allclose(hkde._covariances[0], H)
         assert np.allclose(result, pdf)
 
     def test_pdf_with_error(self, pdf_with_error_correct):
         result = HKDE().fit(data=data, err=err, corr=corr).pdf(data, leave1out=False)
         assert result.shape == (n,)
         assert np.allclose(result, pdf_with_error_correct)
+
+
+@pytest.mark.mpl_image_compare
+def test_hkde_plot():
+    return HKDE().fit(load_iris().data).plot(gr=20)[0]
+
+
+@pytest.mark.mpl_image_compare
+def test_hkde_plot_2d():
+    data = load_iris().data[:, :2]
+    return HKDE().fit(data).plot(gr=20)[0]

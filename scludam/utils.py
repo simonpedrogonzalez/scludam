@@ -16,7 +16,7 @@
 
 """Module for helper functions."""
 import itertools
-from typing import Callable, List, Optional, Tuple, Type, Union
+from typing import List, Union
 
 import numpy as np
 from attr import attrs
@@ -189,12 +189,6 @@ def dict_combinations(items: list):
     return combinations([[{k: v} for (k, v) in d.items()] for d in items])
 
 
-def get_colnames(colnames: list):
-    error_c = [c for c in colnames if c.endswith("_error")]
-
-    return [f"{var_name}_error" for var_name in var_colnames]
-
-
 def indices(arrays: Union[tuple, np.ndarray]):
 
     if isinstance(arrays, np.ndarray):
@@ -219,21 +213,3 @@ def indices(arrays: Union[tuple, np.ndarray]):
             arrays[i] = np.ones(shape, dtype=int) * arg
 
     return tuple(map(tuple, np.vstack(tuple(arrays))))
-
-
-""" def args2r(*args, **kwargs):
-    # only works for simple 
-    return ", ".join(f"{key}={value}" for key, value in kwargs.items()) """
-""" 
-c = Colnames([
-                'ra', 'dec', 'ra_error', 'dec_error', 'ra_dec_corr',
-                'pmra', 'pmra_error', 'ra_pmra_corr', 'dec_pmra_corr',
-                'pmdec', 'pmdec_error', 'ra_pmdec_corr', 'dec_pmdec_corr', 'pmra_pmdec_corr',
-                'parallax', 'parallax_error', 'parallax_pmra_corr', 'parallax_pmdec_corr', 'ra_parallax_corr', 'dec_parallax_corr',
-                'phot_g_mean_mag'
-            ])
-
-print('coso') """
-
-""" thing = args2str("algo", 12, [3,4,5], False, coso="'algomas'", otrocoso=[1,2,3], tercercoso=np.array([1,2,3]))
-print(thing) """

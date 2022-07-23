@@ -26,7 +26,7 @@ from itertools import permutations
 
 sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
 
-from scludam.hkde import HKDE, PluginSelector, pair_density_plot
+from scludam.hkde import HKDE, PluginSelector
 from scludam.utils import combinations, Colnames
 from scludam.masker import RangeMasker, DistanceMasker, CrustMasker
 from scludam.plot_gauss_err import plot_kernels
@@ -343,17 +343,17 @@ class DBME:
             total_density_only_sum = lambda x: np.atleast_2d((self.get_posteriors(x, None, None, weights=weights)[1]).sum(axis=1, keepdims=True)).T
             p_only_sum = lambda x: np.atleast_2d(np.atleast_2d(self.get_posteriors(x, None, None, weights=weights)[1][:,1]).T / total_density_only_sum(x)).T
             # p_check = lambda x: np.atleast_2d(np.atleast_2d(self.get_posteriors(x, None, None, weights=weights)[1][:,1]).T * self.priors[1] / total_density(x)).T
-            gfig, gaxes = pair_density_plot(data, g, grid_resolution=50)
+            gfig, gaxes = pair_density_plot(data, g, gr=50)
             gfig.suptitle('pc')
-            tdfig, tdaxes = pair_density_plot(data, total_density, grid_resolution=50)
+            tdfig, tdaxes = pair_density_plot(data, total_density, gr=50)
             tdfig.suptitle('cum_d_per_priors')
-            tdosfig, tdosaxes = pair_density_plot(data, total_density_only_sum, grid_resolution=50)
+            tdosfig, tdosaxes = pair_density_plot(data, total_density_only_sum, gr=50)
             tdosfig.suptitle('cum_d_only')
             fig, ax = self.estimators[1].density_plot()
             fig.suptitle('dens_cum')
-            #fig2, ax2 = pair_density_plot(data, p_check, grid_resolution=50)
+            #fig2, ax2 = pair_density_plot(data, p_check, gr=50)
             #fig2.suptitle('p_check')
-            fig3, ax3 = pair_density_plot(data, p_only_sum, grid_resolution=50)
+            fig3, ax3 = pair_density_plot(data, p_only_sum, gr=50)
             fig3.suptitle('p_only_sum')
             plt.show()
             self.n_obs = nn

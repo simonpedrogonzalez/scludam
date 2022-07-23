@@ -9,10 +9,15 @@ Submodules
 
    scludam.detection
    scludam.fetcher
+   scludam.hkde
+   scludam.masker
    scludam.plots
+   scludam.rutils
    scludam.shdbscan
    scludam.stat_tests
    scludam.synthetic
+   scludam.type_utils
+   scludam.utils
 
 Module contents
 ---------------

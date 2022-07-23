@@ -67,6 +67,9 @@ Currently **scludam** is a work in progress. Modules and features already includ
 * 
   **shdbscan**\ : soft clustering based on the **HDBSCAN** algorithm.
 
+* 
+  **hkde**\ : kernel density estimation with variable bandwidth.
+
 ----
 
 Requirements
