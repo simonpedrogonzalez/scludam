@@ -17,7 +17,7 @@
 """Module for Kernel Density Estimation with variable bandwidth matrices.
 
 The module provides a class for multivariate Kernel Density Estimation with a bandwidth
-matrix per observation. Theese matrices are created from a baseline bandwidth calculated
+matrix per observation. Such matrices are created from a baseline bandwidth calculated
 from the Plugin method. Variable errors and covariances can be added to the matrices.
 
 """
@@ -81,10 +81,10 @@ class PluginSelector(BandwidthSelector):
 
     It uses the Plugin method with unconstraned pilot bandwidth
     [1]_ [2]_ implementation in the
-    `ks` R package [3]_. See [3]_ documentation for
+    `ks` R package [3]_. See the `ks` package documentation for
     more information on
     parameter values. All attributes are passed
-    to `ks::Hpi` function.
+    to ``ks::Hpi`` function.
 
     Parameters
     ----------
@@ -97,8 +97,8 @@ class PluginSelector(BandwidthSelector):
         Use binned estimation, by default False.
     diag: bool, optional
         Whether to use the diagonal bandwidth,
-        by default False. If true, `ks::Hpi.diag`
-        is used instead of `ks::Hpi`.
+        by default False. If true, ``ks::Hpi.diag``
+        is used.
 
     References
     ----------
@@ -132,7 +132,7 @@ class PluginSelector(BandwidthSelector):
     def get_bw(self, data: Numeric2DArray):
         """Get the bandwidth for the given data.
 
-        Builds R `ks::Hpi` command and executes it.
+        Builds R ``ks::Hpi`` command and executes it.
 
         Parameters
         ----------
@@ -171,7 +171,8 @@ class HKDE:
         *  a Number: the base bandwidth is calculated as a diagonal
            matrix with the given value.
         *  an Array: the base bandwidth is taken as the given
-           matrix.
+           array. The array shape must be (n, d, d) where n is the
+           number of observations and d is the number of dimensions.
 
     Examples
     --------
@@ -360,24 +361,24 @@ class HKDE:
             Can be one of:
 
             *  NumericArray of shape (d, d): global correlation
-                matrix. Applied in every bandwidth matrix H.
+               matrix. Applied in every bandwidth matrix H.
             *  Numeric2DArray of shape (n, (d * (d - 1) / 2):
-                individual correlation matrices. Each column of
-                the array represents a correlation between two
-                variables, for all observations. Order of columns
-                must follow a lower triangle matrix. For example:
-                for four variables, lower triangle of corr
-                matrix looks like:
+               individual correlation matrices. Each column of
+               the array represents a correlation between two
+               variables, for all observations. Order of columns
+               must follow a lower triangle matrix. For example:
+               for four variables, lower triangle of corr
+               matrix looks like:
 
-                .. code-block:: python
+               .. code-block:: python
 
                     corr(v1, v2)
                     corr(v1, v3), corr(v2, v3)
                     corr(v1, v4), corr(v2, v4), corr(v3, v4)
 
-                So a valid ``corr`` array for two datapoints would be:
-
-                .. code-block:: python
+               So a valid ``corr`` array for two datapoints would be:
+               
+               .. code-block:: python
 
                     np.array([
                         [ corr1(v1, v2), corr1(v1, v3), corr1(v2, v3),
@@ -399,7 +400,7 @@ class HKDE:
         Notes
         -----
         Base bandwidth matrix is calculated from the ``bw`` parameter. If no additional
-        parameters are provided (``err`` and ``corr``), the base bandwidth matrix is
+        parameters are provided, the base bandwidth matrix is
         used for all datapoints. If ``err`` and/or ``corr`` are provided, they are
         used to create individual covariance matrices for each datapoint [5]_. The final
         matrix used for each kernel is the sum of the base matrix and the individual
