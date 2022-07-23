@@ -63,5 +63,6 @@ Numeric2DArrayLike = Union[
 
 OptionalNumeric1DArrayLike = Union[Numeric1DArrayLike, None]
 OptionalNumeric2DArrayLike = Union[Numeric2DArrayLike, None]
-
+OptionalNumericArray = Union[NumericArray, None]
+OptionalNumeric2DArray = Union[Numeric2DArray, None]
 Int1DArray = Annotated[NDArray[int], IsAttr["ndim", IsEqual[1]]]

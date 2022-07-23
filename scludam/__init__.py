@@ -12,3 +12,4 @@ from .detection import (
 from .fetcher import Query, search_object, search_table
 from .stat_tests import DipDistTest, HopkinsTest, RipleysKTest
 from .shdbscan import SHDBSCAN
+from .hkde import HKDE

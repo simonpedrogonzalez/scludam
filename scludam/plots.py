@@ -17,12 +17,15 @@
 """Module for helper plotting functions."""
 
 from numbers import Number
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from sklearn.manifold import TSNE
 
 from scludam.type_utils import ArrayLike, Numeric1DArray, Numeric2DArray, NumericArray
@@ -440,6 +443,7 @@ def heatmap2D(
     References
     ----------
     .. [5] https://seaborn.pydata.org/generated/seaborn.heatmap.html
+
     """
     # annotations
     if annot:
@@ -483,3 +487,164 @@ def heatmap2D(
         hm.invert_yaxis()
         hm.set_xticklabels(hm.get_xticklabels(), rotation=45)
     return hm
+
+
+def univariate_density_plot(
+    x: Numeric1DArray,
+    y: Numeric1DArray,
+    ax: Optional[Axes] = None,
+    figure: Optional[Figure] = None,
+    figsize: Tuple[int, int] = (8, 6),
+    grid: bool = True,
+    **kwargs,
+):
+    """Plot univariate density plot.
+
+    Create a filled lineplot given the
+    densities for x. kwargs are passed
+    to matplotlib scatter plot [6]_.
+
+    Parameters
+    ----------
+    x : Numeric1DArray
+        X linespace.
+    y : Numeric1DArray
+        Densities.
+    ax : Optional[Axes], optional
+        Ax to plot, by default None
+    figure : Optional[Figure], optional
+        Figure to plot, by default None
+    figsize : Tuple[int, int], optional
+        Figure size, by default (8, 6)
+    grid : bool, optional
+        Add grid, by default True
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        Axes of the plot.
+
+    References
+    ----------
+    .. [6] https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html
+
+    """
+    if ax is None:
+        if figure is None:
+            figure = plt.figure(figsize=figsize)
+        ax = figure.add_subplot(1, 1, 1)
+    default_kwargs = {
+        "color": "blue",
+        "marker": ",",
+        # "linestyle": "",
+        # "lw": 0,
+        # "linewidths": 0,
+        "s": 0.01,
+    }
+    default_kwargs.update(kwargs)
+    ax.scatter(x, y, **default_kwargs)
+    zero = np.zeros(len(y))
+    ax.fill_between(
+        x,
+        y,
+        where=y >= zero,
+        interpolate=True,
+        color=default_kwargs.get("color", "blue"),
+    )
+    if grid:
+        ax.grid("on")
+    return ax
+
+
+def bivariate_density_plot(
+    x: Numeric1DArray,
+    y: Numeric1DArray,
+    z: Numeric1DArray,
+    levels: int = None,
+    contour_color: str = "black",
+    ax: Optional[Axes] = None,
+    figure: Optional[Figure] = None,
+    figsize: Tuple[int, int] = (8, 6),
+    colorbar: bool = True,
+    title: Optional[str] = None,
+    title_size: int = 16,
+    grid: bool = True,
+    **kwargs,
+):
+    """Create a bivariate density plot.
+
+    Create a heatmap like density plot
+    given densities in x and y. kwargs are
+    passed to matplotlib imshow [7]_.
+
+    Parameters
+    ----------
+    x : Numeric1DArray
+        X linespace.
+    y : Numeric1DArray
+        Y linespace.
+    z : Numeric1DArray
+        Densities in x and y.
+    levels : int, optional
+        Number of levels to draw contour, by default None
+    contour_color : str, optional
+        Color to draw contour, by default "black"
+    ax : Optional[Axes], optional
+        Ax to plot, by default None
+    figure : Optional[Figure], optional
+        Figure to plot, by default None
+    figsize : Tuple[int, int], optional
+        Figure size, by default (8, 6)
+    colorbar : bool, optional
+        Add a colorbar, by default True
+    title : Optional[str], optional
+        Title to set, by default None
+    title_size : int, optional
+        Title size, by default 16
+    grid : bool, optional
+        Add grid, by default True
+
+    Returns
+    -------
+    matplotlib.axes.Axes
+        Axes of the plot.
+    matplotlib.image.AxesImage
+        Image of the plot.
+
+    References
+    ----------
+    .. [7] https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.imshow.html
+
+    """
+    if ax is None:
+        if figure is None:
+            figure = plt.figure(figsize=figsize)
+        ax = figure.add_subplot(1, 1, 1)
+
+    if levels is not None:
+        contour = ax.contour(x, y, z, levels, colors=contour_color)
+        ax.clabel(contour, inline=True, fontsize=8)
+        alpha = 0.75
+    else:
+        alpha = 1
+    default_kws = {
+        "origin": "lower",
+        "aspect": "auto",
+        "cmap": "inferno",
+        "alpha": alpha,
+    }
+    default_kws.update(kwargs)
+    im = ax.imshow(
+        z,
+        extent=[x.min(), x.max(), y.min(), y.max()],
+        **default_kws,
+    )
+    if colorbar:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        ax.get_figure().colorbar(im, cax=cax, orientation="vertical")
+    if title is not None:
+        ax.set_title(title, size=title_size)
+    if grid:
+        ax.grid("on")
+    return ax, im
