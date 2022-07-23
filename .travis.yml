@@ -14,6 +14,7 @@ branches:
 
 before_install:
   - sudo apt update
+  - sudo apt upgrade -y
   - sudo apt install r-base -y
   - sudo apt install r-base-dev -y
   - which R
