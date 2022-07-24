@@ -20,7 +20,8 @@ before_install:
   - sudo apt install --no-install-recommends r-base r-base-dev -y
   - which R
   - R --version
-  - sudo usermod -a -G staff travis
+  - sudo usermod -a -G staff $USER
+  - sudo usermod -a -G root $USER
 
 install:
   - pip install tox
