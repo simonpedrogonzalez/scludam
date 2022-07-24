@@ -21,8 +21,7 @@ before_install:
   - which R
   - R --version
   - LIBPATH=$(Rscript <(echo ".libPaths()"))
-  - LIBPATH=awk -F'[1] "|"' '{print $2}' <<< "$LIBPATH"
-  - chmod 777 $LIBPATH
+  - chmod 777 $(awk -F'[1] "|"' '{print $2}' <<< "$LIBPATH")
 
 install:
   - pip install tox
