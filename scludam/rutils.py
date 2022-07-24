@@ -21,7 +21,6 @@ from typing import List, Union
 import numpy as np
 import rpy2.rinterface_lib.callbacks as rcallbacks
 from rpy2.rinterface import RRuntimeWarning
-from rpy2.rinterface_lib.embedded import RRuntimeError
 from rpy2.robjects import default_converter, numpy2ri
 from rpy2.robjects import packages as rpackages
 
