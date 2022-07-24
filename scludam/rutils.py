@@ -107,11 +107,7 @@ def load_r_packages(rsession, packages: Union[List[str], str]):
                     # so its done on demand just the first time
                     utils = rpackages.importr("utils")
                     utils.chooseCRANmirror(ind=1)
-                try:
-                    utils.install_packages(package)
-                except RRuntimeError as e:
-                    warnings.warn(UserWarning(str(e)))
-                    rsession("yes")
+                utils.install_packages(package)
             rpackages.importr(package)
     return rsession
 
