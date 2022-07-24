@@ -21,6 +21,7 @@ from typing import List, Union
 import numpy as np
 import rpy2.rinterface_lib.callbacks as rcallbacks
 from rpy2.rinterface import RRuntimeWarning
+from rpy2.rinterface_lib.embedded import RRuntimeError
 from rpy2.robjects import default_converter, numpy2ri
 from rpy2.robjects import packages as rpackages
 
@@ -106,7 +107,11 @@ def load_r_packages(rsession, packages: Union[List[str], str]):
                     # so its done on demand just the first time
                     utils = rpackages.importr("utils")
                     utils.chooseCRANmirror(ind=1)
-                utils.install_packages(package)
+                try:
+                    utils.install_packages(package)
+                except RRuntimeError as e:
+                    warnings.warn(UserWarning(str(e)))
+                    rsession("yes")
             rpackages.importr(package)
     return rsession
 
