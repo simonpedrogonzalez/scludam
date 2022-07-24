@@ -20,8 +20,9 @@ before_install:
   - sudo apt install --no-install-recommends r-base r-base-dev -y
   - which R
   - R --version
-  - sudo usermod -a -G staff $USER
-  - sudo usermod -a -G root $USER
+  - LIBPATH=$(Rscript <(echo ".libPaths()"))
+  - LIBPATH=awk -F'[1] "|"' '{print $2}' <<< "$LIBPATH"
+  - chmod 777 $LIBPATH
 
 install:
   - pip install tox
@@ -33,15 +34,15 @@ script:
 
 matrix:
   include:
-    - python: 3.8
-      env: TOXENV=style
-      dist: focal
-      sudo: true
+    # - python: 3.8
+    #   env: TOXENV=style
+    #   dist: focal
+    #   sudo: true
 
-    - python: 3.8
-      env: TOXENV=coverage
-      dist: focal
-      sudo: true
+    # - python: 3.8
+    #   env: TOXENV=coverage
+    #   dist: focal
+    #   sudo: true
 
     - python: 3.8
       env: TOXENV=py38
