@@ -33,15 +33,15 @@ script:
 
 matrix:
   include:
-    # - python: 3.8
-    #   env: TOXENV=style
-    #   dist: focal
-    #   sudo: true
+    - python: 3.8
+      env: TOXENV=style
+      dist: focal
+      sudo: true
 
-    # - python: 3.8
-    #   env: TOXENV=coverage
-    #   dist: focal
-    #   sudo: true
+    - python: 3.8
+      env: TOXENV=coverage
+      dist: focal
+      sudo: true
 
     - python: 3.8
       env: TOXENV=py38
