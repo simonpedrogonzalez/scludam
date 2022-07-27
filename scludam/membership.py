@@ -68,9 +68,9 @@ class DBME:
     iter_priors: list = attrib(factory=list)
     iter_counts: list = attrib(factory=list)
 
-    iter_log_likelihood_diff: list = attrib(factory=list)
-    iter_log_likelihood_perc: list = attrib(factory=list)
-    log_likelihoods: list = attrib(factory=list)
+    # iter_log_likelihood_diff: list = attrib(factory=list)
+    # iter_log_likelihood_perc: list = attrib(factory=list)
+    # log_likelihoods: list = attrib(factory=list)
     iter_label_diff: list = attrib(factory=list)
     iter_labels: list = attrib(factory=list)
     """     
@@ -85,89 +85,89 @@ class DBME:
 
     diff_parametric: list = attrib(factory=list)
 
-    def get_labels(self, posteriors):
-        labels = np.argmax(posteriors, axis=1) - 1
-        return labels
+    # def get_labels(self, posteriors):
+    #     labels = np.argmax(posteriors, axis=1) - 1
+    #     return labels
 
-    def get_log_likelihood(self, densities):
-        # calculate likelihood function from posteriors
-        # should be L(X) = prod(i=1...N)(p(xi))
-        # p(x)=sum(j=1...K)(wj*p(x|j))
-        # in practice, the multiplication of small probabilities will underflow the float precision
-        # so we calculate log(L(X)) using log multiplication property
-        # log(a*b) = log(a)+log(b)
-        # TODO: double and triple check, with normalized data also
-        # return np.log((densities * (self.counts/self.n_obs)).sum(axis=1)).sum()
-        total_density = densities.sum(axis=1, keepdims=True)
-        cond_prob = densities / total_density
-        return np.sum(np.log(np.sum(cond_prob * self.priors, axis=1)))
+    # def get_log_likelihood(self, densities):
+    #     # calculate likelihood function from posteriors
+    #     # should be L(X) = prod(i=1...N)(p(xi))
+    #     # p(x)=sum(j=1...K)(wj*p(x|j))
+    #     # in practice, the multiplication of small probabilities will underflow the float precision
+    #     # so we calculate log(L(X)) using log multiplication property
+    #     # log(a*b) = log(a)+log(b)
+    #     # TODO: double and triple check, with normalized data also
+    #     # return np.log((densities * (self.counts/self.n_obs)).sum(axis=1)).sum()
+    #     total_density = densities.sum(axis=1, keepdims=True)
+    #     cond_prob = densities / total_density
+    #     return np.sum(np.log(np.sum(cond_prob * self.priors, axis=1)))
 
-    def get_log_likelihood_diff(self):
-        if len(self.log_likelihoods) > 1:
-            ll_t_minus_1 = self.log_likelihoods[-2]
-            ll_t = self.log_likelihoods[-1]
-            # TODO: check
-            log_diff = ll_t_minus_1 - ll_t
-            increase_perc = (ll_t_minus_1 - ll_t) * 100.0 / ll_t_minus_1
-            return log_diff, increase_perc
-        return np.inf, np.inf
+    # def get_log_likelihood_diff(self):
+    #     if len(self.log_likelihoods) > 1:
+    #         ll_t_minus_1 = self.log_likelihoods[-2]
+    #         ll_t = self.log_likelihoods[-1]
+    #         # TODO: check
+    #         log_diff = ll_t_minus_1 - ll_t
+    #         increase_perc = (ll_t_minus_1 - ll_t) * 100.0 / ll_t_minus_1
+    #         return log_diff, increase_perc
+    #     return np.inf, np.inf
 
-    def update_dist(self, posteriors):
-        if self.dist is None:
-            self.dist = pairwise_distances(RobustScaler().fit_transform(self.data))
-        dists = list()
-        l = self.labels.copy() + 1
-        for i in range(1, posteriors.shape[1]):
-            center = ((self.data.T * posteriors[:, i].ravel()).T).sum(
-                axis=0
-            ) / posteriors[:, i].sum()
-            mean_mem_dist_to_center = (
-                np.sum(
-                    pairwise_distances(self.data, center.reshape(1, -1))
-                    * np.atleast_2d(posteriors[:, i]).T
-                )
-                / posteriors[:, i].sum()
-            )
-            dists.append(mean_mem_dist_to_center)
-        self.iter_dists.append(np.array(dists))
+    # def update_dist(self, posteriors):
+    #     if self.dist is None:
+    #         self.dist = pairwise_distances(RobustScaler().fit_transform(self.data))
+    #     dists = list()
+    #     l = self.labels.copy() + 1
+    #     for i in range(1, posteriors.shape[1]):
+    #         center = ((self.data.T * posteriors[:, i].ravel()).T).sum(
+    #             axis=0
+    #         ) / posteriors[:, i].sum()
+    #         mean_mem_dist_to_center = (
+    #             np.sum(
+    #                 pairwise_distances(self.data, center.reshape(1, -1))
+    #                 * np.atleast_2d(posteriors[:, i]).T
+    #             )
+    #             / posteriors[:, i].sum()
+    #         )
+    #         dists.append(mean_mem_dist_to_center)
+    #     self.iter_dists.append(np.array(dists))
 
-    def update_log_likelihood(self, densities):
-        self.log_likelihoods.append(self.get_log_likelihood(densities))
-        log_diff, increase_perc = self.get_log_likelihood_diff()
-        self.iter_log_likelihood_perc.append(increase_perc)
-        self.iter_log_likelihood_diff.append(log_diff)
+    # def update_log_likelihood(self, densities):
+    #     self.log_likelihoods.append(self.get_log_likelihood(densities))
+    #     log_diff, increase_perc = self.get_log_likelihood_diff()
+    #     self.iter_log_likelihood_perc.append(increase_perc)
+    #     self.iter_log_likelihood_diff.append(log_diff)
 
-    def update_diff_parametric(self, parametric):
-        self.diff_parametric.append(
-            np.abs(self.posteriors[:, 1] - parametric[:, 1]).mean()
-        )
+    # def update_diff_parametric(self, parametric):
+    #     self.diff_parametric.append(
+    #         np.abs(self.posteriors[:, 1] - parametric[:, 1]).mean()
+    #     )
 
-    def update_diff_test_proba(self, test_proba):
-        interesting = np.zeros_like(test_proba).astype(bool)
-        interesting[(test_proba > 0.02) & (test_proba < 0.98)] = True
+    # def update_diff_test_proba(self, test_proba):
+    #     interesting = np.zeros_like(test_proba).astype(bool)
+    #     interesting[(test_proba > 0.02) & (test_proba < 0.98)] = True
 
-        self.iter_test_proba.append(
-            np.abs(self.posteriors[:, 1][interesting] - test_proba[interesting]).max()
-        )
+    #     self.iter_test_proba.append(
+    #         np.abs(self.posteriors[:, 1][interesting] - test_proba[interesting]).max()
+    #     )
 
-    def is_stopping_criteria_achieved(self):
-        # (ln(LLt) - ln(LLt-1)) < atol
-        # or increase_percentage < ptol
-        if not self.iter_log_likelihood_diff or not self.iter_log_likelihood_perc:
-            return False
-        log_diff = self.iter_log_likelihood_diff[-1]
-        increase_perc = self.iter_log_likelihood_perc[-1]
-        if self.atol is not None and log_diff < self.atol:
-            return True
-        if self.rtol is not None and increase_perc < self.rtol:
-            return True
-        if (
-            self.labeltol is not None
-            and self.iter_label_diff
-            and self.iter_label_diff[-1] == self.labeltol
-        ):
-            return True
-        return False
+    # def is_stopping_criteria_achieved(self):
+    #     # (ln(LLt) - ln(LLt-1)) < atol
+    #     # or increase_percentage < ptol
+    #     if not self.iter_log_likelihood_diff or not self.iter_log_likelihood_perc:
+    #         return False
+    #     log_diff = self.iter_log_likelihood_diff[-1]
+    #     increase_perc = self.iter_log_likelihood_perc[-1]
+    #     if self.atol is not None and log_diff < self.atol:
+    #         return True
+    #     if self.rtol is not None and increase_perc < self.rtol:
+    #         return True
+    #     if (
+    #         self.labeltol is not None
+    #         and self.iter_label_diff
+    #         and self.iter_label_diff[-1] == self.labeltol
+    #     ):
+    #         return True
+    #     return False
 
     def update_class_mixtures(self, posteriors: np.ndarray):
         # test
