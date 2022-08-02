@@ -1,18 +1,18 @@
-from scludam.membership import DBME
-from scludam import HKDE
-import pytest
 import numpy as np
+import pytest
+from scipy.stats import multivariate_normal
 
-from scludam.utils import one_hot_encode
+from scludam import HKDE
+from scludam.membership import DBME
 from scludam.synthetic import (
-    StarField,
-    StarCluster,
-    Synthetic,
     BivariateUniform,
+    StarCluster,
+    StarField,
+    Synthetic,
     UniformFrustum,
     polar_to_cartesian,
 )
-from scipy.stats import multivariate_normal
+from scludam.utils import one_hot_encode
 
 
 @pytest.fixture

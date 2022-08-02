@@ -63,7 +63,6 @@ exclude_patterns = [
     "_build",
     "**.ipynb_checkpoints",
     "masker.py",
-    "membership.py",
     "pipeline.py",
     "plot_gauss_err.py",
     "utils.py",

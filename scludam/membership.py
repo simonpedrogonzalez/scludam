@@ -15,30 +15,26 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Module for Density Based Membership Estimation.
-"""
+"""Module for Density Based Membership Estimation."""
 
 from copy import deepcopy
 
 import numpy as np
-
-from attrs import define, field, validators, Factory
+from attrs import Factory, define, field, validators
 
 from scludam import HKDE
-
 from scludam.plots import (
     pairprobaplot,
     scatter3dprobaplot,
     surfprobaplot,
     tsneprobaplot,
 )
-
 from scludam.type_utils import (
-    _type,
     Numeric1DArray,
     Numeric2DArray,
-    OptionalNumericArray,
     OptionalNumeric2DArray,
+    OptionalNumericArray,
+    _type,
 )
 
 
@@ -46,7 +42,7 @@ from scludam.type_utils import (
 class DBME:
     """Density Based Membership Estimation.
 
-    It uses ~`scludam.HKDE` to estimate the density and calculate
+    It uses :class:`~scludam.HKDE` to estimate the density and calculate
     smooth membership probabilities for each class, given data and
     initial probabilities.
 
@@ -60,7 +56,7 @@ class DBME:
         Mode of kernel calculation, by default "per_class". It indicates how
         many ~`scludam.HKDE` estimators will be used to estimate the density.
         Available modes are:
-        
+
         *  same: the bandwidth of the kernels is the same for all classes. There
            will be one estimator.
         *  per_class: the bandwidth of the kernels is different for each class. There
@@ -71,29 +67,30 @@ class DBME:
 
     kde_leave1out : bool
         Whether to use leave-one-out KDE estimation, by default True.
-    
+
     pdf_estimator : scludam.hkde.HKDE
         Estimator used to estimate the density, by default an instance of HKDE with
         default parameters.
 
     n_classes: int
         Number of detected classes. Only available after the
-        :func:`scludam.membership.DBME.fit` method is called.
+        :func:`~scludam.membership.DBME.fit` method is called.
     labels : Numeric1DArray
         Labels of the classes, only available after the
-        :func:`scludam.membership.DBME.fit` method is called.
+        :func:`~scludam.membership.DBME.fit` method is called.
     counts : Numeric1DArray
         Number of data points in each class, only available after the
-        :func:`scludam.membership.DBME.fit` method is called.
+        :func:`~scludam.membership.DBME.fit` method is called.
     priors : Numeric1DArray
         Prior probabilities of each class, only available after the
-        :func:`scludam.membership.DBME.fit` method is called.
+        :func:`~scludam.membership.DBME.fit` method is called.
     posteriors : Numeric2DArray
         Posterior probabilities array of shape (n_datapoints, n_classes),
         only available after the
-        :func:`scludam.membership.DBME.fit` method is called.
+        :func:`~scludam.membership.DBME.fit` method is called.
 
-    """    
+    """
+
     # intput attrs
     n_iters: int = field(default=2, validator=[_type(int), validators.gt(0)])
     kde_leave1out: bool = field(default=True, validator=_type(bool))
@@ -217,7 +214,41 @@ class DBME:
         err: OptionalNumeric2DArray = None,
         corr: OptionalNumericArray = None,
     ):
+        """Fit models and calculate posteriors probabilities.
 
+        The method takes data and initial probabilities and
+        creates density estimators. Prior probabilities are
+        taken from the initial probabilities. In each iteration,
+        the method calculates the posterior probabilities of each
+        datapoint using the density estimates and prior probabilites.
+        Also, the method updates the prior probabilities considering
+        the posterior probabilities of the past iteration.
+        ``n_iters=1``
+        uses prior probabilities as provided in the initial
+        probabilities array. ``n_iters=2`` (recommended),
+        updates the prior probabilities once.
+
+        Parameters
+        ----------
+        data : Numeric2DArray
+            Data matrix.
+        init_proba : Numeric2DArray
+            Initial posterior probability array.
+            Must be of shape (n_samples, n_classes). This probabilities
+            are used to create the initial density estimators per class.
+        err : OptionalNumeric2DArray, optional
+            Error parameter to be passed to :func:`~scludam.hkde.HKDE.fit`,
+            by default None.
+        corr : OptionalNumericArray, optional
+            Correlation parameter to be passed to :func:`~scludam.hkde.HKDE.fit`,
+            by default None.
+
+        Returns
+        -------
+        DBME
+            Fitted instance of the :class:`~scludam.membership.DBME` class.
+
+        """
         self._n, self._d = data.shape
         self._data = data
         self.labels = np.argmax(init_proba, axis=1) - 1
