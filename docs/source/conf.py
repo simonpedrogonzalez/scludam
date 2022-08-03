@@ -24,7 +24,7 @@ copyright = "2022, Simón Pedro González"
 author = "Simón Pedro González"
 
 # The full version, including alpha/beta/rc tags
-release = "0.2.0"
+release = "0.3.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -63,7 +63,6 @@ exclude_patterns = [
     "_build",
     "**.ipynb_checkpoints",
     "masker.py",
-    "membership.py",
     "pipeline.py",
     "plot_gauss_err.py",
     "utils.py",

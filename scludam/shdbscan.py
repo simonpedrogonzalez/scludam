@@ -621,7 +621,6 @@ class SHDBSCAN:
             self.labels is not None
             and self.proba is not None
             and self._data is not None
-            and self.outlier_scores is not None
         )
 
     def validity_index(self, **kwargs):

@@ -11,6 +11,7 @@ Submodules
    scludam.fetcher
    scludam.hkde
    scludam.masker
+   scludam.membership
    scludam.plots
    scludam.rutils
    scludam.shdbscan
