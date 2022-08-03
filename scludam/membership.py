@@ -42,7 +42,7 @@ from scludam.type_utils import (
 class DBME:
     """Density Based Membership Estimation.
 
-    It uses :class:`~scludam.HKDE` to estimate the density and calculate
+    It uses :class:`~scludam.hkde.HKDE` to estimate the density and calculate
     smooth membership probabilities for each class, given data and
     initial probabilities.
 
@@ -53,22 +53,23 @@ class DBME:
         prior probabilities are updated according to the posterior
         probabilities of the previous iteration.
     kernel_calculation_mode : str
-        Mode of kernel calculation, by default "per_class". It indicates how
-        many ~`scludam.HKDE` estimators will be used to estimate the density.
+        Mode of kernel calculation, by default ``per_class``. It indicates how
+        many :class:`~scludam.hkde.HKDE` estimators will be used to estimate the
+        density.
         Available modes are:
 
-        *  same: the bandwidth of the kernels is the same for all classes. There
+        *  ``same``: the bandwidth of the kernels is the same for all classes. There
            will be one estimator.
-        *  per_class: the bandwidth of the kernels is different for each class. There
-           will be one estimator per class.
-        *  per_class_per_iter: the bandwidth of the kernels is different for
+        *  ``per_class``: the bandwidth of the kernels is different for each class.
+           There will be one estimator per class.
+        *  ``per_class_per_iter``: the bandwidth of the kernels is different for
            each class and iteration. There will be one estimator per class which will
            be updated in each iteration, recalculating the bandwith each time.
 
     kde_leave1out : bool
         Whether to use leave-one-out KDE estimation, by default True.
 
-    pdf_estimator : scludam.hkde.HKDE
+    pdf_estimator : :class:`~scludam.hkde.HKDE`
         Estimator used to estimate the density, by default an instance of HKDE with
         default parameters.
 
@@ -89,6 +90,13 @@ class DBME:
         only available after the
         :func:`~scludam.membership.DBME.fit` method is called.
 
+    Examples
+    --------
+    .. literalinclude:: ../../examples/membership/dbme.py
+        :language: python
+        :linenos:
+    .. image:: ../../examples/membership/init_proba.png
+    .. image:: ../../examples/membership/dbme.png
     """
 
     # intput attrs
