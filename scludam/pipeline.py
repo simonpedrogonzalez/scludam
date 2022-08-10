@@ -3,28 +3,17 @@ import sys
 
 
 import copy
-import math
-from abc import abstractmethod
-from typing import Callable, List, Optional, Tuple, Type, Union
+from typing import List
 
-import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from astropy.coordinates import Distance, SkyCoord
-from astropy.stats import biweight_location, biweight_scale, mad_std
 from astropy.stats.sigma_clipping import sigma_clipped_stats
 from attrs import define, field, validators, Factory
-from bayes_opt import BayesianOptimization
-from hdbscan import HDBSCAN, all_points_membership_vectors
 from hdbscan.validity import validity_index
-from KDEpy import FFTKDE
 from scipy import ndimage, stats
-from scipy.optimize import curve_fit
-from scipy.stats import gaussian_kde
-from skimage.feature import peak_local_max
-from sklearn.manifold import TSNE
 from sklearn.metrics import pairwise_distances
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.neighbors import KernelDensity
@@ -33,23 +22,23 @@ from statsmodels.nonparametric.kernel_density import KDEMultivariate
 from statsmodels.robust.scale import huber, hubers_scale
 from typing_extensions import TypedDict
 
-sys.path.append(os.path.join(os.path.dirname("opencluster"), "."))
-from opencluster.detection2 import CountPeakDetector, DetectionResult
-from opencluster.hkde import HKDE
-from opencluster.masker import RangeMasker
-from opencluster.membership3 import DBME
-from opencluster.synthetic import three_clusters_sample, sample3c
-from opencluster.utils import Colnames
+sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
+from scludam.detection import CountPeakDetector, DetectionResult
+from scludam.hkde import HKDE
+from scludam.masker import RangeMasker
+from scludam.membership import DBME
+from scludam.utils import Colnames
 from astropy.table.table import Table
-from opencluster.stat_tests import (
+from scludam.stat_tests import (
     StatTest,
     RipleysKTest,
     DipDistTest,
     HopkinsTest,
     TestResult,
 )
-from opencluster.membership3 import DBME
-from opencluster.shdbscan import SHDBSCAN
+from scludam.membership import DBME
+from scludam.shdbscan import SHDBSCAN
+
 
 @define
 class DEP:
@@ -61,25 +50,31 @@ class DEP:
     test_cols: List[List[str]] = field()
 
     membership_cols: List[str]
-    clusterer: SHDBSCAN = SHDBSCAN(auto_allow_single_cluster=True, min_cluster_size=50)
+    clusterer: SHDBSCAN = SHDBSCAN(
+        auto_allow_single_cluster=True,
+        min_cluster_size=50,
+        noise_proba_mode="conservative",
+        cluster_proba_mode="hard",
+        scaler=RobustScaler(),
+    )
     estimator: DBME = DBME()
     test_mode: str = field(
         default="any", validator=validators.in_(["any", "all", "majority"])
     )
 
-    sample_sigma_factor: int = 5
+    sample_sigma_factor: int = 1
     det_kws: dict = Factory(dict)
 
     colnames: Colnames = None
 
     test_results: List[List[TestResult]] = Factory(list)
-    detection_result: DetectionResult
+    detection_result: DetectionResult = None
     proba: np.ndarray = None
-    limits = Factory(list)
-    masks = Factory(list)
-    clusterers = Factory(list)
-    estimators = Factory(list)
-    is_clusterable = Factory(list)
+    limits: List = Factory(list)
+    masks: List = Factory(list)
+    clusterers: List = Factory(list)
+    estimators: List = Factory(list)
+    is_clusterable: List = Factory(list)
 
     @test_cols.validator
     def test_cols_validator(self, attr, value):
@@ -93,22 +88,20 @@ class DEP:
             )
 
     def _detect(self, df: pd.DataFrame):
-        self._check_cols(self.det_cols)
-        detection_data = df[self.det_cols].values()
+        detection_data = df[self.det_cols].values
         detection_result = self.detector.detect(detection_data, **self.det_kws)
         self.detection_result = detection_result
         return detection_result
 
     def _get_region_mask(self, df: pd.DataFrame, center: np.ndarray, sigma: np.ndarray):
-        self._check_cols(self.det_cols)
-        detection_data = df[self.det_cols].values()
-        sample_limits = np.vstack(
+        detection_data = df[self.det_cols].values
+        limits = np.vstack(
             (
                 center - sigma * self.sample_sigma_factor,
                 center + sigma * self.sample_sigma_factor,
             )
         ).T
-        self.limits.append(sample_limits)
+        self.limits.append(limits)
         mask = RangeMasker(limits).mask(detection_data)
         self.masks.append(mask)
         return mask
@@ -118,67 +111,65 @@ class DEP:
         test_df = df[test_cols]
         results = []
         for i, stat_test in enumerate(self.tests):
-            data = test_df[self.test_cols[i]].values()
-            results.append(stat_test.test(t_data))
+            data = test_df[self.test_cols[i]].values
+            results.append(stat_test.test(data))
         self.test_results.append(results)
+        # from scludam.stat_tests import rripley
+        # import seaborn as sns
+        # import matplotlib.pyplot as plt
+        # from sklearn.preprocessing import MinMaxScaler
+
+        # dd = MinMaxScaler().fit_transform(data)
+        # dd = dd[(dd[:, 0] > 0.25) & (dd[:, 0] < 0.75)]
+        # dd = dd[(dd[:, 1] > 0.25) & (dd[:, 1] < 0.75)]
+        # plt.figure()
+        # sns.scatterplot(dd[:, 0], dd[:, 1])
+        # plt.show()
+        # plt.figure()
+        # rr, rlf = rripley(data)
+        # sns.lineplot(rr, rlf)
+        # sns.lineplot(rr, rr)
+        # sns.lineplot(results[0].radii, results[0].l_function)
+        # plt.show()
         return results
 
     def _is_sample_clusterable(self, test_results: List[TestResult]):
         if len(test_results) == 0:
             is_clusterable = True
-        trs = np.asarray([tr.passed for tr in test_results])
+        trs = np.asarray([tr.rejectH0 for tr in test_results])
         if self.test_mode == "any":
             is_clusterable = np.any(trs)
-        if self.test_mode == "all":
+        elif self.test_mode == "all":
             is_clusterable = np.all(trs)
-        if self.test_mode == "majority":
+        elif self.test_mode == "majority":
             is_clusterable = np.sum(trs) >= trs.size / 2
         else:
             raise ValueError("test_mode must be one of 'any', 'all', 'majority'")
         self.is_clusterable.append(is_clusterable)
         return is_clusterable
 
-    def _estimate_membership(self, df: pd.DataFrame):
+    def _estimate_membership(self, df: pd.DataFrame, count: int, center: np.ndarray):
 
         # get err and corr columns and use them if they exist
         err_cols, missing_err = self.colnames.get_error_names(self.membership_cols)
         corr_cols, missing_corr = self.colnames.get_corr_names(self.membership_cols)
 
+        # data to calculate center
+        data = df[self.membership_cols].values
+
         if not missing_err:
-            self.membership_cols += err_cols
-            n_errs = len(err_cols)
+            err = df[err_cols].values
         else:
             err = None
         if not missing_corr:
-            self.membership_cols += corr_cols
-            n_corrs = len(corr_cols)
+            corr = df[corr_cols].values
         else:
             corr = None
-
-        self._check_cols(self.membership_cols)
-
-        # data to use for membership estimation
-        data = df[self.membership_cols].values()
-
-        # data to calculate center
-        data_only = data[:, : -n_errs - n_corrs].values()
-        center = np.array(
-            [
-                sigma_clipped_stats(
-                    data_only[:, i],
-                    cenfunc="median",
-                    stdfunc="mad_std",
-                    maxiters=None,
-                    sigma=1,
-                )
-                for i in range(data_only.shape[1])
-            ]
-        )[:, 1]
 
         # create a clusterer for the data
         clusterer = copy.deepcopy(self.clusterer)
         if clusterer.min_cluster_size and clusterer.clusterer is None:
-            clusterer.min_cluster_size = int(peak.count)
+            clusterer.min_cluster_size = int(count)
 
         clusterer.fit(data=data, centers=[center])
         self.clusterers.append(clusterer)
@@ -191,47 +182,55 @@ class DEP:
 
         return estimator.posteriors
 
+    # def _check_all_cols(self):
+
     def fit(self, df):
         df = df.dropna()
         n, d = df.shape
 
         self.colnames = Colnames(df.columns)
 
-        detection_result = self._detect(df)
+        self._check_cols(self.det_cols)
+        self.detection_result = self._detect(df)
 
-        if not detection_result.centers.size:
+        if not self.detection_result.centers.size:
             return np.ones(n).reshape(-1, 1)
 
-        global_proba = []
+        self._check_cols(self.membership_cols)
 
-        for i, peak_center in enumerate(detection_result.centers):
+        # global_proba = []
 
-            mask = self._get_region_mask(df, peak_center)
+        for i, peak_center in enumerate(self.detection_result.centers):
+
+            mask = self._get_region_mask(
+                df, peak_center, self.detection_result.sigmas[i]
+            )
             region_df = df[mask]
 
             test_results = self._test(region_df)
 
-            if self._is_sample_clusterable(test_results):
-                sample_proba = self._estimate_membership(df, mask)
+        #     if self._is_sample_clusterable(test_results):
+        #         proba = self._estimate_membership(region_df, self.detection_result.counts[i], peak_center)
 
-                n_classes = sample_proba.shape[1]
-                n_clusters = n_classes - 1
+        #         n_classes = proba.shape[1]
+        #         n_clusters = n_classes - 1
 
-                # add each found cluster probs
-                for n_c in range(n_clusters):
-                    cluster_proba = np.zeros(n)
-                    cluster_proba[mask] = proba[:, n_c + 1]
-                    global_proba.append(cluster_proba)
+        #         # add each found cluster probs
+        #         for n_c in range(n_clusters):
+        #             cluster_proba = np.zeros(n)
+        #             cluster_proba[mask] = proba[:, n_c + 1]
+        #             global_proba.append(cluster_proba)
 
         # add row for field prob
-        global_proba = np.array(global_proba).T
-        _, total_clusters = global_proba.shape
-        result = np.empty((n, total_clusters + 1))
-        result[:, 1:] = global_proba
-        result[:, 0] = 1 - global_proba.sum(axis=1)
-        self.proba = result
+        # global_proba = np.array(global_proba).T
+        # _, total_clusters = global_proba.shape
+        # result = np.empty((n, total_clusters + 1))
+        # result[:, 1:] = global_proba
+        # result[:, 0] = 1 - global_proba.sum(axis=1)
+        # self.proba = result
 
         return self
+
 
 # def test_PMPlxPipeline():
 #     df = sample3c()
@@ -268,20 +267,35 @@ class DEP:
 
 
 def test_PMPlxPipeline_real_data():
-    df = Table.read("tests/data/ngc2527_small.xml").to_pandas()
-
+    df = Table.read("/home/simon/test-scludam/data/ngc2527_data.xml").to_pandas()
+    df["log10_parallax"] = np.log10(df["parallax"])
     dep = DEP(
         detector=CountPeakDetector(
             bin_shape=[0.5, 0.5, 0.05],
+            max_n_peaks=10,
         ),
         det_cols=["pmra", "pmdec", "log10_parallax"],
         tests=[
-            RipleysKTest(mode="chiu", pvalue_threshold=0.05),
+            RipleysKTest(mode="ripley", pvalue_threshold=0.05, max_samples=1000),
+            RipleysKTest(mode="chiu", pvalue_threshold=0.05, max_samples=1000),
+            RipleysKTest(mode="ks", pvalue_threshold=0.05, max_samples=1000),
+            # DipDistTest(pvalue_threshold=0.05, max_samples=1000),
+            # HopkinsTest(pvalue_threshold=0.05, max_samples=1000),
         ],
-        test_cols=[["pmra", "pmdec"]],
-        membership_cols=["pmra", "pmdec", "parallax"],
+        test_cols=[["pmra", "pmdec"]] * 3,
+        membership_cols=["pmra", "pmdec", "log10_parallax"],
         sample_sigma_factor=5,
     ).fit(df)
+    trs = dep.test_results
+    for tt in trs:
+        tr = tt[0]
+        sns.lineplot(tr.radii, tr.radii)
+        sns.lineplot(tr.radii, tr.l_function)
+        plt.show()
+        plt.figure()
+    dep.detector.plot()
+    plt.show()
+
     print("coso")
 
 
