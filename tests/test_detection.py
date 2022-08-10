@@ -570,11 +570,11 @@ def test_no_cluster_sample_yields_no_found_peaks(no_clusters_sample):
     assert det_res_has_shape(result, 0, 3)
 
 
-def test_max_num_peaks(three_clusters_sample):
+def test_max_n_peaks(three_clusters_sample):
     data = three_clusters_sample[["pmra", "pmdec", "log10_parallax"]].values
     result = CountPeakDetector(
         bin_shape=[0.5, 0.5, 0.05],
-        max_num_peaks=2,
+        max_n_peaks=2,
     ).detect(data)
     assert det_res_has_shape(result, 2, 3)
 

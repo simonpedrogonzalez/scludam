@@ -543,7 +543,7 @@ class CountPeakDetector:
     min_dif: Number = field(default=10)
     min_sigma_dif: Number = field(default=None)
     min_score: Number = field(default=1)
-    max_num_peaks: int = field(default=np.inf)
+    max_n_peaks: int = field(default=np.inf)
     min_interpeak_dist: int = field(default=1, validator=_type(int))
     remove_low_density_regions: bool = field(default=True, validator=_type(bool))
     norm_mode: str = field(default="std", validator=validators.in_(["std", "approx"]))
@@ -671,8 +671,8 @@ class CountPeakDetector:
             peak_detection_params["min_distance"] = self.min_interpeak_dist
         if self.min_score:
             peak_detection_params["threshold_abs"] = self.min_score
-        if self.max_num_peaks:
-            peak_detection_params["num_peaks"] = self.max_num_peaks
+        if self.max_n_peaks:
+            peak_detection_params["num_peaks"] = self.max_n_peaks
 
         # detection
         g_centers = []
@@ -782,8 +782,8 @@ class CountPeakDetector:
         # compare same peaks in different histogram offsets
         # and return most sifnificant peak for all offsets
         g_ind = _get_higher_score_offset_per_peak(g_indices, g_scores)
-        if self.max_num_peaks != np.inf:
-            g_ind = g_ind[0 : self.max_num_peaks]
+        if self.max_n_peaks != np.inf:
+            g_ind = g_ind[0 : self.max_n_peaks]
 
         g_centers = np.array(g_centers)[g_ind]
         g_scores = np.array(g_scores)[g_ind]
@@ -942,7 +942,7 @@ class CountPeakDetector:
         hist2D = hist[tuple(cut)]
 
         # get the edges of the 2d cut in the xy order
-        edges2D = np.array(edges, dtype="object")[xydims]
+        edges2D = np.array(edges)[xydims]
 
         assert hist2D.shape[0] == edges2D[0].shape[0] - 1
 
