@@ -67,7 +67,7 @@ def test_hopkins_iris_rejectH0(iris):
     value: 0.9978868058086875
     pvalue: 0.0
     """
-    ht = HopkinsTest(n_iters=1, n_samples=150, metric="euclidean").test(iris)
+    ht = HopkinsTest(n_iters=1, sample_ratio=1, metric="euclidean").test(iris)
     assert ht.rejectH0
     assert np.isclose(0.9978868058086875, ht.value, atol=1e-3)
     assert np.isclose(0.0, ht.pvalue, atol=1e-3)
@@ -78,7 +78,7 @@ def test_dip_uniform_not_rejectH0(uniform_sample):
 
 
 def test_dip_one_cluster_rejectH0(one_cluster_sample):
-    assert DipDistTest(n_samples=100).test(one_cluster_sample).rejectH0
+    assert DipDistTest().test(one_cluster_sample).rejectH0
 
 
 def test_dip_two_clusters_rejectH0(two_clusters_sample):
@@ -156,5 +156,5 @@ def test_ripleysk_iris_rejectH0_and_delete_repeated_values(iris):
         assert np.isclose(spatstat_value, rk.value, atol=1e-2)
     record[0].message.args[0] == (
         "There are repeated data points that cause astropy.stats.RipleysKEstimator"
-        " to break, they will be removed."
+        " to fail, they will be removed."
     )
