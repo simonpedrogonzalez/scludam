@@ -30,8 +30,9 @@ import numpy as np
 from astropy.stats import RipleysKEstimator
 from attrs import define, field, validators
 from beartype import beartype
+from copy import deepcopy
 from diptest import diptest
-from scipy.stats import beta, ks_2samp
+from scipy.stats import beta, ks_2samp, norm
 from sklearn.base import TransformerMixin
 from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import BallTree, DistanceMetric
@@ -41,7 +42,7 @@ from sklearn.utils import resample
 from scludam.type_utils import Numeric1DArray, Numeric2DArray
 
 
-@define(auto_attribs=True)
+@define
 class TestResult:
     """Base class to hold the results of a statistical test.
 
@@ -76,7 +77,7 @@ class StatTest:
         pass
 
 
-@define(auto_attribs=True)
+@define
 class HopkinsTestResult(TestResult):
     """Results of a Hopkins test.
 
@@ -95,7 +96,7 @@ class HopkinsTestResult(TestResult):
     pvalue: Number
 
 
-@define(auto_attribs=True)
+@define()
 class HopkinsTest(StatTest):
     """Class to perform a Hopkins spatial randomness test.
 
@@ -104,9 +105,12 @@ class HopkinsTest(StatTest):
     n_iters : int, optional
         Number of iterations to perform the test. Final Hopkins statistic result
         is taken as the median of the results, by default is 100.
-    n_samples : int, optional
-        Number of samples to take from the data, by default is ``0.1*n`` where n is
-        the number of points in the data set, as it is the recommended value.
+    sample_ratio : float, optional
+        Sample ratio to take from the data, by default is ``0.1``. The number
+        of samples is ``n*sample_ratio``.
+    max_samples : int, optional
+        Number of max samples to take from the data, by default is 5000. If
+        ``n_samples`` is greater than this value, it is set to this value.
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'.
         Can be str or sklearn.neighbors.DistanceMetric.
@@ -156,9 +160,10 @@ class HopkinsTest(StatTest):
 
     """
 
-    n_samples: int = None
-    metric: Union[str, DistanceMetric] = "euclidean"
-    n_iters: int = 100
+    sample_ratio: int = field(default=.1, validator=[validators.gt(0), validators.le(1)])
+    max_samples: int = field(default=5000)
+    metric: Union[str, DistanceMetric] = field(default="euclidean")
+    n_iters: int = field(default=100)
     # interpretation:
     # H0: data comes from uniform distribution
     # H1: data does not come from uniform distribution
@@ -166,14 +171,41 @@ class HopkinsTest(StatTest):
     # if h = u/(u+w) ~ .5 => w ~ u luego no hay estructura
     # if h > .75 => reject H0, and in general  indicates a clustering
     # tendency at the 90% confidence level.
-    threshold: Number = None
-    pvalue_threshold: float = 0.05
+    threshold: Number = field(default=None)
+    pvalue_threshold: float = field(default=.05)
+
+    def _get_pvalue2(self, x, A, n):
+        Ix = beta(n,n).cdf(x)
+        if A < 1:
+            pvalue = 1 - Ix
+        else:
+            pvalue = Ix
+        print(f"pva1={round(1 - pvalue, 5)}")
+        X = np.abs(x - .5)*2*np.sqrt(2*n+1)
+        pvalue2 = norm().cdf(X)
+        # end exp
+
+        print(f"pva2={round(1 - pvalue2, 5)}")
+        return pvalue2
 
     def _get_pvalue(self, value: Number, n_samples: int):
         b = beta(n_samples, n_samples)
         if value > 0.5:
+            # value is a random variate
+            # that distributes as a beta(n, n)
+            # that distribution is symmetric
+            # around .5
+            # let value = .5 +- e
+            # get the probability
+            # p of getting x ∈ (.5-4, .5+4)
+            # As value close to .5 means support for
+            # H0: data comes from uniform distribution
+            # we want to get 1 - p
+            # so we can compare with pvalue threshold
+            print(f"pva3={round(1 - (b.cdf(value)), 5)}")
             return 1 - (b.cdf(value) - b.cdf(1 - value))
         else:
+            print(f"pva3={round(1 - (1 - b.cdf(value)), 5)}")
             return 1 - (b.cdf(1 - value) - b.cdf(value))
 
     @beartype
@@ -193,14 +225,21 @@ class HopkinsTest(StatTest):
         """
         obs, dims = data.shape
 
-        if self.n_samples is None:
-            n_samples = int(obs * 0.1)
-        else:
-            n_samples = min(obs, self.n_samples)
+        n_samples = min(int(obs * self.sample_ratio), self.max_samples, obs)
 
+        # print("h")
+        # print(n_samples)
         results = []
+        As = []
+        xs = []
+        # import seaborn as sns
+        # import matplotlib.pyplot as plt
         for i in range(self.n_iters):
             sample = resample(data, n_samples=n_samples, replace=False)
+            # plt.figure()
+            # sns.scatterplot(sample[:,0], sample[:,1])
+            # plt.show()
+
             if self.metric == "mahalanobis":
                 kwargs["V"] = np.cov(sample, rowvar=False)
             tree = BallTree(sample, leaf_size=2, metric=self.metric, *args, **kwargs)
@@ -218,11 +257,30 @@ class HopkinsTest(StatTest):
 
             sample_sum = np.sum(sample_nn_distance**dims)
             uniform_sum = np.sum(uniform_nn_distance**dims)
-
             results.append(uniform_sum / (uniform_sum + sample_sum))
+
+            # exp
+            A = sample_sum / uniform_sum
+            x = A / (1 + A)
+            As.append(A)
+            xs.append(x)
+            # end exp
+
+            # print(results[-1])
 
         value = np.median(np.array(results))
         pvalue = self._get_pvalue(value, n_samples)
+        
+        # exp
+        print(f"pval={round(pvalue, 5)}")
+        print(f"valu={round(value, 5)}")
+        x = np.median(np.array(xs))
+        print(f"1-x ={round(1-x, 5)}")
+        A = np.median(np.array(As))
+        pvalue2 = self._get_pvalue2(x, A, n_samples)
+        print('-----------')
+        # end exp
+
         if self.threshold is not None:
             rejectH0 = value >= self.threshold
         else:
@@ -266,6 +324,9 @@ class DipDistTest(StatTest):
     pvalue_threshold : float, optional
         Threshold to use with the p-value to define if H0 is rejected, by default
         is ``0.05``.
+    max_samples : int, optional
+        Maximum number of samples to use, by default is ``5000``. If there are more
+        data points than ``max_samples``, then the data is sampled.
 
     Notes
     -----
@@ -301,7 +362,7 @@ class DipDistTest(StatTest):
 
     """
 
-    n_samples: int = None
+    max_samples: int = 5000
     metric: str = "euclidean"
     pvalue_threshold: float = 0.05
 
@@ -322,15 +383,16 @@ class DipDistTest(StatTest):
         """
         obs, dims = data.shape
 
-        if self.n_samples is not None:
-            n_samples = min(obs, self.n_samples)
-        else:
-            n_samples = obs
-
-        sample = resample(data, n_samples=n_samples, replace=False)
-        dist = np.ravel(np.tril(pairwise_distances(sample, metric=self.metric)))
+        if obs > self.max_samples:
+            data = resample(data, n_samples=self.max_samples, replace=False)
+        dist = np.ravel(np.tril(pairwise_distances(data, metric=self.metric)))
         dist = np.msort(dist[dist > 0])
         dip, pval = diptest(dist, *args, **kwargs)
+        print(pval)
+        # import seaborn as sns
+        # import matplotlib.pyplot as plt
+        # sns.displot(dist)
+        # plt.show()
         rejectH0 = pval < self.pvalue_threshold
         return DipDistTestResult(value=dip, pvalue=pval, rejectH0=rejectH0, dist=dist)
 
@@ -412,6 +474,15 @@ class RipleysKTest(StatTest):
         ``step = max_radius / 128 / 4``.
         This procedure is the recommended one in R spatstat package [6]_.
 
+    max_samples: int, optional
+        The maximum number of samples to use for the test, by default is 5000. If the
+        dataset has more than ``max_samples``, then the test is performed on a random sample
+        of ``max_samples``.
+
+    factor : float, optional
+        The factor to use to determine the rejection of H0, by default is None. If factor is
+        provided, then pvalue_threshold is ignored.
+
     Raises
     ------
     ValueError
@@ -464,6 +535,8 @@ class RipleysKTest(StatTest):
 
     rk_estimator: RipleysKEstimator = None
 
+    _used_fitted_rk_estimator: RipleysKEstimator = None
+
     _scaler: TransformerMixin = MinMaxScaler()
 
     _ripley_factors = {
@@ -486,6 +559,8 @@ class RipleysKTest(StatTest):
     factor: float = None
 
     pvalue_threshold: float = field(default=0.05)
+
+    max_samples: int = field(default=5000)
 
     @pvalue_threshold.validator
     def _check_pvalue_threshold(self, attribute, value):
@@ -515,10 +590,12 @@ class RipleysKTest(StatTest):
             factor = self._ripley_factors[self.pvalue_threshold]
         else:
             factor = self._chiu_factors[self.pvalue_threshold]
+        print(f"sup={round(supremum, 5)}, comp={round(factor * np.sqrt(area) / float(n), 5)}")
         return supremum, supremum >= factor * np.sqrt(area) / float(n)
 
     def _ks_rule(self, l_function: Numeric2DArray, radii: Numeric2DArray):
         pvalue = ks_2samp(l_function, radii).pvalue
+        # print(f"pvalue={round(pvalue, 5)}")
         return pvalue, pvalue <= self.pvalue_threshold
 
     @beartype
@@ -549,10 +626,13 @@ class RipleysKTest(StatTest):
         if data_unique.shape[0] != data.shape[0]:
             warn(
                 "There are repeated data points that cause"
-                " astropy.stats.RipleysKEstimator to break, they will be removed.",
+                " astropy.stats.RipleysKEstimator to fail, they will be removed.",
                 category=UserWarning,
             )
             data = data_unique
+
+        if data.shape[0] > self.max_samples:
+            data = resample(data, n_samples=self.max_samples, replace=False)
 
         obs, dims = data.shape
 
@@ -576,6 +656,8 @@ class RipleysKTest(StatTest):
             radii_max = min(radii_max_ripley, radii_max_large)
             step = radii_max / 128 / 4
             radii = np.arange(0, radii_max + step, step)
+        else:
+            radii = self.radii
 
         if self.rk_estimator is None:
             # Could be extended to other shapes
@@ -583,7 +665,7 @@ class RipleysKTest(StatTest):
             # available. Could use ConvexHull to get the
             # area.
             area = (x_max - x_min) * (y_max - y_min)
-            self.rk_estimator = RipleysKEstimator(
+            self._fitted_rk_estimator = RipleysKEstimator(
                 area=area,
                 x_min=x_min,
                 x_max=x_max,
@@ -591,19 +673,112 @@ class RipleysKTest(StatTest):
                 y_max=y_max,
             )
         else:
-            area = self.rk_estimator.area
+            self._fitted_rk_estimator = deepcopy(self.rk_estimator)
+            area = self._fitted_rk_estimator.area
 
         if kwargs.get("mode") is None:
             # Best mode for rectangular window
             kwargs["mode"] = "ripley"
 
-        l_function = self.rk_estimator.Lfunction(data, radii, *args, **kwargs)
+        l_function = self._fitted_rk_estimator.Lfunction(data, radii, *args, **kwargs)
 
         if self.mode == "ks":
             value, rejectH0 = self._ks_rule(l_function, radii)
         else:
             value, rejectH0 = self._empirical_csr_rule(l_function, radii, area, obs)
 
+        print(f"rejectH0={rejectH0}")
         return RipleyKTestResult(
             value=value, rejectH0=rejectH0, radii=radii, l_function=l_function
         )
+
+
+
+# from scludam.synthetic import BivariateUniform
+# from scipy.stats import multivariate_normal
+
+
+# def uniform_sample():
+#     return BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(1000)
+
+# def one_cluster_sample():
+#     sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
+#     sample2 = multivariate_normal(mean=(0.5, 0.5), cov=1.0 / 200).rvs(500)
+#     return np.concatenate((sample, sample2))
+
+# def two_clusters_sample():
+#     sample = BivariateUniform(locs=(0, 0), scales=(1, 1)).rvs(500)
+#     sample2 = multivariate_normal(mean=(0.75, 0.75), cov=1.0 / 200).rvs(250)
+#     sample3 = multivariate_normal(mean=(0.25, 0.25), cov=1.0 / 200).rvs(250)
+#     return np.concatenate((sample, sample2, sample3))
+
+
+
+# def test_hopkins_uniform_not_rejectH0(uniform_sample):
+#     h = (HopkinsTest(metric="mahalanobis", sample_ratio=1, n_iters=100)
+#         .test(data=uniform_sample)
+#         .rejectH0
+#     )
+
+
+# def test_hopkins_one_cluster_rejectH0(one_cluster_sample):
+#     h= (
+#         HopkinsTest(metric="mahalanobis", sample_ratio=1000)
+#         .test(data=one_cluster_sample)
+#         .rejectH0
+#     )
+
+
+# def rripley(data):
+#     from rpy2.robjects import r
+#     from scludam.rutils import load_r_packages, clean_r_session, assign_r_args
+
+#     data = MinMaxScaler().fit_transform(data)
+
+#     x_min = np.min(data[:, 0])
+#     x_max = np.max(data[:, 0])
+#     y_min = np.min(data[:, 1])
+#     y_max = np.max(data[:, 1])
+    
+#     load_r_packages(r, 'spatstat')
+#     assign_r_args(r, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max)
+#     assign_r_args(r, data=data)
+#     r('W <- owin(c(x_min, x_max), c(y_min, y_max))')
+#     r('data <- as.ppp(data, W=W)')
+#     r('le = Kest(data, correction="Ripley")')
+#     radii = np.asarray(r('le$r'))
+#     lf = np.asarray(r('le$iso'))
+#     r('plot(le)')
+#     return radii, lf
+
+# np.random.seed(0)
+# l = []
+# for i in range(100):
+#     data = uniform_sample()
+#     # RipleysKTest(mode="chiu", pvalue_threshold=.1, max_samples=1000).test(data)
+#     # RipleysKTest(mode="ks", pvalue_threshold=.1, max_samples=1000).test(data)
+#     # print("-------------.05--------------")
+#     # RipleysKTest(mode="ripley", pvalue_threshold=.05, max_samples=1000).test(data)
+#     # RipleysKTest(mode="chiu", pvalue_threshold=.05, max_samples=1000).test(data)
+#     # RipleysKTest(mode="ks", pvalue_threshold=.05, max_samples=1000).test(data)
+#     # print("-------------.01--------------")
+
+#     l+=[
+#         HopkinsTest(pvalue_threshold=.05).test(data).rejectH0,
+#         # RipleysKTest(mode="chiu", pvalue_threshold=0.01, max_samples=1000).test(data).rejectH0,
+#         # RipleysKTest(mode="ks", pvalue_threshold=0.01, max_samples=1000).test(data).rejectH0,
+#     ]
+
+# l = np.array(l)
+# print(np.ones(l.size)[l].sum() / l.size)
+# print(l)
+    
+# cr, clf = rripley(data)
+# myr, mylf = myr.radii, myr.l_function
+# import seaborn as sns
+# import matplotlib.pyplot as plt
+
+# sns.lineplot(cr, clf)
+# sns.lineplot(myr, mylf)
+# plt.show()
+# test_hopkins_one_cluster_rejectH0(one_cluster_sample())
