@@ -938,8 +938,11 @@ class CountPeakDetector:
 
         # create a 2d cut for (x,y) with the other dims fixed
         # on the peak value
-        cut = np.array([slice(None)] * 2 + pindex[cutdims].tolist(), dtype="object")
-        hist2D = hist[tuple(cut)]
+        if len(hist.shape) <= 2:
+            hist2D = hist
+        else: 
+            cut = np.array([slice(None)] * 2 + pindex[cutdims].tolist(), dtype="object")
+            hist2D = hist[tuple(cut)]
 
         # get the edges of the 2d cut in the xy order
         edges2D = np.array(edges)[xydims]

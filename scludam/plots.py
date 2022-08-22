@@ -27,6 +27,8 @@ import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from sklearn.manifold import TSNE
+import matplotlib.patches as mp
+from sklearn.preprocessing import MinMaxScaler
 
 from scludam.type_utils import ArrayLike, Numeric1DArray, Numeric2DArray, NumericArray
 
@@ -76,16 +78,29 @@ def color_from_proba(proba: Numeric2DArray, palette: str):
         a color for each class.
 
     """
+    if len(proba.shape) == 1:
+        proba = np.atleast_2d(proba).T
     _, n_classes = proba.shape
     color_palette = sns.color_palette(palette, proba.shape[1])
     c = [color_palette[np.argmax(x)] for x in proba]
-    proba_c = [
-        sns.desaturate(
-            color_palette[np.argmax(x)],
-            (np.max(x) - 1 / n_classes) / (1 - 1 / n_classes),
-        )
-        for x in proba
-    ]
+
+    if n_classes == 1:
+        desaturation_factors = MinMaxScaler().fit_transform(proba)
+        proba_c = [
+            sns.desaturate(
+                color_palette[0],
+                des_fact,
+            )
+            for des_fact in desaturation_factors
+        ]
+    else:
+        proba_c = [
+            sns.desaturate(
+                color_palette[np.argmax(x)],
+                (np.max(x) - 1 / n_classes) / (1 - 1 / n_classes),
+            )
+            for x in proba
+        ]
     return c, proba_c, color_palette
 
 
@@ -148,7 +163,7 @@ def scatter3dprobaplot(
     if data.shape[1] < 3:
         raise ValueError("Data must have at least 3 columns.")
     fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    c, proba_c, _ = color_from_proba(proba, palette)
+    c, proba_c, pal = color_from_proba(proba, palette)
     default_kws = {
         "c": proba_c if desaturate else c,
         "alpha": 1,
@@ -164,6 +179,10 @@ def scatter3dprobaplot(
     ax.set_xlabel(cols[x])
     ax.set_ylabel(cols[y])
     ax.set_zlabel(cols[z])
+    import matplotlib.patches as mp
+    patches = [mp.Patch(color=pal[0], label=f'Star field'), mp.Patch(color=pal[1], label=f'Cluster')]
+    # patches = [mp.Patch(color=pal[i], label=f'Population {i+1}') for i in range(proba.shape[1])]
+    ax.legend(handles=patches)
     return fig, ax
 
 
@@ -451,6 +470,8 @@ def heatmap2D(
         # but only for those bins that are above a certain threshold
         annot_indices = np.argwhere(hist2D.round(annot_prec) > annot_threshold)
         annot_values = hist2D[tuple(map(tuple, annot_indices.T))].round(annot_prec)
+        if annot_prec == 0:
+            annot_values = annot_values.astype(int)
         annot = np.ndarray(shape=hist2D.shape, dtype=str).tolist()
         for i, xy in enumerate(annot_indices):
             annot[xy[0]][xy[1]] = str(annot_values[i])
@@ -551,6 +572,7 @@ def univariate_density_plot(
         interpolate=True,
         color=default_kwargs.get("color", "blue"),
     )
+    ax.set_yticks([], [])
     if grid:
         ax.grid("on")
     return ax
@@ -648,3 +670,102 @@ def bivariate_density_plot(
     if grid:
         ax.grid("on")
     return ax, im
+
+
+def add_label_legend(labels, palette: List[tuple], ax):
+    patches = [mp.Patch(color=palette[i], label=f'Label {i}') for i in np.unique(labels)]
+    ax.legend(handles=patches)
+    return ax
+
+
+def scatter2dprobaplot(data, proba, labels, cols=None, palette='Set1', bg_kws:dict={}, fr_kws: dict={}):
+    if data.shape[1] != 2:
+        raise ValueError('Data must have 2 columns')
+    if isinstance(data, np.ndarray):
+        if cols is not None:
+            df = pd.DataFrame(data, columns=cols)
+        else:
+            df = pd.DataFrame(data, columns=['x', 'y'])
+    else:
+        df = data
+        if cols is not None:
+            df.columns = cols
+        else:
+            cols = df.columns
+    
+    if proba.shape[0] != data.shape[0]:
+        raise ValueError('proba must have the same number of rows as data')
+
+    plotdf = pd.concat([df, pd.DataFrame(np.max(proba, axis=1), columns=["Probability"])], axis=1, sort=False)
+
+    c, proba_c, label_c = color_from_proba(proba, palette)
+    proba_c = np.array(proba_c)
+    # plot background
+    default_kws = {
+        's': 5,
+        'alpha': .2,
+        'color': label_c[0],
+    }
+    default_kws.update(bg_kws)
+    ax = sns.scatterplot(data=plotdf[labels==-1], x=cols[0], y=cols[1], **default_kws)
+
+    default_kws = {
+        'sizes': (5, 50),
+        'size': 'Probability',
+        'alpha': .8,
+    }
+    default_kws.update(fr_kws)
+
+    for i in range(len(np.unique(labels))-1):
+        sns.scatterplot(ax=ax, data=plotdf[labels==i], x=cols[0], y=cols[1], c=proba_c[labels==i], **default_kws)
+    
+    # add_label_legend(labels, label_c, ax)
+    return ax
+
+
+def cm_diagram(data, proba, labels, cols=None, palette='Set1', bg_kws:dict={}, fr_kws: dict={}):
+    ax = scatter2dprobaplot(data, proba, labels, cols, palette, bg_kws, fr_kws)
+    ax.invert_yaxis()
+    ax.set_title('Color-Magnitude diagram')
+    return ax
+
+
+def scatter_with_coors(data, coors, palette='Paired', cols=['x', 'y'], **kwargs):
+    if len(coors.shape) == 1:
+        coors = np.atleast_2d(coors)
+    if isinstance(data, np.ndarray):
+        df = pd.DataFrame(data, columns=cols)
+    else:
+        df = data
+        cols = df.columns
+    color_palette = sns.color_palette(palette, coors.shape[0])
+    default_kws = {
+        'marker': 'o',
+        's': 10,
+        'alpha': .5,
+    }
+    default_kws.update(kwargs)
+    ax = sns.scatterplot(data=df, x=cols[0], y=cols[1], **default_kws)
+
+    for i, c in enumerate(coors):
+        ax.hlines(c[1], xmin=df[cols[0]].min(), xmax=df[cols[0]].max(), color=color_palette[i])
+        ax.vlines(c[0], ymin=df[cols[1]].min(), ymax=df[cols[1]].max(), color=color_palette[i])
+
+    return ax
+
+
+def patchscatter(data, masks, palette='Paired', cols=['x', 'y'], **kwargs):
+    color_palette = sns.color_palette(palette, len(masks))
+    default_kws = {
+        'marker': 'o',
+        's': 5,
+        'alpha': .5,
+    }
+    default_kws.update(kwargs)
+    m1 = masks[0]
+    d1 = pd.DataFrame(data[m1], columns=cols)
+    ax = sns.scatterplot(d1[cols[0]], d1[cols[1]], **kwargs)
+    for m in masks[1:]:
+        d = pd.DataFrame(data[m], columns=cols)
+        sns.scatterplot(d[cols[0]], d[cols[1]], ax=ax, **kwargs)
+    return ax

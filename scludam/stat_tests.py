@@ -109,7 +109,7 @@ class HopkinsTest(StatTest):
         Sample ratio to take from the data, by default is ``0.1``. The number
         of samples is ``n*sample_ratio``.
     max_samples : int, optional
-        Number of max samples to take from the data, by default is 5000. If
+        Number of max samples to take from the data, by default is 100. If
         ``n_samples`` is greater than this value, it is set to this value.
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'.
@@ -161,7 +161,7 @@ class HopkinsTest(StatTest):
     """
 
     sample_ratio: int = field(default=.1, validator=[validators.gt(0), validators.le(1)])
-    max_samples: int = field(default=5000)
+    max_samples: int = field(default=100)
     metric: Union[str, DistanceMetric] = field(default="euclidean")
     n_iters: int = field(default=100)
     # interpretation:
@@ -174,19 +174,19 @@ class HopkinsTest(StatTest):
     threshold: Number = field(default=None)
     pvalue_threshold: float = field(default=.05)
 
-    def _get_pvalue2(self, x, A, n):
-        Ix = beta(n,n).cdf(x)
-        if A < 1:
-            pvalue = 1 - Ix
-        else:
-            pvalue = Ix
-        print(f"pva1={round(1 - pvalue, 5)}")
-        X = np.abs(x - .5)*2*np.sqrt(2*n+1)
-        pvalue2 = norm().cdf(X)
-        # end exp
+    # def _get_pvalue2(self, x, A, n):
+    #     Ix = beta(n,n).cdf(x)
+    #     if A < 1:
+    #         pvalue = 1 - Ix
+    #     else:
+    #         pvalue = Ix
+    #     print(f"pva1={round(1 - pvalue, 5)}")
+    #     X = np.abs(x - .5)*2*np.sqrt(2*n+1)
+    #     pvalue2 = norm().cdf(X)
+    #     # end exp
 
-        print(f"pva2={round(1 - pvalue2, 5)}")
-        return pvalue2
+    #     print(f"pva2={round(1 - pvalue2, 5)}")
+    #     return pvalue2
 
     def _get_pvalue(self, value: Number, n_samples: int):
         b = beta(n_samples, n_samples)
@@ -202,10 +202,8 @@ class HopkinsTest(StatTest):
             # H0: data comes from uniform distribution
             # we want to get 1 - p
             # so we can compare with pvalue threshold
-            print(f"pva3={round(1 - (b.cdf(value)), 5)}")
             return 1 - (b.cdf(value) - b.cdf(1 - value))
         else:
-            print(f"pva3={round(1 - (1 - b.cdf(value)), 5)}")
             return 1 - (b.cdf(1 - value) - b.cdf(value))
 
     @beartype
@@ -227,18 +225,9 @@ class HopkinsTest(StatTest):
 
         n_samples = min(int(obs * self.sample_ratio), self.max_samples, obs)
 
-        # print("h")
-        # print(n_samples)
         results = []
-        As = []
-        xs = []
-        # import seaborn as sns
-        # import matplotlib.pyplot as plt
         for i in range(self.n_iters):
             sample = resample(data, n_samples=n_samples, replace=False)
-            # plt.figure()
-            # sns.scatterplot(sample[:,0], sample[:,1])
-            # plt.show()
 
             if self.metric == "mahalanobis":
                 kwargs["V"] = np.cov(sample, rowvar=False)
@@ -259,27 +248,8 @@ class HopkinsTest(StatTest):
             uniform_sum = np.sum(uniform_nn_distance**dims)
             results.append(uniform_sum / (uniform_sum + sample_sum))
 
-            # exp
-            A = sample_sum / uniform_sum
-            x = A / (1 + A)
-            As.append(A)
-            xs.append(x)
-            # end exp
-
-            # print(results[-1])
-
         value = np.median(np.array(results))
         pvalue = self._get_pvalue(value, n_samples)
-        
-        # exp
-        print(f"pval={round(pvalue, 5)}")
-        print(f"valu={round(value, 5)}")
-        x = np.median(np.array(xs))
-        print(f"1-x ={round(1-x, 5)}")
-        A = np.median(np.array(As))
-        pvalue2 = self._get_pvalue2(x, A, n_samples)
-        print('-----------')
-        # end exp
 
         if self.threshold is not None:
             rejectH0 = value >= self.threshold
@@ -312,25 +282,24 @@ class DipDistTestResult(TestResult):
 class DipDistTest(StatTest):
     """Class to perform a Dip-Dist test of multimodality over pairwise distances.
 
+    The Dip-Dist implementation is based on the Python Dip test wrapper built by
+    Ralph Ulrus, [2]_.
+
     Attributes
     ----------
-    n_samples : int, optional
-        number of samples to take from the data, by default is set to the number
-        of points in the data set. If n_samples is provided, then it is set to
-        min(n, n_samples).
+    max_samples : int, optional
+        Maximum number of samples to use, by default is ``1000``. If there are more
+        data points than ``max_samples``, then the data is sampled.
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'. Can be
         str or sklearn.neighbors.DistanceMetric.
     pvalue_threshold : float, optional
         Threshold to use with the p-value to define if H0 is rejected, by default
         is ``0.05``.
-    max_samples : int, optional
-        Maximum number of samples to use, by default is ``5000``. If there are more
-        data points than ``max_samples``, then the data is sampled.
 
     Notes
     -----
-    The test analyzes the pairwise distance distribution [2]_ between points
+    The test analyzes the pairwise distance distribution [3]_ between points
     in a data set to determine if said distribution is multimodal.
     The null hypothesis is:
 
@@ -340,18 +309,26 @@ class DipDistTest(StatTest):
 
     *  H0: The data set X does not present cluster structure.
 
-    Hartigan's Dip statistic [3]_ is the maximum difference between an
-    empirical distribution and its closest unimodal distribution
-    calculated using the greatest convex minorant
+    More specifically, the distance distribution will be unimodal
+    for uniform data distributions or single cluster distributions.
+    It will be multimodal when there are several clusters or when
+    there is an aggregate of a uniform distribution and a cluster.
+    The Hartigan's Dip statistic [4]_ can be defined as the maximum
+    difference between an empirical distribution and its closest
+    unimodal distribution calculated using the greatest convex minorant
     and the least concave majorant of the bounded distribution function.
 
     References
     ----------
+    .. [3] R. Urlus (2022). A Python/C(++) implementation
+         of Hartigan & Hartigan's dip test for unimodality.
+         https://pypi.org/project/diptest/
     .. [2] A. Adolfsson, M. Ackerman, N. C. Brownstein (2018). To Cluster,
          or Not to Cluster: An Analysis of Clusterability Methods
          . https://doi.org/10.48550/arXiv.1808.08317
-    .. [3] J. A. Hartigan and P. M. Hartigan (1985). The Dip Test of Unimodality.
-         Annals of Statistics 13, 70–84. DOI: 10.1214/aos/1176346577
+    .. [4] J. A. Hartigan and P. M. Hartigan (1985). The Dip Test of Unimodality.
+         Annals of Statistics 13, 70–84. D
+         OI: 10.1214/aos/1176346577
 
     Examples
     --------
@@ -362,7 +339,7 @@ class DipDistTest(StatTest):
 
     """
 
-    max_samples: int = 5000
+    max_samples: int = 1000
     metric: str = "euclidean"
     pvalue_threshold: float = 0.05
 
@@ -387,12 +364,7 @@ class DipDistTest(StatTest):
             data = resample(data, n_samples=self.max_samples, replace=False)
         dist = np.ravel(np.tril(pairwise_distances(data, metric=self.metric)))
         dist = np.msort(dist[dist > 0])
-        dip, pval = diptest(dist, *args, **kwargs)
-        print(pval)
-        # import seaborn as sns
-        # import matplotlib.pyplot as plt
-        # sns.displot(dist)
-        # plt.show()
+        dip, pval = diptest(dist, sort_x=False, *args, **kwargs)
         rejectH0 = pval < self.pvalue_threshold
         return DipDistTestResult(value=dip, pvalue=pval, rejectH0=rejectH0, dist=dist)
 
@@ -429,7 +401,7 @@ class RipleysKTest(StatTest):
     Attributes
     ----------
     rk_estimator : astropy.stats.RipleysKEstimator, optional
-        Estimator to use for the Ripleys K function [4]_, by default
+        Estimator to use for the Ripleys K function [5]_, by default
         is None. Only used if
         a custom RipleysKEstimator configuration is needed.
 
@@ -441,14 +413,14 @@ class RipleysKTest(StatTest):
 
             *   area: is the area of the 2D data set taken as a square window.
             *   n: is the number of points in the data set.
-            *   ripley_factor: are the tabulated values calculated by Ripleys [4]_
+            *   ripley_factor: are the tabulated values calculated by Ripleys [5]_
                 to determine p-value significance. Available Ripleys factors
                 are ``p-value = 0.05`` -> ``factor = 1.42`` and
                 ``p-value = 0.01`` -> ``factor = 1.68``.
 
         #. "chiu": H0 rejected if ``s > chiu_factor * sqrt(area) / n`` where:
 
-            *   chiu_factor: are the tabulated values suggested by Chiu [5]_ to
+            *   chiu_factor: are the tabulated values suggested by Chiu [6]_ to
                 determine p-value significance. Available Chiu factors are
                 ``p-value = 0.1 -> factor = 1.31``,
                 ``p-value = 0.05 -> factor = 1.45`` and
@@ -467,12 +439,12 @@ class RipleysKTest(StatTest):
         where max_radius is calculated as:
 
             *  ``recommended_radius = short_side_of_rectangular_window / 4``
-            *  ``recommended_radius_for_large_data_sets = sqrt(100 / pi * n)``
+            *  ``recommended_radius_for_large_data_sets = sqrt(1000 / (pi * n))``
             *  ``max_radius = min(recommended_radius, recommended_radius_for_large_data_sets)``
 
         The steps between the radii values are calculated as
         ``step = max_radius / 128 / 4``.
-        This procedure is the recommended one in R spatstat package [6]_.
+        This procedure is the recommended one in R spatstat package [7]_.
 
     max_samples: int, optional
         The maximum number of samples to use for the test, by default is 5000. If the
@@ -491,7 +463,7 @@ class RipleysKTest(StatTest):
 
     Notes
     -----
-    The test calculates the value of an estimate for the L function [7]_ (a
+    The test calculates the value of an estimate for the L function [8]_ (a
     form of Ripleys K function) for a set of radii taken from the
     center of the data set, and compares it to the theoretical L
     function of a uniform distribution. The null hypothesis is:
@@ -512,16 +484,16 @@ class RipleysKTest(StatTest):
 
     References
     ----------
-    .. [4] B. D. Ripley (1979). Tests of Randomness for Spatial Point Patterns.
+    .. [5] B. D. Ripley (1979). Tests of Randomness for Spatial Point Patterns.
          J. R. Statist. Soc. B (1979), 41, No.3, pp. 368-374.
          https://doi.org/10.1111/j.2517-6161.1979.tb01091.x
-    .. [5] S. N. Chiu (2007). Correction to Koen's critical values in testing
+    .. [6] S. N. Chiu (2007). Correction to Koen's critical values in testing
          spatial randomness. Journal of Statistical Computation and Simulation
          2007 77(11-12):1001-1004. DOI: 10.1080/10629360600989147
-    .. [6] A. Baddeley, R. Turner (2005). Spatstat: An R Package for Analyzing
+    .. [7] A. Baddeley, R. Turner (2005). Spatstat: An R Package for Analyzing
          Spatial Point Patterns. Journal of Statistical Software, 12(6), 1–42.
          DOI: 10.18637/jss.v012.i06.
-    .. [7] J. Besag (1977). Contribution to the Discussion on Dr. Ripley’s
+    .. [8] J. Besag (1977). Contribution to the Discussion on Dr. Ripley’s
          Paper. Journals of the Royal Statistical Society, B39, 193-195.
 
     Examples
@@ -687,7 +659,6 @@ class RipleysKTest(StatTest):
         else:
             value, rejectH0 = self._empirical_csr_rule(l_function, radii, area, obs)
 
-        print(f"rejectH0={rejectH0}")
         return RipleyKTestResult(
             value=value, rejectH0=rejectH0, radii=radii, l_function=l_function
         )
