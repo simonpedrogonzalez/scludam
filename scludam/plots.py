@@ -179,10 +179,10 @@ def scatter3dprobaplot(
     ax.set_xlabel(cols[x])
     ax.set_ylabel(cols[y])
     ax.set_zlabel(cols[z])
-    import matplotlib.patches as mp
-    patches = [mp.Patch(color=pal[0], label=f'Star field'), mp.Patch(color=pal[1], label=f'Cluster')]
+    # import matplotlib.patches as mp
+    # patches = [mp.Patch(color=pal[0], label=f'Star field'), mp.Patch(color=pal[1], label=f'Cluster')]
     # patches = [mp.Patch(color=pal[i], label=f'Population {i+1}') for i in range(proba.shape[1])]
-    ax.legend(handles=patches)
+    # ax.legend(handles=patches)
     return fig, ax
 
 

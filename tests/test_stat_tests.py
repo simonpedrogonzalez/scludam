@@ -69,8 +69,8 @@ def test_hopkins_iris_rejectH0(iris):
     """
     ht = HopkinsTest(n_iters=1, sample_ratio=1, metric="euclidean").test(iris)
     assert ht.rejectH0
-    assert np.isclose(0.9978868058086875, ht.value, atol=1e-3)
-    assert np.isclose(0.0, ht.pvalue, atol=1e-3)
+    assert np.isclose(0.9978868058086875, ht.value, atol=1e-2)
+    assert np.isclose(0.0, ht.pvalue, atol=1e-2)
 
 
 def test_dip_uniform_not_rejectH0(uniform_sample):
@@ -146,7 +146,7 @@ def test_ripleysk_iris_rejectH0_and_delete_repeated_values(iris):
     spatstat_result = pd.read_csv("tests/data/spatstat_iris.csv")
     spatstat_value = 0.06850111556141059
     with pytest.warns(UserWarning) as record:
-        rk = RipleysKTest(pvalue_threshold=0.01).test(iris[:, :2])
+        rk = RipleysKTest(pvalue_threshold=0.01, max_samples=5000).test(iris[:, :2])
         assert rk.rejectH0
         assert np.allclose(rk.radii, spatstat_result.radius.to_numpy())
         # difference due to astropy implementation
