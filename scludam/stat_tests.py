@@ -22,6 +22,7 @@ data is "clusterable") in a n dimensional numerical dataset.
 """
 
 from abc import abstractmethod
+from copy import deepcopy
 from numbers import Number
 from typing import Union
 from warnings import warn
@@ -30,9 +31,8 @@ import numpy as np
 from astropy.stats import RipleysKEstimator
 from attrs import define, field, validators
 from beartype import beartype
-from copy import deepcopy
 from diptest import diptest
-from scipy.stats import beta, ks_2samp, norm
+from scipy.stats import beta, ks_2samp
 from sklearn.base import TransformerMixin
 from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import BallTree, DistanceMetric
@@ -160,7 +160,9 @@ class HopkinsTest(StatTest):
 
     """
 
-    sample_ratio: int = field(default=.1, validator=[validators.gt(0), validators.le(1)])
+    sample_ratio: int = field(
+        default=0.1, validator=[validators.gt(0), validators.le(1)]
+    )
     max_samples: int = field(default=100)
     metric: Union[str, DistanceMetric] = field(default="euclidean")
     n_iters: int = field(default=100)
@@ -172,7 +174,7 @@ class HopkinsTest(StatTest):
     # if h > .75 => reject H0, and in general  indicates a clustering
     # tendency at the 90% confidence level.
     threshold: Number = field(default=None)
-    pvalue_threshold: float = field(default=.05)
+    pvalue_threshold: float = field(default=0.05)
 
     # def _get_pvalue2(self, x, A, n):
     #     Ix = beta(n,n).cdf(x)
@@ -562,7 +564,10 @@ class RipleysKTest(StatTest):
             factor = self._ripley_factors[self.pvalue_threshold]
         else:
             factor = self._chiu_factors[self.pvalue_threshold]
-        print(f"sup={round(supremum, 5)}, comp={round(factor * np.sqrt(area) / float(n), 5)}")
+        print(
+            f"sup={round(supremum, 5)},"
+            f" comp={round(factor * np.sqrt(area) / float(n), 5)}"
+        )
         return supremum, supremum >= factor * np.sqrt(area) / float(n)
 
     def _ks_rule(self, l_function: Numeric2DArray, radii: Numeric2DArray):

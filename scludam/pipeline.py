@@ -1,53 +1,19 @@
-import os
-import sys
-
-
 import copy
 from typing import List
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from astropy.coordinates import Distance, SkyCoord
-from astropy.stats.sigma_clipping import sigma_clipped_stats
-from attrs import define, field, validators, Factory
-from hdbscan.validity import validity_index
-from scipy import ndimage, stats
-from sklearn.metrics import pairwise_distances
-from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.neighbors import KernelDensity
-from sklearn.preprocessing import RobustScaler
-from statsmodels.nonparametric.kernel_density import KDEMultivariate
-from statsmodels.robust.scale import huber, hubers_scale
-from typing_extensions import TypedDict
-
-sys.path.append(os.path.join(os.path.dirname("scludam"), "."))
-from scludam.detection import CountPeakDetector, DetectionResult
-from scludam.hkde import HKDE
-from scludam.masker import RangeMasker
-from scludam.membership import DBME
-from scludam.utils import Colnames
 from astropy.table.table import Table
-from sklearn.preprocessing import MinMaxScaler
+from attrs import Factory, define, field, validators
+from sklearn.preprocessing import MinMaxScaler, RobustScaler
+
+from scludam.detection import CountPeakDetector, DetectionResult
 from scludam.masker import RangeMasker
-from scludam.stat_tests import (
-    StatTest,
-    RipleysKTest,
-    DipDistTest,
-    HopkinsTest,
-    TestResult,
-)
 from scludam.membership import DBME
+from scludam.plots import cm_diagram, scatter2dprobaplot
 from scludam.shdbscan import SHDBSCAN
-from scludam.plots import cm_diagram
-from scludam.utils import one_hot_encode
-from scludam.plots import (
-    pairprobaplot,
-    tsneprobaplot,
-    scatter3dprobaplot,
-    scatter2dprobaplot,
-)
+from scludam.stat_tests import StatTest, TestResult
+from scludam.utils import Colnames
 
 
 @define
@@ -132,8 +98,6 @@ class DEP:
         test_cols = list(set([item for sublist in self.test_cols for item in sublist]))
         test_df = df[test_cols]
         results = []
-        import seaborn as sns
-        import matplotlib.pyplot as plt
 
         for i, stat_test in enumerate(self.tests):
             data = test_df[self.test_cols[i]].values
@@ -230,8 +194,6 @@ class DEP:
             return self
 
         global_proba = []
-
-        from scludam.plots import scatter_with_coors
 
         # scatter_with_coors(df[["pmra", "pmdec"]], self.detection_result.centers)
         # plt.show()

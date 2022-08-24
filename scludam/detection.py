@@ -885,6 +885,7 @@ class CountPeakDetector:
             :linenos:
         .. image:: ../../examples/detection/plot1.png
         .. image:: ../../examples/detection/plot2.png
+
         """
         if self._last_result is None:
             raise ValueError("No result available, run detect function first.")
@@ -940,7 +941,7 @@ class CountPeakDetector:
         # on the peak value
         if len(hist.shape) <= 2:
             hist2D = hist
-        else: 
+        else:
             cut = np.array([slice(None)] * 2 + pindex[cutdims].tolist(), dtype="object")
             hist2D = hist[tuple(cut)]
 

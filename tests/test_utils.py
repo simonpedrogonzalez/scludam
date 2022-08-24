@@ -67,10 +67,12 @@ def test_get_data_names(fixture_name, filter_names, correct, request):
 )
 def test_get_error_names(fixture_name, filter_names, correct, request):
     assert (
-        Colnames(request.getfixturevalue(fixture_name)).error(filter_names) == correct[0]
+        Colnames(request.getfixturevalue(fixture_name)).error(filter_names)
+        == correct[0]
     )
     assert (
-        Colnames(request.getfixturevalue(fixture_name)).missing_error(filter_names) == correct[1]
+        Colnames(request.getfixturevalue(fixture_name)).missing_error(filter_names)
+        == correct[1]
     )
 
 
@@ -101,8 +103,13 @@ def test_get_error_names(fixture_name, filter_names, correct, request):
     ],
 )
 def test_get_corr_names(fixture_name, filter_names, correct, request):
-    assert Colnames(request.getfixturevalue(fixture_name)).corr(filter_names) == correct[0]
-    assert Colnames(request.getfixturevalue(fixture_name)).missing_corr(filter_names) == correct[1]
+    assert (
+        Colnames(request.getfixturevalue(fixture_name)).corr(filter_names) == correct[0]
+    )
+    assert (
+        Colnames(request.getfixturevalue(fixture_name)).missing_corr(filter_names)
+        == correct[1]
+    )
 
 
 def test_one_hot_encode():
