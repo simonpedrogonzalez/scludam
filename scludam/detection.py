@@ -813,7 +813,7 @@ class CountPeakDetector:
         x: int = 0,
         y: int = 1,
         mode: str = "c",
-        labels: Union[List[str], None] = None,
+        cols: Union[List[str], None] = None,
         cut_label_prec: int = 4,
         center_label_prec: int = 4,
         **kwargs,
@@ -850,7 +850,7 @@ class CountPeakDetector:
             method explained in
             :class:`~scludam.detection.CountPeakDetector`.
 
-        labels : Union[[List[str]], None], optional
+        cols : Union[[List[str]], None], optional
             List of variable names, by default ``None``. If ``None``,
             then the variables are called 'var1', 'var2', and so on.
         cut_label_prec : int, optional
@@ -925,10 +925,10 @@ class CountPeakDetector:
         if x not in dims or y not in dims:
             raise ValueError("x and y must be valid dimensions.")
 
-        if labels is None:
-            labels = np.array([f"var{i+1}" for i in range(dim)], dtype="object")
-        elif len(labels) != dim:
-            raise ValueError("labels must have n_dim elements.")
+        if cols is None:
+            cols = np.array([f"var{i+1}" for i in range(dim)], dtype="object")
+        elif len(cols) != dim:
+            raise ValueError("cols must have n_dim elements.")
 
         # flip xy order because heatmap plots yx instead of xy
         xydims = np.flip(dims[[x, y]])
@@ -946,7 +946,7 @@ class CountPeakDetector:
             hist2D = hist[tuple(cut)]
 
         # get the edges of the 2d cut in the xy order
-        edges2D = np.array(edges)[xydims]
+        edges2D = np.array(edges, dtype="object")[xydims]
 
         assert hist2D.shape[0] == edges2D[0].shape[0] - 1
 
@@ -959,13 +959,13 @@ class CountPeakDetector:
         hm = heatmap2D(
             hist2D=hist2D, edges=edges2D, bin_shape=bin_shape, index=pindex2D, **kwargs
         )
-        hm.axes.set_xlabel(labels[x])
-        hm.axes.set_ylabel(labels[y])
+        hm.axes.set_xlabel(cols[x])
+        hm.axes.set_ylabel(cols[y])
 
         cut_values = [round(pcenter[i], cut_label_prec) for i in dims]
         cut_edges = [round(self.bin_shape[i] / 2, cut_label_prec) for i in dims]
         cut_string = ", ".join(
-            [f"{labels[i]}={cut_values[i]}±{cut_edges[i]}" for i in cutdims]
+            [f"{cols[i]}={cut_values[i]}±{cut_edges[i]}" for i in cutdims]
         )
 
         mode_string = {
@@ -976,7 +976,7 @@ class CountPeakDetector:
         }.get(mode, "Count histogram")
 
         pcenter_string = ", ".join(
-            [f"{labels[i]}={round(pcenter[i], cut_label_prec)}" for i in dims]
+            [f"{cols[i]}={round(pcenter[i], cut_label_prec)}" for i in dims]
         )
 
         hm.title.set_style("italic")
