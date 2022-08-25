@@ -16,6 +16,7 @@
 
 """Module for helper plotting functions."""
 
+import warnings
 from numbers import Number
 from typing import List, Optional, Tuple, Union
 
@@ -772,17 +773,51 @@ def scatter_with_coors(data, coors, palette="Paired", cols=["x", "y"], **kwargs)
     return ax
 
 
-# def patchscatter(data, masks, palette="Paired", cols=["x", "y"], **kwargs):
-#     default_kws = {
-#         "marker": "o",
-#         "s": 5,
-#         "alpha": 0.5,
-#     }
-#     default_kws.update(kwargs)
-#     m1 = masks[0]
-#     d1 = pd.DataFrame(data[m1], columns=cols)
-#     ax = sns.scatterplot(d1[cols[0]], d1[cols[1]], **kwargs)
-#     for m in masks[1:]:
-#         d = pd.DataFrame(data[m], columns=cols)
-#         sns.scatterplot(d[cols[0]], d[cols[1]], ax=ax, **kwargs)
-#     return ax
+def plot_objects(df: pd.DataFrame, ax: Axes, cols: List[str]):
+    """Plot object dataframe in an axis.
+
+    Object dataframe refers to a pandas dataframe
+    created from simbad Table result, translated with
+    :func:`~scludam.fetcher.simbad2gaiacolnames`.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe of objects. must contain at least
+        "MAIN_ID", "TYPED_ID" and "OTYPE".
+    ax : Axes
+        Axis to plot on.
+    cols : list, optional
+        Columns in the object dataframe to plot in the,
+        x y axes of ``ax``.
+
+    Returns
+    -------
+    Axes
+        axis with plotted objects.
+
+    Raises
+    ------
+    ValueError
+        _description_
+
+    """
+    necessary_cols = ["MAIN_ID", "TYPED_ID", "OTYPE", cols[0], cols[1]]
+    if not set(necessary_cols).issubset(set(df.columns)):
+        warnings.warn(
+            f"Object dataframe must contain {necessary_cols} columns, not plotting"
+            " objects",
+            UserWarning,
+        )
+    df["annot"] = df["MAIN_ID"].astype(str) + "(" + df["OTYPE"] + ")"
+    df[df["TYPED_ID"] != ""]["annot"] = df["annot"] + "\n" + df["TYPED_ID"]
+
+    stardf = df[df["OTYPE"] == "Star"]
+    nonstardf = df[df["OTYPE"] != "Star"]
+
+    ax.plot(stardf[cols[0]], stardf[cols[1]], "*", color="red", alpha=0.5)
+    ax.plot(nonstardf[cols[0]], nonstardf[cols[1]], "s", color="red", alpha=0.5)
+    for row in df[[cols[0], cols[1], "annot"]].itertuples():
+        _, col1, col2, annot = row
+        ax.annotate(annot, (col1, col2))
+    return ax
