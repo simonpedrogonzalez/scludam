@@ -157,6 +157,7 @@ class Colnames:
         -------
         bool
             True if there are missing error columns, False otherwise.
+
         """
         if names is None:
             names = list(self.names)
@@ -241,10 +242,12 @@ class Colnames:
             If None, the function will check within all data columns
             . If not, the function wil check within the columns
             of the names in the list.
+
         Returns
         -------
         bool
             True if there are missing correlation columns, False otherwise.
+
         """
         if names is None:
             names = list(self.names)

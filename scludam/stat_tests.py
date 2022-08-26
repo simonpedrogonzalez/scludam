@@ -176,20 +176,6 @@ class HopkinsTest(StatTest):
     threshold: Number = field(default=None)
     pvalue_threshold: float = field(default=0.05)
 
-    # def _get_pvalue2(self, x, A, n):
-    #     Ix = beta(n,n).cdf(x)
-    #     if A < 1:
-    #         pvalue = 1 - Ix
-    #     else:
-    #         pvalue = Ix
-    #     print(f"pva1={round(1 - pvalue, 5)}")
-    #     X = np.abs(x - .5)*2*np.sqrt(2*n+1)
-    #     pvalue2 = norm().cdf(X)
-    #     # end exp
-
-    #     print(f"pva2={round(1 - pvalue2, 5)}")
-    #     return pvalue2
-
     def _get_pvalue(self, value: Number, n_samples: int):
         b = beta(n_samples, n_samples)
         if value > 0.5:
@@ -564,15 +550,10 @@ class RipleysKTest(StatTest):
             factor = self._ripley_factors[self.pvalue_threshold]
         else:
             factor = self._chiu_factors[self.pvalue_threshold]
-        print(
-            f"sup={round(supremum, 5)},"
-            f" comp={round(factor * np.sqrt(area) / float(n), 5)}"
-        )
         return supremum, supremum >= factor * np.sqrt(area) / float(n)
 
     def _ks_rule(self, l_function: Numeric2DArray, radii: Numeric2DArray):
         pvalue = ks_2samp(l_function, radii).pvalue
-        # print(f"pvalue={round(pvalue, 5)}")
         return pvalue, pvalue <= self.pvalue_threshold
 
     @beartype

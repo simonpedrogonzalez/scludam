@@ -377,7 +377,7 @@ class HKDE:
                     corr(v1, v4), corr(v2, v4), corr(v3, v4)
 
                So a valid ``corr`` array for two datapoints would be:
-               
+
                .. code-block:: python
 
                     np.array([

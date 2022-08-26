@@ -20,7 +20,7 @@ import warnings
 from numbers import Number
 from typing import List, Optional, Tuple, Union
 
-import matplotlib.patches as mp
+# import matplotlib.patches as mp
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -670,17 +670,59 @@ def bivariate_density_plot(
     return ax, im
 
 
-def add_label_legend(labels, palette: List[tuple], ax):
-    patches = [
-        mp.Patch(color=palette[i], label=f"Label {i}") for i in np.unique(labels)
-    ]
-    ax.legend(handles=patches)
-    return ax
+# def add_label_legend(labels, palette: List[tuple], ax):
+#     patches = [
+#         mp.Patch(color=palette[i], label=f"Label {i}") for i in np.unique(labels)
+#     ]
+#     ax.legend(handles=patches)
+#     return ax
 
 
 def scatter2dprobaplot(
-    data, proba, labels, cols=None, palette="Set1", bg_kws: dict = {}, fr_kws: dict = {}
+    data: pd.DataFrame,
+    proba: np.ndarray,
+    labels: np.ndarray,
+    cols: Optional[List[str]] = None,
+    palette: str = "Set1",
+    bg_kws: dict = {},
+    fr_kws: dict = {},
 ):
+    """Create a scatter plot with labels and probabilites.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        dataframe with at least 2 columns.
+    proba : np.ndarray
+        Probability array.
+    labels : np.ndarray
+        Label array.
+    cols : Optional[List[str]], optional
+        Axes labels to be used, by default None.
+        If None, the columns of data are used.
+    palette : str, optional
+        Palette to be used to choolse label colors,
+        by default "Set1"
+    bg_kws : dict, optional
+        kwargs to be passed to sns.scatterplot for the
+        background (noise label [-1]) scatter plot, by default {}.
+    fr_kws : dict, optional
+        kwargs to be passed to sns.scatterplot for the
+        foreground (labels [0, 1, ...]), by default {}.
+
+    Returns
+    -------
+    Axes
+        Axes with the plot.
+
+    Raises
+    ------
+    ValueError
+        If data has less than 2 columns.
+    ValueError
+        If probability and data have different number of rows.
+
+    """
     if data.shape[1] != 2:
         raise ValueError("Data must have 2 columns")
     if isinstance(data, np.ndarray):
@@ -737,40 +779,79 @@ def scatter2dprobaplot(
 
 
 def cm_diagram(
-    data, proba, labels, cols=None, palette="Set1", bg_kws: dict = {}, fr_kws: dict = {}
+    data: pd.DataFrame,
+    proba: np.ndarray,
+    labels: np.ndarray,
+    cols: Optional[List[str]] = None,
+    palette: str = "Set1",
+    bg_kws: dict = {},
+    fr_kws: dict = {},
 ):
+    """Plot a color magnitude diagram.
+
+    Invert y axis.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Dataframe with at least 2 columns.
+    proba : np.ndarray
+        Probability array
+    labels : np.ndarray
+        Label array
+    cols : Optional[List[str]], optional
+        Axis labels, by default None. If None, dataframe
+        columns are used.
+    palette : str, optional
+        Palette to be used for selecting label colors,
+        by default "Set1"
+    bg_kws : dict, optional
+        kwargs to be passed to sns.scatterplot for the
+        background (noise label [-1]), by default {}
+    fr_kws : dict, optional
+        kwargs to be passed to sns.scatterplot for the
+        foreground (labels [0, 1, ...]), by default {}
+
+    Returns
+    -------
+    Axes
+        Axes of the plot.
+
+    """
     ax = scatter2dprobaplot(data, proba, labels, cols, palette, bg_kws, fr_kws)
     ax.invert_yaxis()
     ax.set_title("Color-Magnitude diagram")
     return ax
 
 
-def scatter_with_coors(data, coors, palette="Paired", cols=["x", "y"], **kwargs):
-    if len(coors.shape) == 1:
-        coors = np.atleast_2d(coors)
-    if isinstance(data, np.ndarray):
-        df = pd.DataFrame(data, columns=cols)
-    else:
-        df = data
-        cols = df.columns
-    color_palette = sns.color_palette(palette, coors.shape[0])
-    default_kws = {
-        "marker": "o",
-        "s": 10,
-        "alpha": 0.5,
-    }
-    default_kws.update(kwargs)
-    ax = sns.scatterplot(data=df, x=cols[0], y=cols[1], **default_kws)
+# def scatter_with_coors(data, coors, palette="Paired", cols=["x", "y"], **kwargs):
+#     if len(coors.shape) == 1:
+#         coors = np.atleast_2d(coors)
+#     if isinstance(data, np.ndarray):
+#         df = pd.DataFrame(data, columns=cols)
+#     else:
+#         df = data
+#         cols = df.columns
+#     color_palette = sns.color_palette(palette, coors.shape[0])
+#     default_kws = {
+#         "marker": "o",
+#         "s": 10,
+#         "alpha": 0.5,
+#     }
+#     default_kws.update(kwargs)
+#     ax = sns.scatterplot(data=df, x=cols[0], y=cols[1], **default_kws)
 
-    for i, c in enumerate(coors):
-        ax.hlines(
-            c[1], xmin=df[cols[0]].min(), xmax=df[cols[0]].max(), color=color_palette[i]
-        )
-        ax.vlines(
-            c[0], ymin=df[cols[1]].min(), ymax=df[cols[1]].max(), color=color_palette[i]
-        )
+#     for i, c in enumerate(coors):
+#         ax.hlines(
+#             c[1], xmin=df[cols[0]].min(), xmax=df[cols[0]].max(),
+#               color=color_palette[i]
+#         )
+#         ax.vlines(
+#             c[0], ymin=df[cols[1]].min(), ymax=df[cols[1]].max(),
+#               color=color_palette[i]
+#         )
 
-    return ax
+#     return ax
 
 
 def plot_objects(df: pd.DataFrame, ax: Axes, cols: List[str]):
