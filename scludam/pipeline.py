@@ -71,8 +71,8 @@ class DEP:
         are 'all' and 'majority'.
     clusterer : SHDBSCAN, optional
         Clusterer to be used to get the initial probabilities. By default,
-    an instance of :class:`~scludam.shdbscan.SHDBSCAN` with the
-    following parameters:
+        an instance of :class:`~scludam.shdbscan.SHDBSCAN` with the
+        following parameters:
         auto_allow_single_cluster=True, noise_proba_mode="conservative",
         cluster_proba_mode="hard", scaler=RobustScaler()
         (from sklearn.preprocessing).

@@ -12,6 +12,7 @@ Submodules
    scludam.hkde
    scludam.masker
    scludam.membership
+   scludam.pipeline
    scludam.plots
    scludam.rutils
    scludam.shdbscan

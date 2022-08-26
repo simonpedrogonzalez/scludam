@@ -32,6 +32,7 @@ scludam (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership e
    :target: https://tldrlegal.com/license/gnu-lesser-general-public-license-v3-(lgpl-3)
    :alt: License
 
+
 **scludam** (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership estimation) is a Python package for GAIA catalogues **data fetching**\ , **star cluster detection** and **star cluster membership estimation**.
 
 Repository and issues
@@ -72,6 +73,9 @@ Currently **scludam** is a work in progress. Modules and features already includ
 
 * 
   **membership**\ : membership calculation based on **hkde** smoothing.
+
+* 
+  **pipeline**\ : pipeline for the detection and membership estimation, with default values and convenience functions.
 
 ----
 

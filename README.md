@@ -34,6 +34,8 @@ Currently **scludam** is a work in progress. Modules and features already includ
 
 - **membership**: membership calculation based on **hkde** smoothing.
 
+- **pipeline**: pipeline for the detection and membership estimation, with default values and convenience functions.
+
 --------------------------------------------------------------------------------
 
 ### Requirements
