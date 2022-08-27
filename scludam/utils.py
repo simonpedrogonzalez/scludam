@@ -77,7 +77,7 @@ class Colnames:
         names = names._parse_to_list()
         return list(self.names - OrderedSet(names))
 
-    def get_data_names(self, names: Union[list, str] = None):
+    def data(self, names: Union[list, str] = None):
         """Get names of data columns.
 
         A column is considered data if it does not
@@ -105,7 +105,7 @@ class Colnames:
         names = self._parse_to_list(names)
         return list(OrderedSet(names).intersection(data))
 
-    def get_error_names(self, names: Union[list, str] = None):
+    def error(self, names: Union[list, str] = None):
         """Get names of error columns.
 
         A column is considered error if it ends with "_error".
@@ -127,7 +127,7 @@ class Colnames:
         errors = [name for name in list(self.names) if name.endswith("_error")]
         if names is None:
             names = list(self.names)
-        names = self.get_data_names(self._parse_to_list(names))
+        names = self.data(self._parse_to_list(names))
         sorted_errors = []
         for name in names:
             for err in errors:
@@ -136,33 +136,37 @@ class Colnames:
                     errors.remove(err)
                     break
 
-        missing_errors = len(names) != len(sorted_errors)
+        return sorted_errors
 
-        return sorted_errors, missing_errors
-
-    def get_corr_names(self, names: Union[list, str] = None):
-        """Get names of correlation columns.
-
-        A column is considered correlation if it ends with "_corr".
+    def missing_error(self, names: Union[list, str] = None):
+        """Check if there are missing error columns.
 
         Parameters
         ----------
         names : Union[list, str], optional
             List of data column names to filter, by default None.
-            If None, the function returns correlation columns
-            found. If not, the function returns correlation columns
-            related to the data column names in the list.
+            If None, the function will check within all data columns
+            . If not, the function returns error columns
+            of the names in the list.
 
         Returns
         -------
-        List[str]
-            Correlation column names.
+        bool
+            True if there are missing error columns, False otherwise.
 
         """
+        if names is None:
+            names = list(self.names)
+        names = self.data(self._parse_to_list(names))
+        errors = self.error(names)
+        missing_errors = len(names) != len(errors)
+        return missing_errors
+
+    def _corr(self, names: Union[list, str] = None):
         correlations = [name for name in list(self.names) if name.endswith("_corr")]
         if names is None:
             names = list(self.names)
-        names = self.get_data_names(self._parse_to_list(names))
+        names = self.data(self._parse_to_list(names))
 
         names_with_corr = []
         for name in names:
@@ -201,6 +205,51 @@ class Colnames:
         )
         sorted_correlations = [sc for sc in sorted_correlations if sc != ""]
         return sorted_correlations, missing_correlations
+
+    def corr(self, names: Union[list, str] = None):
+        """Get names of correlation columns.
+
+        A column is considered correlation if it ends with "_corr".
+
+        Parameters
+        ----------
+        names : Union[list, str], optional
+            List of data column names to filter, by default None.
+            If None, the function returns correlation columns
+            found. If not, the function returns correlation columns
+            related to the data column names in the list.
+
+        Returns
+        -------
+        List[str]
+            Correlation column names.
+
+        """
+        correlations, _ = self._corr(names)
+        return correlations
+
+    def missing_corr(self, names: Union[list, str] = None):
+        """Check if there are missing correlation columns.
+
+        Parameters
+        ----------
+        names : Union[list, str], optional
+            List of data column names to filter, by default None.
+            If None, the function will check within all data columns
+            . If not, the function wil check within the columns
+            of the names in the list.
+
+        Returns
+        -------
+        bool
+            True if there are missing correlation columns, False otherwise.
+
+        """
+        if names is None:
+            names = list(self.names)
+        names = self.data(self._parse_to_list(names))
+        _, missing_correlations = self._corr(names)
+        return missing_correlations
 
     def _parse_to_list(self, names: Union[list, str]):
         if isinstance(names, str):

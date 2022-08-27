@@ -49,10 +49,7 @@ def columns_missing_corr():
     ],
 )
 def test_get_data_names(fixture_name, filter_names, correct, request):
-    assert (
-        Colnames(request.getfixturevalue(fixture_name)).get_data_names(filter_names)
-        == correct
-    )
+    assert Colnames(request.getfixturevalue(fixture_name)).data(filter_names) == correct
 
 
 @pytest.mark.parametrize(
@@ -70,8 +67,12 @@ def test_get_data_names(fixture_name, filter_names, correct, request):
 )
 def test_get_error_names(fixture_name, filter_names, correct, request):
     assert (
-        Colnames(request.getfixturevalue(fixture_name)).get_error_names(filter_names)
-        == correct
+        Colnames(request.getfixturevalue(fixture_name)).error(filter_names)
+        == correct[0]
+    )
+    assert (
+        Colnames(request.getfixturevalue(fixture_name)).missing_error(filter_names)
+        == correct[1]
     )
 
 
@@ -103,8 +104,11 @@ def test_get_error_names(fixture_name, filter_names, correct, request):
 )
 def test_get_corr_names(fixture_name, filter_names, correct, request):
     assert (
-        Colnames(request.getfixturevalue(fixture_name)).get_corr_names(filter_names)
-        == correct
+        Colnames(request.getfixturevalue(fixture_name)).corr(filter_names) == correct[0]
+    )
+    assert (
+        Colnames(request.getfixturevalue(fixture_name)).missing_corr(filter_names)
+        == correct[1]
     )
 
 

@@ -1,8 +1,8 @@
-Diagrams
-========================
+Software diagrams
+=================
 
-Package diagram
----------------
+Dependency diagram
+------------------
 .. image:: _static/packages_scludam.svg
   :width: 400
   :alt: Missing image

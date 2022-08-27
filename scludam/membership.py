@@ -97,6 +97,7 @@ class DBME:
         :linenos:
     .. image:: ../../examples/membership/init_proba.png
     .. image:: ../../examples/membership/dbme.png
+
     """
 
     # intput attrs
