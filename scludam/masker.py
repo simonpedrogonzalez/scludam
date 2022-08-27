@@ -177,7 +177,7 @@ class DistanceMasker(DataMasker):
     center: Union[list, np.ndarray, str] = "geometric"
     percentage: Union[int, float] = 10
     metric: str = "euclidean"
-    mode: str = "furthest"
+    mode: str = "closest"
 
     def mask(self, data: np.ndarray):
         """Mask the data.
@@ -207,6 +207,8 @@ class DistanceMasker(DataMasker):
                 center = data.min(axis=0) + (data.max(axis=0) - data.min(axis=0)) / 2
             else:
                 raise NotImplementedError()
+        else:
+            center = np.array(self.center)
         distances = pairwise_distances(
             data, center.reshape(1, -1), metric=self.metric
         ).ravel()

@@ -803,13 +803,14 @@ class SHDBSCAN:
                 color=color,
                 linestyle="--",
             )
-            y = ax.get_yticks()[-1] / 2
-            ax.text(
-                x + 0.01,
-                y,
-                f"quantile: {self.outlier_quantile:.4f}\nvalue: {x:.4f}",
-                color=color,
-                verticalalignment="center",
-            )
+            if len(ax.get_yticks()):
+                y = ax.get_yticks()[-1] / 2
+                ax.text(
+                    x + 0.01,
+                    y,
+                    f"quantile: {self.outlier_quantile:.4f}\nvalue: {x:.4f}",
+                    color=color,
+                    verticalalignment="center",
+                )
 
         return ax

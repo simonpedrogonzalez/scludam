@@ -22,6 +22,7 @@ data is "clusterable") in a n dimensional numerical dataset.
 """
 
 from abc import abstractmethod
+from copy import deepcopy
 from numbers import Number
 from typing import Union
 from warnings import warn
@@ -41,7 +42,7 @@ from sklearn.utils import resample
 from scludam.type_utils import Numeric1DArray, Numeric2DArray
 
 
-@define(auto_attribs=True)
+@define
 class TestResult:
     """Base class to hold the results of a statistical test.
 
@@ -76,7 +77,7 @@ class StatTest:
         pass
 
 
-@define(auto_attribs=True)
+@define
 class HopkinsTestResult(TestResult):
     """Results of a Hopkins test.
 
@@ -95,7 +96,7 @@ class HopkinsTestResult(TestResult):
     pvalue: Number
 
 
-@define(auto_attribs=True)
+@define()
 class HopkinsTest(StatTest):
     """Class to perform a Hopkins spatial randomness test.
 
@@ -104,9 +105,12 @@ class HopkinsTest(StatTest):
     n_iters : int, optional
         Number of iterations to perform the test. Final Hopkins statistic result
         is taken as the median of the results, by default is 100.
-    n_samples : int, optional
-        Number of samples to take from the data, by default is ``0.1*n`` where n is
-        the number of points in the data set, as it is the recommended value.
+    sample_ratio : float, optional
+        Sample ratio to take from the data, by default is ``0.1``. The number
+        of samples is ``n*sample_ratio``.
+    max_samples : int, optional
+        Number of max samples to take from the data, by default is 100. If
+        ``n_samples`` is greater than this value, it is set to this value.
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'.
         Can be str or sklearn.neighbors.DistanceMetric.
@@ -156,9 +160,12 @@ class HopkinsTest(StatTest):
 
     """
 
-    n_samples: int = None
-    metric: Union[str, DistanceMetric] = "euclidean"
-    n_iters: int = 100
+    sample_ratio: int = field(
+        default=0.1, validator=[validators.gt(0), validators.le(1)]
+    )
+    max_samples: int = field(default=100)
+    metric: Union[str, DistanceMetric] = field(default="euclidean")
+    n_iters: int = field(default=100)
     # interpretation:
     # H0: data comes from uniform distribution
     # H1: data does not come from uniform distribution
@@ -166,12 +173,23 @@ class HopkinsTest(StatTest):
     # if h = u/(u+w) ~ .5 => w ~ u luego no hay estructura
     # if h > .75 => reject H0, and in general  indicates a clustering
     # tendency at the 90% confidence level.
-    threshold: Number = None
-    pvalue_threshold: float = 0.05
+    threshold: Number = field(default=None)
+    pvalue_threshold: float = field(default=0.05)
 
     def _get_pvalue(self, value: Number, n_samples: int):
         b = beta(n_samples, n_samples)
         if value > 0.5:
+            # value is a random variate
+            # that distributes as a beta(n, n)
+            # that distribution is symmetric
+            # around .5
+            # let value = .5 +- e
+            # get the probability
+            # p of getting x ∈ (.5-4, .5+4)
+            # As value close to .5 means support for
+            # H0: data comes from uniform distribution
+            # we want to get 1 - p
+            # so we can compare with pvalue threshold
             return 1 - (b.cdf(value) - b.cdf(1 - value))
         else:
             return 1 - (b.cdf(1 - value) - b.cdf(value))
@@ -193,14 +211,12 @@ class HopkinsTest(StatTest):
         """
         obs, dims = data.shape
 
-        if self.n_samples is None:
-            n_samples = int(obs * 0.1)
-        else:
-            n_samples = min(obs, self.n_samples)
+        n_samples = min(int(obs * self.sample_ratio), self.max_samples, obs)
 
         results = []
         for i in range(self.n_iters):
             sample = resample(data, n_samples=n_samples, replace=False)
+
             if self.metric == "mahalanobis":
                 kwargs["V"] = np.cov(sample, rowvar=False)
             tree = BallTree(sample, leaf_size=2, metric=self.metric, *args, **kwargs)
@@ -218,11 +234,11 @@ class HopkinsTest(StatTest):
 
             sample_sum = np.sum(sample_nn_distance**dims)
             uniform_sum = np.sum(uniform_nn_distance**dims)
-
             results.append(uniform_sum / (uniform_sum + sample_sum))
 
         value = np.median(np.array(results))
         pvalue = self._get_pvalue(value, n_samples)
+
         if self.threshold is not None:
             rejectH0 = value >= self.threshold
         else:
@@ -254,12 +270,14 @@ class DipDistTestResult(TestResult):
 class DipDistTest(StatTest):
     """Class to perform a Dip-Dist test of multimodality over pairwise distances.
 
+    The Dip-Dist implementation is based on the Python Dip test wrapper built by
+    Ralph Ulrus, [2]_.
+
     Attributes
     ----------
-    n_samples : int, optional
-        number of samples to take from the data, by default is set to the number
-        of points in the data set. If n_samples is provided, then it is set to
-        min(n, n_samples).
+    max_samples : int, optional
+        Maximum number of samples to use, by default is ``1000``. If there are more
+        data points than ``max_samples``, then the data is sampled.
     metric : Union[str, DistanceMetric], optional
         Metric to use for the distance between points, by default is 'euclidean'. Can be
         str or sklearn.neighbors.DistanceMetric.
@@ -269,7 +287,7 @@ class DipDistTest(StatTest):
 
     Notes
     -----
-    The test analyzes the pairwise distance distribution [2]_ between points
+    The test analyzes the pairwise distance distribution [3]_ between points
     in a data set to determine if said distribution is multimodal.
     The null hypothesis is:
 
@@ -279,18 +297,26 @@ class DipDistTest(StatTest):
 
     *  H0: The data set X does not present cluster structure.
 
-    Hartigan's Dip statistic [3]_ is the maximum difference between an
-    empirical distribution and its closest unimodal distribution
-    calculated using the greatest convex minorant
+    More specifically, the distance distribution will be unimodal
+    for uniform data distributions or single cluster distributions.
+    It will be multimodal when there are several clusters or when
+    there is an aggregate of a uniform distribution and a cluster.
+    The Hartigan's Dip statistic [4]_ can be defined as the maximum
+    difference between an empirical distribution and its closest
+    unimodal distribution calculated using the greatest convex minorant
     and the least concave majorant of the bounded distribution function.
 
     References
     ----------
+    .. [3] R. Urlus (2022). A Python/C(++) implementation
+         of Hartigan & Hartigan's dip test for unimodality.
+         https://pypi.org/project/diptest/
     .. [2] A. Adolfsson, M. Ackerman, N. C. Brownstein (2018). To Cluster,
          or Not to Cluster: An Analysis of Clusterability Methods
          . https://doi.org/10.48550/arXiv.1808.08317
-    .. [3] J. A. Hartigan and P. M. Hartigan (1985). The Dip Test of Unimodality.
-         Annals of Statistics 13, 70–84. DOI: 10.1214/aos/1176346577
+    .. [4] J. A. Hartigan and P. M. Hartigan (1985). The Dip Test of Unimodality.
+         Annals of Statistics 13, 70–84. D
+         OI: 10.1214/aos/1176346577
 
     Examples
     --------
@@ -301,7 +327,7 @@ class DipDistTest(StatTest):
 
     """
 
-    n_samples: int = None
+    max_samples: int = 1000
     metric: str = "euclidean"
     pvalue_threshold: float = 0.05
 
@@ -322,15 +348,11 @@ class DipDistTest(StatTest):
         """
         obs, dims = data.shape
 
-        if self.n_samples is not None:
-            n_samples = min(obs, self.n_samples)
-        else:
-            n_samples = obs
-
-        sample = resample(data, n_samples=n_samples, replace=False)
-        dist = np.ravel(np.tril(pairwise_distances(sample, metric=self.metric)))
+        if obs > self.max_samples:
+            data = resample(data, n_samples=self.max_samples, replace=False)
+        dist = np.ravel(np.tril(pairwise_distances(data, metric=self.metric)))
         dist = np.msort(dist[dist > 0])
-        dip, pval = diptest(dist, *args, **kwargs)
+        dip, pval = diptest(dist, sort_x=False, *args, **kwargs)
         rejectH0 = pval < self.pvalue_threshold
         return DipDistTestResult(value=dip, pvalue=pval, rejectH0=rejectH0, dist=dist)
 
@@ -367,7 +389,7 @@ class RipleysKTest(StatTest):
     Attributes
     ----------
     rk_estimator : astropy.stats.RipleysKEstimator, optional
-        Estimator to use for the Ripleys K function [4]_, by default
+        Estimator to use for the Ripleys K function [5]_, by default
         is None. Only used if
         a custom RipleysKEstimator configuration is needed.
 
@@ -379,14 +401,14 @@ class RipleysKTest(StatTest):
 
             *   area: is the area of the 2D data set taken as a square window.
             *   n: is the number of points in the data set.
-            *   ripley_factor: are the tabulated values calculated by Ripleys [4]_
+            *   ripley_factor: are the tabulated values calculated by Ripleys [5]_
                 to determine p-value significance. Available Ripleys factors
                 are ``p-value = 0.05`` -> ``factor = 1.42`` and
                 ``p-value = 0.01`` -> ``factor = 1.68``.
 
         #. "chiu": H0 rejected if ``s > chiu_factor * sqrt(area) / n`` where:
 
-            *   chiu_factor: are the tabulated values suggested by Chiu [5]_ to
+            *   chiu_factor: are the tabulated values suggested by Chiu [6]_ to
                 determine p-value significance. Available Chiu factors are
                 ``p-value = 0.1 -> factor = 1.31``,
                 ``p-value = 0.05 -> factor = 1.45`` and
@@ -405,12 +427,21 @@ class RipleysKTest(StatTest):
         where max_radius is calculated as:
 
             *  ``recommended_radius = short_side_of_rectangular_window / 4``
-            *  ``recommended_radius_for_large_data_sets = sqrt(100 / pi * n)``
+            *  ``recommended_radius_for_large_data_sets = sqrt(1000 / (pi * n))``
             *  ``max_radius = min(recommended_radius, recommended_radius_for_large_data_sets)``
 
         The steps between the radii values are calculated as
         ``step = max_radius / 128 / 4``.
-        This procedure is the recommended one in R spatstat package [6]_.
+        This procedure is the recommended one in R spatstat package [7]_.
+
+    max_samples: int, optional
+        The maximum number of samples to use for the test, by default is 5000. If the
+        dataset has more than ``max_samples``, then the test is performed on a random sample
+        of ``max_samples``.
+
+    factor : float, optional
+        The factor to use to determine the rejection of H0, by default is None. If factor is
+        provided, then pvalue_threshold is ignored.
 
     Raises
     ------
@@ -420,7 +451,7 @@ class RipleysKTest(StatTest):
 
     Notes
     -----
-    The test calculates the value of an estimate for the L function [7]_ (a
+    The test calculates the value of an estimate for the L function [8]_ (a
     form of Ripleys K function) for a set of radii taken from the
     center of the data set, and compares it to the theoretical L
     function of a uniform distribution. The null hypothesis is:
@@ -441,16 +472,16 @@ class RipleysKTest(StatTest):
 
     References
     ----------
-    .. [4] B. D. Ripley (1979). Tests of Randomness for Spatial Point Patterns.
+    .. [5] B. D. Ripley (1979). Tests of Randomness for Spatial Point Patterns.
          J. R. Statist. Soc. B (1979), 41, No.3, pp. 368-374.
          https://doi.org/10.1111/j.2517-6161.1979.tb01091.x
-    .. [5] S. N. Chiu (2007). Correction to Koen's critical values in testing
+    .. [6] S. N. Chiu (2007). Correction to Koen's critical values in testing
          spatial randomness. Journal of Statistical Computation and Simulation
          2007 77(11-12):1001-1004. DOI: 10.1080/10629360600989147
-    .. [6] A. Baddeley, R. Turner (2005). Spatstat: An R Package for Analyzing
+    .. [7] A. Baddeley, R. Turner (2005). Spatstat: An R Package for Analyzing
          Spatial Point Patterns. Journal of Statistical Software, 12(6), 1–42.
          DOI: 10.18637/jss.v012.i06.
-    .. [7] J. Besag (1977). Contribution to the Discussion on Dr. Ripley’s
+    .. [8] J. Besag (1977). Contribution to the Discussion on Dr. Ripley’s
          Paper. Journals of the Royal Statistical Society, B39, 193-195.
 
     Examples
@@ -463,6 +494,8 @@ class RipleysKTest(StatTest):
     """  # noqa: E501
 
     rk_estimator: RipleysKEstimator = None
+
+    _used_fitted_rk_estimator: RipleysKEstimator = None
 
     _scaler: TransformerMixin = MinMaxScaler()
 
@@ -486,6 +519,8 @@ class RipleysKTest(StatTest):
     factor: float = None
 
     pvalue_threshold: float = field(default=0.05)
+
+    max_samples: int = field(default=5000)
 
     @pvalue_threshold.validator
     def _check_pvalue_threshold(self, attribute, value):
@@ -549,10 +584,13 @@ class RipleysKTest(StatTest):
         if data_unique.shape[0] != data.shape[0]:
             warn(
                 "There are repeated data points that cause"
-                " astropy.stats.RipleysKEstimator to break, they will be removed.",
+                " astropy.stats.RipleysKEstimator to fail, they will be removed.",
                 category=UserWarning,
             )
             data = data_unique
+
+        if data.shape[0] > self.max_samples:
+            data = resample(data, n_samples=self.max_samples, replace=False)
 
         obs, dims = data.shape
 
@@ -576,6 +614,8 @@ class RipleysKTest(StatTest):
             radii_max = min(radii_max_ripley, radii_max_large)
             step = radii_max / 128 / 4
             radii = np.arange(0, radii_max + step, step)
+        else:
+            radii = self.radii
 
         if self.rk_estimator is None:
             # Could be extended to other shapes
@@ -583,7 +623,7 @@ class RipleysKTest(StatTest):
             # available. Could use ConvexHull to get the
             # area.
             area = (x_max - x_min) * (y_max - y_min)
-            self.rk_estimator = RipleysKEstimator(
+            self._fitted_rk_estimator = RipleysKEstimator(
                 area=area,
                 x_min=x_min,
                 x_max=x_max,
@@ -591,13 +631,14 @@ class RipleysKTest(StatTest):
                 y_max=y_max,
             )
         else:
-            area = self.rk_estimator.area
+            self._fitted_rk_estimator = deepcopy(self.rk_estimator)
+            area = self._fitted_rk_estimator.area
 
         if kwargs.get("mode") is None:
             # Best mode for rectangular window
             kwargs["mode"] = "ripley"
 
-        l_function = self.rk_estimator.Lfunction(data, radii, *args, **kwargs)
+        l_function = self._fitted_rk_estimator.Lfunction(data, radii, *args, **kwargs)
 
         if self.mode == "ks":
             value, rejectH0 = self._ks_rule(l_function, radii)

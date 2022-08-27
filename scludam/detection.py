@@ -416,7 +416,7 @@ class CountPeakDetector:
         the bin count due to an arbitrarily
         chosen bin edge shift. It uses :func:`~scludam.detection.nyquist_offsets`.
     min_count: Number, optional
-        Mimimum count for a bin to be elegible as a peak, by default 5. Also used to
+        Mimimum count for a bin to be elegible as a peak, by default 10. Also used to
         ``remove_low_density_regions`` if that option is enabled.
     remove_low_density_regions : bool, optional
         If ``True``, low density bins are removed from the histogram, by default
@@ -442,12 +442,15 @@ class CountPeakDetector:
         represents the standard deviation in a window surrounding the bin, calculated
         according to the ``norm_mode`` parameter.
     min_score: Number, optional
-        Minimum score for a bin to be elegible as peak, by default 1. The score is
+        Minimum score for a bin to be elegible as peak, by default 2. The score is
         calculated as the standardized difference between the bin count and the
         background:
         ``score = (histogram - background) / std`` where ``background`` is obtained by
         using filtering the histogram with the provided ``mask``. ``std`` is
         calculated according to the ``norm_mode`` parameter.
+    max_n_peaks: Number, optional
+        Maximum number of peaks to be detected, by default 10. Use ``np.inf``
+        to detect all peaks.
     min_interpeak_distance: int, optional
         Minimum number of bins between peaks, by default 1.
     norm_mode: str, optional
@@ -539,11 +542,11 @@ class CountPeakDetector:
     bin_shape: Numeric1DArrayLike = field(validator=_type(Numeric1DArrayLike))
     mask: OptionalArrayLike = field(default=None, validator=_type(OptionalArrayLike))
     nyquist_offset: bool = field(default=True)
-    min_count: Number = field(default=5)
+    min_count: Number = field(default=10)
     min_dif: Number = field(default=10)
     min_sigma_dif: Number = field(default=None)
-    min_score: Number = field(default=1)
-    max_num_peaks: int = field(default=np.inf)
+    min_score: Number = field(default=2)
+    max_n_peaks: int = field(default=10)
     min_interpeak_dist: int = field(default=1, validator=_type(int))
     remove_low_density_regions: bool = field(default=True, validator=_type(bool))
     norm_mode: str = field(default="std", validator=validators.in_(["std", "approx"]))
@@ -671,8 +674,8 @@ class CountPeakDetector:
             peak_detection_params["min_distance"] = self.min_interpeak_dist
         if self.min_score:
             peak_detection_params["threshold_abs"] = self.min_score
-        if self.max_num_peaks:
-            peak_detection_params["num_peaks"] = self.max_num_peaks
+        if self.max_n_peaks:
+            peak_detection_params["num_peaks"] = self.max_n_peaks
 
         # detection
         g_centers = []
@@ -782,8 +785,8 @@ class CountPeakDetector:
         # compare same peaks in different histogram offsets
         # and return most sifnificant peak for all offsets
         g_ind = _get_higher_score_offset_per_peak(g_indices, g_scores)
-        if self.max_num_peaks != np.inf:
-            g_ind = g_ind[0 : self.max_num_peaks]
+        if self.max_n_peaks != np.inf:
+            g_ind = g_ind[0 : self.max_n_peaks]
 
         g_centers = np.array(g_centers)[g_ind]
         g_scores = np.array(g_scores)[g_ind]
@@ -813,7 +816,7 @@ class CountPeakDetector:
         x: int = 0,
         y: int = 1,
         mode: str = "c",
-        labels: Union[List[str], None] = None,
+        cols: Union[List[str], None] = None,
         cut_label_prec: int = 4,
         center_label_prec: int = 4,
         **kwargs,
@@ -850,7 +853,7 @@ class CountPeakDetector:
             method explained in
             :class:`~scludam.detection.CountPeakDetector`.
 
-        labels : Union[[List[str]], None], optional
+        cols : Union[[List[str]], None], optional
             List of variable names, by default ``None``. If ``None``,
             then the variables are called 'var1', 'var2', and so on.
         cut_label_prec : int, optional
@@ -885,6 +888,7 @@ class CountPeakDetector:
             :linenos:
         .. image:: ../../examples/detection/plot1.png
         .. image:: ../../examples/detection/plot2.png
+
         """
         if self._last_result is None:
             raise ValueError("No result available, run detect function first.")
@@ -924,10 +928,10 @@ class CountPeakDetector:
         if x not in dims or y not in dims:
             raise ValueError("x and y must be valid dimensions.")
 
-        if labels is None:
-            labels = np.array([f"var{i+1}" for i in range(dim)], dtype="object")
-        elif len(labels) != dim:
-            raise ValueError("labels must have n_dim elements.")
+        if cols is None:
+            cols = np.array([f"var{i+1}" for i in range(dim)], dtype="object")
+        elif len(cols) != dim:
+            raise ValueError("cols must have n_dim elements.")
 
         # flip xy order because heatmap plots yx instead of xy
         xydims = np.flip(dims[[x, y]])
@@ -938,8 +942,11 @@ class CountPeakDetector:
 
         # create a 2d cut for (x,y) with the other dims fixed
         # on the peak value
-        cut = np.array([slice(None)] * 2 + pindex[cutdims].tolist(), dtype="object")
-        hist2D = hist[tuple(cut)]
+        if len(hist.shape) <= 2:
+            hist2D = hist
+        else:
+            cut = np.array([slice(None)] * 2 + pindex[cutdims].tolist(), dtype="object")
+            hist2D = hist[tuple(cut)]
 
         # get the edges of the 2d cut in the xy order
         edges2D = np.array(edges, dtype="object")[xydims]
@@ -955,13 +962,13 @@ class CountPeakDetector:
         hm = heatmap2D(
             hist2D=hist2D, edges=edges2D, bin_shape=bin_shape, index=pindex2D, **kwargs
         )
-        hm.axes.set_xlabel(labels[x])
-        hm.axes.set_ylabel(labels[y])
+        hm.axes.set_xlabel(cols[x])
+        hm.axes.set_ylabel(cols[y])
 
         cut_values = [round(pcenter[i], cut_label_prec) for i in dims]
         cut_edges = [round(self.bin_shape[i] / 2, cut_label_prec) for i in dims]
         cut_string = ", ".join(
-            [f"{labels[i]}={cut_values[i]}±{cut_edges[i]}" for i in cutdims]
+            [f"{cols[i]}={cut_values[i]}±{cut_edges[i]}" for i in cutdims]
         )
 
         mode_string = {
@@ -972,7 +979,7 @@ class CountPeakDetector:
         }.get(mode, "Count histogram")
 
         pcenter_string = ", ".join(
-            [f"{labels[i]}={round(pcenter[i], cut_label_prec)}" for i in dims]
+            [f"{cols[i]}={round(pcenter[i], cut_label_prec)}" for i in dims]
         )
 
         hm.title.set_style("italic")

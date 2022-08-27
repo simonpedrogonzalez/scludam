@@ -54,7 +54,7 @@ from scludam.type_utils import Condition, Coord, LogicalExpression
 class Config:
     """Class to hold defaults for a query."""
 
-    MAIN_GAIA_TABLE: str = "gaiaedr3.gaia_source"
+    MAIN_GAIA_TABLE: str = "gaiadr3.gaia_source"
     MAIN_GAIA_RA: str = "ra"
     MAIN_GAIA_DEC: str = "dec"
     ROW_LIMIT: int = -1
@@ -236,7 +236,7 @@ class Query:
     Notes
     -----
     It is recommended to not manually set the attributes of this class,
-    except for table: str.
+    except for ``table``.
 
     """
 
@@ -652,3 +652,159 @@ class Query:
         if not kwargs.get("dump_to_file"):
             table = job.get_results()
             return table
+
+
+_gaia2criteria = {
+    "ra": "ra",
+    "dec": "dec",
+    "pmra": "pmra",
+    "pmdec": "pmdec",
+    "parallax": "plx",
+    "phot_g_mean_mag": "Gmag",
+    "phot_rp_mean_mag": "Rmag",
+    "phot_bp_mean_mag": "Bmag",
+}
+_gaia2simbad = {
+    "ra": "RA",
+    "dec": "DEC",
+    "pmra": "PMRA",
+    "pmdec": "PMDEC",
+    "parallax": "PLX_VALUE",
+    "phot_g_mean_mag": "FLUX_G",
+    "phot_rp_mean_mag": "FLUX_R",
+    "phot_bp_mean_mag": "FLUX_B",
+}
+
+_simbad2gaia = {v: k for k, v in _gaia2simbad.items()}
+
+_supported_gaia_cols = _gaia2simbad.keys()
+
+_supported_simbad_cols = _gaia2simbad.values()
+
+
+def _coords_to_radec(table):
+    if "RA" in table.colnames and "DEC" in table.colnames:
+        coords = SkyCoord(
+            table[["RA", "DEC"]].to_pandas().values, unit=(u.hourangle, u.deg)
+        )
+        table["RA"] = coords.ra.deg
+        table["DEC"] = coords.dec.deg
+    return table
+
+
+def search_objects_near_data(
+    df: pd.DataFrame, allow_missing_values=True, fields=[], **kwargs
+):
+    """Search for objects in an area defined by dataframe.
+
+    search all simbad objects in an area
+    defined by a dataframe by the maxs and mins
+    of the columns in the dataframe with GAIA
+    colnames.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        dataframe with GAIA data. Must contain
+        ra and dec columns. May also contain "pmra", "pmdec", "parallax",
+        "phot_g_mean_mag", "phot_rp_mean_mag", "phot_bp_mean_mag". Other
+        fields are ignored
+    allow_missing_values : bool, optional
+        Allow simbad objects with missing value for the columns in the
+        dataframe to appear in the result table, by default True.
+    fields : list, optional
+        extra simbad fields to add, apart from
+        ``["parallax", "propermotions", "diameter",
+        "fluxdata(G)", "fluxdata(B)", "fluxdata(R)"]``,
+        by default []
+
+    Returns
+    -------
+    astroquery.table.table.Table
+        Simbad result table. RA and DEC columns
+        are parsed into degrees with decimal places.
+
+    Raises
+    ------
+    ValueError
+        No supported columns present in the dataframe.
+
+    """
+    cols = df.columns.intersection(_supported_gaia_cols)
+
+    if len(cols) == 0:
+        raise ValueError("No supported columns found")
+
+    simbad = Simbad()
+    necessary_fields = ["typed_id", "coordinates", "otype"]
+    default_fields = [
+        "parallax",
+        "propermotions",
+        "diameter",
+        "fluxdata(G)",
+        "fluxdata(B)",
+        "fluxdata(R)",
+    ]
+    simbad.add_votable_fields(*list(set(necessary_fields + default_fields + fields)))
+
+    mins = df[cols].min()
+    maxs = df[cols].max()
+
+    if not allow_missing_values or "ra" not in cols or "dec" not in cols:
+        min_conditions = " & ".join(
+            [f"{_gaia2criteria[col]} >= {mins[col]}" for col in cols]
+        )
+        max_conditions = " & ".join(
+            [f"{_gaia2criteria[col]} <= {maxs[col]}" for col in cols]
+        )
+    else:
+        min_conditions = " & ".join(
+            [f"{_gaia2criteria[col]} >= {mins[col]}" for col in ["ra", "dec"]]
+        )
+        max_conditions = " & ".join(
+            [f"{_gaia2criteria[col]} <= {maxs[col]}" for col in ["ra", "dec"]]
+        )
+    conditions = f"{min_conditions} & {max_conditions}"
+    table = simbad.query_criteria(conditions, **kwargs)
+    table = _coords_to_radec(table)
+
+    if not allow_missing_values or "ra" not in cols or "dec" not in cols:
+        return table
+
+    cols = list(set(cols) - set(["ra", "dec"]))
+    simbadcols = [_gaia2simbad[col] for col in cols]
+    mask = np.ones(len(table), dtype=bool)
+    for col, scol in zip(cols, simbadcols):
+        to_remove = (table[scol] > maxs[col]).data | (table[scol] < mins[col]).data
+        to_remove[table[scol].mask] = False
+        mask[to_remove] = False
+
+    table = table[mask]
+    return table
+
+
+def simbad2gaiacolnames(table: Table):
+    """Convert a simbad table colnames to a gaia table colnames.
+
+    Only supports translation for 'RA', 'DEC', 'PMRA', 'PMDEC',
+    'PLX_VALUE', 'FLUX_G', 'FLUX_R', 'FLUX_B'. It also adds
+    'bp_rp' if 'FLUX_B' and 'FLUX_R' are present.
+
+    Parameters
+    ----------
+    table : astroquery.table.table.Table
+        simbad table
+
+    Returns
+    -------
+    astroquery.table.table.Table
+        gaia table
+
+    """
+    if "FLUX_R" in table.colnames and "FLUX_B" in table.colnames:
+        table["bp_rp"] = table["FLUX_B"] - table["FLUX_R"]
+    for col in table.colnames:
+        if col in _supported_simbad_cols:
+            table.rename_column(col, _simbad2gaia[col])
+
+    return table
