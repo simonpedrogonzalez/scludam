@@ -591,7 +591,7 @@
 <text text-anchor="middle" x="5501" y="-361.8" font-family="Times,serif" font-size="14.00">scludam.stat_tests.RipleysKTest</text>
 <polyline fill="none" stroke="black" points="5228.5,-354 5773.5,-354 "/>
 <text text-anchor="start" x="5236.5" y="-338.8" font-family="Times,serif" font-size="14.00">_chiu_factors : dict</text>
-<text text-anchor="start" x="5236.5" y="-323.8" font-family="Times,serif" font-size="14.00">_fitted_rk_estimator : NoneType, RipleysKEstimator</text>
+<text text-anchor="start" x="5236.5" y="-323.8" font-family="Times,serif" font-size="14.00">_fitted_rk_estimator : RipleysKEstimator, NoneType</text>
 <text text-anchor="start" x="5236.5" y="-308.8" font-family="Times,serif" font-size="14.00">_ripley_factors : dict</text>
 <text text-anchor="start" x="5236.5" y="-293.8" font-family="Times,serif" font-size="14.00">_scaler : TransformerMixin</text>
 <text text-anchor="start" x="5236.5" y="-278.8" font-family="Times,serif" font-size="14.00">_used_fitted_rk_estimator : Optional[RipleysKEstimator]</text>

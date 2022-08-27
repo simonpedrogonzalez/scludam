@@ -21,6 +21,8 @@
 
    readme
 
+   quickstart
+
    modules
 
    diagrams

@@ -15,7 +15,20 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Module with default Detection and membership estimation pipeline."""
+"""Module with default Detection and Membership Estimation Pipeline.
+
+All steps of the process can be configured following the documentation
+for each function.
+
+Examples
+--------
+.. literalinclude:: ../../examples/pipeline/dep.py
+    :language: python
+    :linenos:
+
+.. image:: ../../examples/pipeline/dep.png
+    :target: ../../examples/pipeline/dep.png
+"""
 
 import copy
 import warnings
@@ -83,7 +96,11 @@ class DEP:
         Columns to use for membership estimation, by default, ``det_cols``.
         Should be a subset of the columns in the dataframe to be used. It is
         recommended to use the same columns as for detection, or at least some
-        of them, so center estimation can be used for better clustering.
+        of them, so center estimation can be used for better clustering. For the
+        estimation process, error and correlation columns can be used if they are
+        available in the dataframe. For example, if mem_cols is ['x', 'y'],
+        the program will check if columns 'x_error', 'y_error', 'x_y_corr' are
+        present.
     n_detected : int
         Output attribute, number of overdensities detected.
     detection_result: DetectionResult
@@ -399,7 +416,7 @@ class DEP:
         """
         if not self._is_fitted():
             raise Exception("Not fitted, try running fit()")
-        df = self.probadf()
+        df = self.proba_df()
         table = Table.from_pandas(df)
         default_kws = {
             "overwrite": True,

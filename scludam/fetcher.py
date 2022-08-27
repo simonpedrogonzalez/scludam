@@ -54,7 +54,7 @@ from scludam.type_utils import Condition, Coord, LogicalExpression
 class Config:
     """Class to hold defaults for a query."""
 
-    MAIN_GAIA_TABLE: str = "gaiaedr3.gaia_source"
+    MAIN_GAIA_TABLE: str = "gaiadr3.gaia_source"
     MAIN_GAIA_RA: str = "ra"
     MAIN_GAIA_DEC: str = "dec"
     ROW_LIMIT: int = -1
@@ -236,7 +236,7 @@ class Query:
     Notes
     -----
     It is recommended to not manually set the attributes of this class,
-    except for table: str.
+    except for ``table``.
 
     """
 

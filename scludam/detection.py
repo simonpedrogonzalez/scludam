@@ -416,7 +416,7 @@ class CountPeakDetector:
         the bin count due to an arbitrarily
         chosen bin edge shift. It uses :func:`~scludam.detection.nyquist_offsets`.
     min_count: Number, optional
-        Mimimum count for a bin to be elegible as a peak, by default 5. Also used to
+        Mimimum count for a bin to be elegible as a peak, by default 10. Also used to
         ``remove_low_density_regions`` if that option is enabled.
     remove_low_density_regions : bool, optional
         If ``True``, low density bins are removed from the histogram, by default
@@ -442,12 +442,15 @@ class CountPeakDetector:
         represents the standard deviation in a window surrounding the bin, calculated
         according to the ``norm_mode`` parameter.
     min_score: Number, optional
-        Minimum score for a bin to be elegible as peak, by default 1. The score is
+        Minimum score for a bin to be elegible as peak, by default 2. The score is
         calculated as the standardized difference between the bin count and the
         background:
         ``score = (histogram - background) / std`` where ``background`` is obtained by
         using filtering the histogram with the provided ``mask``. ``std`` is
         calculated according to the ``norm_mode`` parameter.
+    max_n_peaks: Number, optional
+        Maximum number of peaks to be detected, by default 10. Use ``np.inf``
+        to detect all peaks.
     min_interpeak_distance: int, optional
         Minimum number of bins between peaks, by default 1.
     norm_mode: str, optional
@@ -539,11 +542,11 @@ class CountPeakDetector:
     bin_shape: Numeric1DArrayLike = field(validator=_type(Numeric1DArrayLike))
     mask: OptionalArrayLike = field(default=None, validator=_type(OptionalArrayLike))
     nyquist_offset: bool = field(default=True)
-    min_count: Number = field(default=5)
+    min_count: Number = field(default=10)
     min_dif: Number = field(default=10)
     min_sigma_dif: Number = field(default=None)
-    min_score: Number = field(default=1)
-    max_n_peaks: int = field(default=np.inf)
+    min_score: Number = field(default=2)
+    max_n_peaks: int = field(default=10)
     min_interpeak_dist: int = field(default=1, validator=_type(int))
     remove_low_density_regions: bool = field(default=True, validator=_type(bool))
     norm_mode: str = field(default="std", validator=validators.in_(["std", "approx"]))

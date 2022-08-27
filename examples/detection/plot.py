@@ -55,7 +55,7 @@ detector.plot(
     x=1,
     y=2,
     mode="s",
-    labels=["pmra", "pmdec", "log10_parallax"],
+    cols=["pmra", "pmdec", "log10_parallax"],
     annot_threshold=5,
     cmap="copper",
 )
@@ -66,7 +66,7 @@ detector.plot(
     x=0,
     y=1,
     mode="b",
-    labels=["pmra", "pmdec", "log10_parallax"],
+    cols=["pmra", "pmdec", "log10_parallax"],
     annot=False,
     cmap="copper",
 )

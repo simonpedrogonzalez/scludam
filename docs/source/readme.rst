@@ -1,5 +1,5 @@
 
-scludam (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership estimation)
+SCLUDAM (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership estimation)
 ==================================================================================================
 
 
@@ -82,8 +82,7 @@ Currently **scludam** is a work in progress. Modules and features already includ
 Requirements
 ^^^^^^^^^^^^
 
-You need **Python 3.7.6+** and **R 3.6.3+** to run scludam. It is recommended to install scludam in a separate environment created with pyenv or conda, to avoid dependencies issues with other preinstalled packages you may have in the base environment.
-Full dependencies list:
+You need **Python 3.7.6+** and **R 3.6.3+** to run scludam. It is recommended to install scludam in a separate environment created with pyenv or conda, to avoid dependencies issues with other preinstalled packages you may have in the base environment. The following dependencies will be installed with SCLUDAM:
 
 
 * numpy>=1.21.6
