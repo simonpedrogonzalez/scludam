@@ -44,6 +44,11 @@ df = (
     .to_pandas()
 )
 
+# If data already has been downloaded, you can load it from a file:
+# > from astropy.table.table import Table
+# > df = Table.read("path_to_my_file/ngc2168_data.fits").to_pandas()
+
+
 # Build Detection-Estimation Pipeline
 dep = DEP(
     # Detector configuration for the detection step
@@ -65,6 +70,8 @@ dep = DEP(
 
 # plot the results
 dep.scatterplot(["pmra", "pmdec"])
+# zoom on interesting area
+plt.axis([-1, 3, -5, 1])
 plt.show()
 
 # write results to file
