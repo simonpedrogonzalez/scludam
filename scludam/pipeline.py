@@ -28,6 +28,7 @@ Examples
 
 .. image:: ../../examples/pipeline/dep.png
     :target: ../../examples/pipeline/dep.png
+
 """
 
 import copy
@@ -44,7 +45,7 @@ from scludam.detection import CountPeakDetector, DetectionResult
 from scludam.fetcher import search_objects_near_data, simbad2gaiacolnames
 from scludam.masker import RangeMasker
 from scludam.membership import DBME
-from scludam.plots import cm_diagram, plot_objects, scatter2dprobaplot
+from scludam.plots import plot_objects, scatter2dprobaplot
 from scludam.shdbscan import SHDBSCAN
 from scludam.stat_tests import StatTest, TestResult
 from scludam.utils import Colnames
@@ -435,7 +436,10 @@ class DEP:
         """Color-magnitude diagram.
 
         Plots a 2d color magnitude diagram of the
-        data, labels and probabilities.
+        data, labels and probabilities. kwargs are passed to the
+        :func:`~scludam.plots.scatter2dprobaplot`,
+        some useful kwargs are "select_labels" for choosing which
+        clusters to plot and "palette" for choosing the color palette.
 
         Parameters
         ----------
@@ -466,14 +470,66 @@ class DEP:
         if not self._is_fitted():
             raise Exception("Not fitted, try running fit()")
         df = self._df[cols]
-        ax = cm_diagram(df, self.proba, self.labels, plotcols, **kwargs)
+        ax = scatter2dprobaplot(df, self.proba, self.labels, plotcols, **kwargs)
+        ax.invert_yaxis()
+        if plot_objects:
+            self._plot_objects(ax, cols)
+        return ax
+
+    def radec_plot(
+        self,
+        cols: str = ["ra", "dec"],
+        plotcols: Optional[List[str]] = None,
+        plot_objects: bool = True,
+        **kwargs,
+    ):
+        """Color-magnitude diagram.
+
+        Plots a 2d color magnitude diagram of the
+        data, labels and probabilities. kwargs are passed to the
+        :func:`~scludam.plots.scatter2dprobaplot`,
+        some useful kwargs are "select_labels" for choosing which
+        clusters to plot and "palette" for choosing the color palette.
+
+
+        Parameters
+        ----------
+        cols : list, optional
+            Dataframe columns to be used,
+            by default ["bp_rp", "phot_g_mean_mag"].
+            If the columns are not present in the dataframe, a KeyError
+            is raised.
+        plotcols : List[str], optional
+            Colnames used for the axis labels in the plot, by default None.
+        plot_objects : bool, optional
+            Whether to plot objects found in the data region, by default True.
+            By default the objects retrieved are of simbad otype "Cl*", meaning
+            star clusters. This can be changed executing the function
+            :func:`~scludam.pipeline.DEP.get_simbad_objects`.
+
+        Returns
+        -------
+        Axes
+            Axis of the plot
+
+        Raises
+        ------
+        Exception
+            If DEP instance is not fitted.
+
+        """
+        if not self._is_fitted():
+            raise Exception("Not fitted, try running fit()")
+        df = self._df[cols]
+        ax = scatter2dprobaplot(df, self.proba, self.labels, plotcols, **kwargs)
+        ax.invert_xaxis()
         if plot_objects:
             self._plot_objects(ax, cols)
         return ax
 
     def scatterplot(
         self,
-        cols: List[str] = ["ra", "dec"],
+        cols: List[str] = ["pmra", "pmdec"],
         plotcols: Optional[List[str]] = None,
         plot_objects: bool = True,
         **kwargs,
@@ -481,6 +537,9 @@ class DEP:
         """Scatter plot with results.
 
         Plots a 2d scatterplot of the data, labels and probabilities.
+        kwargs are passed to the :func:`~scludam.plots.scatter2dprobaplot`,
+        some useful kwargs are "select_labels" for choosing which
+        clusters to plot and "palette" for choosing the color palette.
 
         Parameters
         ----------

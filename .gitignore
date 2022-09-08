@@ -208,3 +208,17 @@ tresde.png
 plot_gauss_err.py.backup
 
 *.fits
+
+ex.png
+
+ex1.png
+
+lin_err.png
+
+lin_no_err.png
+
+sca_err.png
+
+sca_no_err.png
+
+test.py
