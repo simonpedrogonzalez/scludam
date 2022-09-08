@@ -27,6 +27,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.patches import Ellipse
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from sklearn.manifold import TSNE
 from sklearn.preprocessing import MinMaxScaler
@@ -678,14 +679,33 @@ def bivariate_density_plot(
 #     return ax
 
 
+def _select_labels(labels, proba, select_labels):
+    if isinstance(select_labels, int):
+        select_labels = [select_labels]
+    if -1 in select_labels:
+        select_labels.remove(-1)
+    if len(select_labels) == 0:
+        return labels, proba
+    new_proba = proba.copy()
+    new_labels = labels.copy()
+    new_labels[~np.isin(labels, select_labels)] = -1
+    selected_cols = np.array(select_labels) + 1
+    summarize_cols = np.array(list(set(np.arange(proba.shape[1])) - set(selected_cols)))
+    non_selected_sum = np.atleast_2d(new_proba[:, summarize_cols]).T.sum(axis=0)
+    new_proba[:, 0] = non_selected_sum
+    new_proba = new_proba[:, np.array([0] + list(selected_cols))]
+    return new_labels, new_proba
+
+
 def scatter2dprobaplot(
     data: pd.DataFrame,
     proba: np.ndarray,
     labels: np.ndarray,
     cols: Optional[List[str]] = None,
     palette: str = "Set1",
+    select_labels: Optional[Union[List[int], int]] = None,
     bg_kws: dict = {},
-    fr_kws: dict = {},
+    fg_kws: dict = {},
 ):
     """Create a scatter plot with labels and probabilites.
 
@@ -697,6 +717,9 @@ def scatter2dprobaplot(
         Probability array.
     labels : np.ndarray
         Label array.
+    select_labels : Optional[Union[List[int], int]], optional
+        Select labels to plot, by default None. If None, all
+        labels are plotted.
     cols : Optional[List[str]], optional
         Axes labels to be used, by default None.
         If None, the columns of data are used.
@@ -706,7 +729,7 @@ def scatter2dprobaplot(
     bg_kws : dict, optional
         kwargs to be passed to sns.scatterplot for the
         background (noise label [-1]) scatter plot, by default {}.
-    fr_kws : dict, optional
+    fg_kws : dict, optional
         kwargs to be passed to sns.scatterplot for the
         foreground (labels [0, 1, ...]), by default {}.
 
@@ -723,6 +746,9 @@ def scatter2dprobaplot(
         If probability and data have different number of rows.
 
     """
+    sns.set_style("whitegrid")
+    if select_labels is not None:
+        labels, proba = _select_labels(labels, proba, select_labels)
     if data.shape[1] != 2:
         raise ValueError("Data must have 2 columns")
     if isinstance(data, np.ndarray):
@@ -741,7 +767,13 @@ def scatter2dprobaplot(
         raise ValueError("proba must have the same number of rows as data")
 
     plotdf = pd.concat(
-        [df, pd.DataFrame(np.max(proba, axis=1), columns=["Probability"])],
+        [
+            df,
+            pd.DataFrame(
+                np.vstack((np.max(proba, axis=1), labels)).T,
+                columns=["Probability", "Label"],
+            ),
+        ],
         axis=1,
         sort=False,
     )
@@ -753,6 +785,7 @@ def scatter2dprobaplot(
         "s": 5,
         "alpha": 0.2,
         "color": label_c[0],
+        "palette": palette,
     }
     default_kws.update(bg_kws)
     ax = sns.scatterplot(data=plotdf[labels == -1], x=cols[0], y=cols[1], **default_kws)
@@ -760,98 +793,19 @@ def scatter2dprobaplot(
     default_kws = {
         "sizes": (5, 50),
         "size": "Probability",
+        "hue": "Label",
+        "palette": label_c[1:],
         "alpha": 0.8,
     }
-    default_kws.update(fr_kws)
-
-    for i in range(len(np.unique(labels)) - 1):
-        sns.scatterplot(
-            ax=ax,
-            data=plotdf[labels == i],
-            x=cols[0],
-            y=cols[1],
-            c=proba_c[labels == i],
-            **default_kws,
-        )
-
-    # add_label_legend(labels, label_c, ax)
+    default_kws.update(fg_kws)
+    sns.scatterplot(
+        ax=ax,
+        data=plotdf[labels != -1],
+        x=cols[0],
+        y=cols[1],
+        **default_kws,
+    )
     return ax
-
-
-def cm_diagram(
-    data: pd.DataFrame,
-    proba: np.ndarray,
-    labels: np.ndarray,
-    cols: Optional[List[str]] = None,
-    palette: str = "Set1",
-    bg_kws: dict = {},
-    fr_kws: dict = {},
-):
-    """Plot a color magnitude diagram.
-
-    Invert y axis.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        Dataframe with at least 2 columns.
-    proba : np.ndarray
-        Probability array
-    labels : np.ndarray
-        Label array
-    cols : Optional[List[str]], optional
-        Axis labels, by default None. If None, dataframe
-        columns are used.
-    palette : str, optional
-        Palette to be used for selecting label colors,
-        by default "Set1"
-    bg_kws : dict, optional
-        kwargs to be passed to sns.scatterplot for the
-        background (noise label [-1]), by default {}
-    fr_kws : dict, optional
-        kwargs to be passed to sns.scatterplot for the
-        foreground (labels [0, 1, ...]), by default {}
-
-    Returns
-    -------
-    Axes
-        Axes of the plot.
-
-    """
-    ax = scatter2dprobaplot(data, proba, labels, cols, palette, bg_kws, fr_kws)
-    ax.invert_yaxis()
-    ax.set_title("Color-Magnitude diagram")
-    return ax
-
-
-# def scatter_with_coors(data, coors, palette="Paired", cols=["x", "y"], **kwargs):
-#     if len(coors.shape) == 1:
-#         coors = np.atleast_2d(coors)
-#     if isinstance(data, np.ndarray):
-#         df = pd.DataFrame(data, columns=cols)
-#     else:
-#         df = data
-#         cols = df.columns
-#     color_palette = sns.color_palette(palette, coors.shape[0])
-#     default_kws = {
-#         "marker": "o",
-#         "s": 10,
-#         "alpha": 0.5,
-#     }
-#     default_kws.update(kwargs)
-#     ax = sns.scatterplot(data=df, x=cols[0], y=cols[1], **default_kws)
-
-#     for i, c in enumerate(coors):
-#         ax.hlines(
-#             c[1], xmin=df[cols[0]].min(), xmax=df[cols[0]].max(),
-#               color=color_palette[i]
-#         )
-#         ax.vlines(
-#             c[0], ymin=df[cols[1]].min(), ymax=df[cols[1]].max(),
-#               color=color_palette[i]
-#         )
-
-#     return ax
 
 
 def plot_objects(df: pd.DataFrame, ax: Axes, cols: List[str]):
@@ -901,4 +855,79 @@ def plot_objects(df: pd.DataFrame, ax: Axes, cols: List[str]):
     for row in df[[cols[0], cols[1], "annot"]].itertuples():
         _, col1, col2, annot = row
         ax.annotate(annot, (col1, col2))
+    return ax
+
+
+def _plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
+    """Plot ellipse based on the specified covariance.
+
+    Plots an `nstd` sigma error ellipse based on the specified covariance
+    matrix (`cov`). Additional keyword arguments are passed on to the
+    ellipse patch artist.
+
+    Parameters
+    ----------
+        cov : The 2x2 covariance matrix to base the ellipse on
+        pos : The location of the center of the ellipse. Expects a 2-element
+            sequence of [x0, y0].
+        nstd : The radius of the ellipse in numbers of standard deviations.
+            Defaults to 2 standard deviations.
+        ax : The axis that the ellipse will be plotted on. Defaults to the
+            current axis.
+        Additional keyword arguments are pass on to the ellipse patch.
+
+    Returns
+    -------
+        A matplotlib ellipse artist
+
+    """
+
+    def eigsorted(cov):
+        vals, vecs = np.linalg.eigh(cov)
+        order = vals.argsort()[::-1]
+        return vals[order], vecs[:, order]
+
+    if ax is None:
+        ax = plt.gca()
+
+    vals, vecs = eigsorted(cov)
+    theta = np.degrees(np.arctan2(*vecs[:, 0][::-1]))
+
+    # Width and height are "full" widths, not radius
+    width, height = 2 * nstd * np.sqrt(vals)
+    default_kws = {
+        "facecolor": "none",
+        "edgecolor": "k",
+        "linewidth": 0.5,
+        "alpha": 1,
+    }
+    default_kws.update(kwargs)
+    ellip = Ellipse(xy=pos, width=width, height=height, angle=theta, **default_kws)
+
+    ax.add_artist(ellip)
+    return ellip
+
+
+def plot_kernels(ax, means, covariances, nstd=3, **kwargs):
+    """Plot a collection of 2D Gaussians as ellipses.
+
+    Parameters
+    ----------
+    ax : Axes
+        ax to plot on
+    means : np.ndarray
+        2d array of kernel means.
+    covariances : np.ndarray
+        1d array of 2d covariances (3d array)
+    nstd : int, optional
+        number of standard deviations to draw contour, by default 3
+
+    Returns
+    -------
+    Axes
+        ax with ploted ellipses.
+
+    """
+    for i in range(means.shape[0]):
+        _plot_cov_ellipse(cov=covariances[i], pos=means[i], nstd=nstd, ax=ax, **kwargs)
     return ax
