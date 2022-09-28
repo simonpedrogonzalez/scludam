@@ -258,53 +258,55 @@
 <!-- scludam.membership.DBME -->
 <g id="node15" class="node">
 <title>scludam.membership.DBME</title>
-<polygon fill="none" stroke="black" points="0,-609 0,-1203 764,-1203 764,-609 0,-609"/>
-<text text-anchor="middle" x="382" y="-1187.8" font-family="Times,serif" font-size="14.00">scludam.membership.DBME</text>
-<polyline fill="none" stroke="black" points="0,-1180 764,-1180 "/>
-<text text-anchor="start" x="8" y="-1164.8" font-family="Times,serif" font-size="14.00">_d</text>
-<text text-anchor="start" x="8" y="-1149.8" font-family="Times,serif" font-size="14.00">_d : Optional[int]</text>
-<text text-anchor="start" x="8" y="-1134.8" font-family="Times,serif" font-size="14.00">_data</text>
-<text text-anchor="start" x="8" y="-1119.8" font-family="Times,serif" font-size="14.00">_data : Optional[Numeric2DArray]</text>
+<polygon fill="none" stroke="black" points="0,-594 0,-1218 764,-1218 764,-594 0,-594"/>
+<text text-anchor="middle" x="382" y="-1202.8" font-family="Times,serif" font-size="14.00">scludam.membership.DBME</text>
+<polyline fill="none" stroke="black" points="0,-1195 764,-1195 "/>
+<text text-anchor="start" x="8" y="-1179.8" font-family="Times,serif" font-size="14.00">_d</text>
+<text text-anchor="start" x="8" y="-1164.8" font-family="Times,serif" font-size="14.00">_d : Optional[int]</text>
+<text text-anchor="start" x="8" y="-1149.8" font-family="Times,serif" font-size="14.00">_data</text>
+<text text-anchor="start" x="8" y="-1134.8" font-family="Times,serif" font-size="14.00">_data : Optional[Numeric2DArray]</text>
+<text text-anchor="start" x="8" y="-1119.8" font-family="Times,serif" font-size="14.00">_estimators : list</text>
 <text text-anchor="start" x="8" y="-1104.8" font-family="Times,serif" font-size="14.00">_estimators : list</text>
-<text text-anchor="start" x="8" y="-1089.8" font-family="Times,serif" font-size="14.00">_estimators : list</text>
-<text text-anchor="start" x="8" y="-1074.8" font-family="Times,serif" font-size="14.00">_iter_counts : list</text>
-<text text-anchor="start" x="8" y="-1059.8" font-family="Times,serif" font-size="14.00">_iter_label_diff : list</text>
-<text text-anchor="start" x="8" y="-1044.8" font-family="Times,serif" font-size="14.00">_iter_labels : list</text>
-<text text-anchor="start" x="8" y="-1029.8" font-family="Times,serif" font-size="14.00">_iter_priors : list</text>
-<text text-anchor="start" x="8" y="-1014.8" font-family="Times,serif" font-size="14.00">_n</text>
-<text text-anchor="start" x="8" y="-999.8" font-family="Times,serif" font-size="14.00">_n : Optional[int]</text>
-<text text-anchor="start" x="8" y="-984.8" font-family="Times,serif" font-size="14.00">_unique_labels</text>
-<text text-anchor="start" x="8" y="-969.8" font-family="Times,serif" font-size="14.00">_unique_labels : Optional[Numeric1DArray]</text>
-<text text-anchor="start" x="8" y="-954.8" font-family="Times,serif" font-size="14.00">counts</text>
-<text text-anchor="start" x="8" y="-939.8" font-family="Times,serif" font-size="14.00">counts : Optional[Numeric1DArray]</text>
-<text text-anchor="start" x="8" y="-924.8" font-family="Times,serif" font-size="14.00">kde_leave1out : bool</text>
-<text text-anchor="start" x="8" y="-909.8" font-family="Times,serif" font-size="14.00">kernel_calculation_mode : str</text>
-<text text-anchor="start" x="8" y="-894.8" font-family="Times,serif" font-size="14.00">labels</text>
-<text text-anchor="start" x="8" y="-879.8" font-family="Times,serif" font-size="14.00">labels : Optional[Numeric1DArray]</text>
-<text text-anchor="start" x="8" y="-864.8" font-family="Times,serif" font-size="14.00">n_classes</text>
-<text text-anchor="start" x="8" y="-849.8" font-family="Times,serif" font-size="14.00">n_classes : Optional[int]</text>
-<text text-anchor="start" x="8" y="-834.8" font-family="Times,serif" font-size="14.00">n_iters : int</text>
-<text text-anchor="start" x="8" y="-819.8" font-family="Times,serif" font-size="14.00">pdf_estimator</text>
-<text text-anchor="start" x="8" y="-804.8" font-family="Times,serif" font-size="14.00">posteriors</text>
-<text text-anchor="start" x="8" y="-789.8" font-family="Times,serif" font-size="14.00">posteriors : Optional[Numeric2DArray]</text>
-<text text-anchor="start" x="8" y="-774.8" font-family="Times,serif" font-size="14.00">priors</text>
-<text text-anchor="start" x="8" y="-759.8" font-family="Times,serif" font-size="14.00">priors : Optional[Numeric1DArray]</text>
-<polyline fill="none" stroke="black" points="0,-752 764,-752 "/>
-<text text-anchor="start" x="8" y="-736.8" font-family="Times,serif" font-size="14.00">_get_densities(data: Numeric2DArray, err: OptionalNumeric2DArray, corr: OptionalNumericArray, weights: OptionalNumeric2DArray)</text>
-<text text-anchor="start" x="8" y="-721.8" font-family="Times,serif" font-size="14.00">_get_posteriors(densities: Numeric2DArray)</text>
-<text text-anchor="start" x="8" y="-706.8" font-family="Times,serif" font-size="14.00">_is_fitted()</text>
-<text text-anchor="start" x="8" y="-691.8" font-family="Times,serif" font-size="14.00">_update_class_mixtures(posteriors: Numeric2DArray)</text>
-<text text-anchor="start" x="8" y="-676.8" font-family="Times,serif" font-size="14.00">fit(data: Numeric2DArray, init_proba: Numeric2DArray, err: OptionalNumeric2DArray, corr: OptionalNumericArray)</text>
-<text text-anchor="start" x="8" y="-661.8" font-family="Times,serif" font-size="14.00">pairplot()</text>
-<text text-anchor="start" x="8" y="-646.8" font-family="Times,serif" font-size="14.00">scatter3dplot()</text>
-<text text-anchor="start" x="8" y="-631.8" font-family="Times,serif" font-size="14.00">surfplot()</text>
-<text text-anchor="start" x="8" y="-616.8" font-family="Times,serif" font-size="14.00">tsneplot()</text>
+<text text-anchor="start" x="8" y="-1089.8" font-family="Times,serif" font-size="14.00">_iter_counts : list</text>
+<text text-anchor="start" x="8" y="-1074.8" font-family="Times,serif" font-size="14.00">_iter_label_diff : list</text>
+<text text-anchor="start" x="8" y="-1059.8" font-family="Times,serif" font-size="14.00">_iter_labels : list</text>
+<text text-anchor="start" x="8" y="-1044.8" font-family="Times,serif" font-size="14.00">_iter_priors : list</text>
+<text text-anchor="start" x="8" y="-1029.8" font-family="Times,serif" font-size="14.00">_n</text>
+<text text-anchor="start" x="8" y="-1014.8" font-family="Times,serif" font-size="14.00">_n : Optional[int]</text>
+<text text-anchor="start" x="8" y="-999.8" font-family="Times,serif" font-size="14.00">_unique_labels</text>
+<text text-anchor="start" x="8" y="-984.8" font-family="Times,serif" font-size="14.00">_unique_labels : Optional[Numeric1DArray]</text>
+<text text-anchor="start" x="8" y="-969.8" font-family="Times,serif" font-size="14.00">counts</text>
+<text text-anchor="start" x="8" y="-954.8" font-family="Times,serif" font-size="14.00">counts : Optional[Numeric1DArray]</text>
+<text text-anchor="start" x="8" y="-939.8" font-family="Times,serif" font-size="14.00">kde_leave1out : bool</text>
+<text text-anchor="start" x="8" y="-924.8" font-family="Times,serif" font-size="14.00">kernel_calculation_mode : str</text>
+<text text-anchor="start" x="8" y="-909.8" font-family="Times,serif" font-size="14.00">labels</text>
+<text text-anchor="start" x="8" y="-894.8" font-family="Times,serif" font-size="14.00">labels : Optional[Numeric1DArray]</text>
+<text text-anchor="start" x="8" y="-879.8" font-family="Times,serif" font-size="14.00">n_classes</text>
+<text text-anchor="start" x="8" y="-864.8" font-family="Times,serif" font-size="14.00">n_classes : Optional[int]</text>
+<text text-anchor="start" x="8" y="-849.8" font-family="Times,serif" font-size="14.00">n_iters : int</text>
+<text text-anchor="start" x="8" y="-834.8" font-family="Times,serif" font-size="14.00">pdf_estimator</text>
+<text text-anchor="start" x="8" y="-819.8" font-family="Times,serif" font-size="14.00">posteriors</text>
+<text text-anchor="start" x="8" y="-804.8" font-family="Times,serif" font-size="14.00">posteriors : Optional[Numeric2DArray]</text>
+<text text-anchor="start" x="8" y="-789.8" font-family="Times,serif" font-size="14.00">priors</text>
+<text text-anchor="start" x="8" y="-774.8" font-family="Times,serif" font-size="14.00">priors : Optional[Numeric1DArray]</text>
+<polyline fill="none" stroke="black" points="0,-767 764,-767 "/>
+<text text-anchor="start" x="8" y="-751.8" font-family="Times,serif" font-size="14.00">_get_densities(data: Numeric2DArray, err: OptionalNumeric2DArray, corr: OptionalNumericArray, weights: OptionalNumeric2DArray)</text>
+<text text-anchor="start" x="8" y="-736.8" font-family="Times,serif" font-size="14.00">_get_posteriors(densities)</text>
+<text text-anchor="start" x="8" y="-721.8" font-family="Times,serif" font-size="14.00">_get_posteriors1(densities: Numeric2DArray)</text>
+<text text-anchor="start" x="8" y="-706.8" font-family="Times,serif" font-size="14.00">_get_posteriors2(densities)</text>
+<text text-anchor="start" x="8" y="-691.8" font-family="Times,serif" font-size="14.00">_is_fitted()</text>
+<text text-anchor="start" x="8" y="-676.8" font-family="Times,serif" font-size="14.00">_update_class_mixtures(posteriors: Numeric2DArray)</text>
+<text text-anchor="start" x="8" y="-661.8" font-family="Times,serif" font-size="14.00">fit(data: Numeric2DArray, init_proba: Numeric2DArray, err: OptionalNumeric2DArray, corr: OptionalNumericArray)</text>
+<text text-anchor="start" x="8" y="-646.8" font-family="Times,serif" font-size="14.00">pairplot()</text>
+<text text-anchor="start" x="8" y="-631.8" font-family="Times,serif" font-size="14.00">scatter3dplot()</text>
+<text text-anchor="start" x="8" y="-616.8" font-family="Times,serif" font-size="14.00">surfplot()</text>
+<text text-anchor="start" x="8" y="-601.8" font-family="Times,serif" font-size="14.00">tsneplot()</text>
 </g>
 <!-- scludam.hkde.HKDE&#45;&gt;scludam.membership.DBME -->
 <g id="edge15" class="edge">
 <title>scludam.hkde.HKDE&#45;&gt;scludam.membership.DBME</title>
-<path fill="none" stroke="black" d="M382,-489.51C382,-524.43 382,-560.74 382,-596.7"/>
-<polygon fill="black" stroke="black" points="382,-596.88 386,-602.88 382,-608.88 378,-602.88 382,-596.88"/>
+<path fill="none" stroke="black" d="M382,-489.51C382,-519.54 382,-550.58 382,-581.56"/>
+<polygon fill="black" stroke="black" points="382,-581.88 386,-587.88 382,-593.88 378,-587.88 382,-581.88"/>
 <text text-anchor="middle" x="420" y="-511.8" font-family="Times,serif" font-size="14.00" fill="green">pdf_estimator</text>
 </g>
 <!-- scludam.hkde.PluginSelector -->
@@ -408,7 +410,7 @@
 <!-- scludam.membership.DBME&#45;&gt;scludam.pipeline.DEP -->
 <g id="edge16" class="edge">
 <title>scludam.membership.DBME&#45;&gt;scludam.pipeline.DEP</title>
-<path fill="none" stroke="black" d="M694.47,-1203.19C720.74,-1226.47 747.14,-1249.33 773,-1271 886.31,-1365.97 1017.52,-1465.59 1126.54,-1545.74"/>
+<path fill="none" stroke="black" d="M711.27,-1218.01C731.97,-1236.16 752.65,-1253.95 773,-1271 886.31,-1365.97 1017.52,-1465.59 1126.54,-1545.74"/>
 <polygon fill="black" stroke="black" points="1126.68,-1545.84 1133.88,-1546.16 1136.35,-1552.94 1129.15,-1552.61 1126.68,-1545.84"/>
 <text text-anchor="middle" x="830" y="-1292.8" font-family="Times,serif" font-size="14.00" fill="green">estimator</text>
 </g>
@@ -592,7 +594,7 @@
 <text text-anchor="middle" x="5501" y="-361.8" font-family="Times,serif" font-size="14.00">scludam.stat_tests.RipleysKTest</text>
 <polyline fill="none" stroke="black" points="5228.5,-354 5773.5,-354 "/>
 <text text-anchor="start" x="5236.5" y="-338.8" font-family="Times,serif" font-size="14.00">_chiu_factors : dict</text>
-<text text-anchor="start" x="5236.5" y="-323.8" font-family="Times,serif" font-size="14.00">_fitted_rk_estimator : NoneType, RipleysKEstimator</text>
+<text text-anchor="start" x="5236.5" y="-323.8" font-family="Times,serif" font-size="14.00">_fitted_rk_estimator : RipleysKEstimator, NoneType</text>
 <text text-anchor="start" x="5236.5" y="-308.8" font-family="Times,serif" font-size="14.00">_ripley_factors : dict</text>
 <text text-anchor="start" x="5236.5" y="-293.8" font-family="Times,serif" font-size="14.00">_scaler : TransformerMixin</text>
 <text text-anchor="start" x="5236.5" y="-278.8" font-family="Times,serif" font-size="14.00">_used_fitted_rk_estimator : Optional[RipleysKEstimator]</text>
