@@ -9,8 +9,7 @@ Main functionality example
     :language: python
     :linenos:
 
-.. image:: ../../examples/pipeline/dep.png
-    :target: ../../examples/pipeline/dep.png
+.. image:: ../../examples/pipeline/dep_pmra_pmdec.png
 
 Documentation quick guide
 ^^^^^^^^^^^^^^^^^^^^^^^^^

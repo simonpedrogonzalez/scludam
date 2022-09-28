@@ -1,7 +1,7 @@
 # SCLUDAM (**S**tar **CLU**ster **D**etection **A**nd **M**embership estimation)
 
 [![Build Status](https://travis-ci.com/simonpedrogonzalez/scludam.svg?branch=main)](https://travis-ci.com/simonpedrogonzalez/scludam)
-[![Documentation Status](https://readthedocs.org/projects/scludam/badge/?version=latest)](https://simonpedrogonzalez.github.io/scludam-docs/index.html)
+[![Documentation Status](https://img.shields.io/badge/docs-passing-success)](https://simonpedrogonzalez.github.io/scludam-docs/index.html)
 [![PyPI](https://img.shields.io/pypi/v/scludam)](https://pypi.org/project/scludam/)
 [![Python 3.7.6+](https://img.shields.io/badge/python-3.7.6+-blue.svg)](https://github.com/simonpedrogonzalez/scludam)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://github.com/simonpedrogonzalez/scludam)
@@ -59,7 +59,7 @@ You need **Python 3.7.6+** and **R 3.6.3+** to run scludam. It is recommended to
 - diptest>=0.4.2
 - typing_extensions>=4.2.0
 
-### User install in a Conda environment
+### User install in a Conda environment (recommended)
 Create a conda environment named ``myscludamenv`` with python3.8 and ``scludam`` installed
 ```
 conda create --name myscludamenv python=3.8 pip --yes
@@ -67,9 +67,20 @@ conda activate myscludamenv
 python -m pip install scludam
 ```
 
+### Update scludam in a Conda environment
+```
+conda activate myscludamenv
+python -m pip install -U scludam
+python -m pip show scludam
+```
+
 ### User install
 Install from PyPi:
 ```python -m pip install scludam```
+
+### User update
+Update from PyPi:
+```python -m pip install -U scludam```
 
 ### Dev install
 Clone the repo and run the following command in the cloned directory (with your environment activated):

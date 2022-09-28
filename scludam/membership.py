@@ -22,7 +22,7 @@ from copy import deepcopy
 import numpy as np
 from attrs import Factory, define, field, validators
 
-from scludam import HKDE
+from scludam.hkde import HKDE
 from scludam.plots import (
     pairprobaplot,
     scatter3dprobaplot,
@@ -143,7 +143,10 @@ class DBME:
         self.priors = self.counts / self._n
         self._iter_priors.append(self.priors)
 
-    def _get_posteriors(self, densities: Numeric2DArray):
+    def _get_posteriors(self, densities):
+        return self._get_posteriors1(densities)
+
+    def _get_posteriors1(self, densities: Numeric2DArray):
         # probability calculation
         # P(Ci|x) = Di(x) * P(Ci) / sumj(Dj(x) * P(Cj))
         total_density = (
@@ -154,13 +157,22 @@ class DBME:
         posteriors = densities * self.counts / total_density
         return posteriors
 
-    # def get_posteriors2(self, densities):
+    def _get_posteriors2(self, densities):
+        # probability calculation
+        # P(Ci|x) = Di(x) / sumj(Dj(x))
+        total_density = densities.sum(axis=1, keepdims=True).repeat(
+            self.n_classes, axis=1
+        )
+        posteriors = densities / total_density
+        return posteriors
+
+    # def _get_posteriors3(self, densities):
     #     # probability calculation
     #     # P(Ci|x) = Di(x) / sumj(Dj(x))
     #     total_density = densities.sum(axis=1, keepdims=True).repeat(
     #         self.n_classes, axis=1
     #     )
-    #     posteriors = densities / total_density
+    #     posteriors = 10**(np.log(densities) - np.log(total_density))
     #     return posteriors
 
     # def get_posteriors3(self, densities):
