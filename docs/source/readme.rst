@@ -8,7 +8,7 @@ SCLUDAM (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership e
    :alt: Build Status
 
 
-.. image:: https://readthedocs.org/projects/scludam/badge/?version=latest
+.. image:: https://img.shields.io/badge/docs-passing-success
    :target: https://simonpedrogonzalez.github.io/scludam-docs/index.html
    :alt: Documentation Status
 
@@ -31,7 +31,6 @@ SCLUDAM (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership e
 .. image:: https://img.shields.io/badge/License-GNU-blue.svg
    :target: https://tldrlegal.com/license/gnu-lesser-general-public-license-v3-(lgpl-3)
    :alt: License
-
 
 **scludam** (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership estimation) is a Python package for GAIA catalogues **data fetching**\ , **star cluster detection** and **star cluster membership estimation**.
 
@@ -103,8 +102,8 @@ You need **Python 3.7.6+** and **R 3.6.3+** to run scludam. It is recommended to
 * diptest>=0.4.2
 * typing_extensions>=4.2.0
 
-User install in a Conda environment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+User install in a Conda environment (recommended)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Create a conda environment named ``myscludamenv`` with python3.8 and ``scludam`` installed
 
@@ -114,11 +113,26 @@ Create a conda environment named ``myscludamenv`` with python3.8 and ``scludam``
    conda activate myscludamenv
    python -m pip install scludam
 
+Update scludam in a Conda environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block::
+
+   conda activate myscludamenv
+   python -m pip install -U scludam
+   python -m pip show scludam
+
 User install
 ^^^^^^^^^^^^
 
 Install from PyPi:
 ``python -m pip install scludam``
+
+User update
+^^^^^^^^^^^
+
+Update from PyPi:
+``python -m pip install -U scludam``
 
 Dev install
 ^^^^^^^^^^^
