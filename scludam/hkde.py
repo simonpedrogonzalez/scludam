@@ -28,11 +28,11 @@ from typing import Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-from attrs import define, field
+from attrs import define, field, validators
 from beartype import beartype
 from rpy2.robjects import r
 from scipy.stats import multivariate_normal
-from statsmodels.stats.correlation_tools import corr_nearest
+from statsmodels.stats.correlation_tools import corr_nearest, cov_nearest
 
 from scludam.plots import bivariate_density_plot, univariate_density_plot
 from scludam.rutils import (
@@ -153,6 +153,58 @@ class PluginSelector(BandwidthSelector):
 
 
 @define
+class RuleOfThumbSelector(BandwidthSelector):
+
+    rule: str = field(
+        default="scott",
+        validator=validators.in_(["scott", "silverman"])
+    )
+
+    def _scotts_factor(self, data):
+        n = data.shape[0]
+        d = data.shape[1]
+        return np.power(n, -1./(d+4))
+
+    def _silverman_factor(self, data):
+        n = data.shape[0]
+        d = data.shape[1]
+        return np.power(n*(d+2.0)/4.0, -1./(d+4))
+
+    def _get_factor(self, data):
+        if self.rule == "scott":
+            return self._scotts_factor(data)
+        elif self.rule == "silverman":
+            return self._silverman_factor(data)
+        else:
+            raise ValueError("Invalid rule")
+
+    def _get_data_covariance(self, data, weights: Union[Numeric2DArray, None]):
+        kws = {}
+        if weights is not None:
+            kws["aweights"] = weights
+        data_covariance = np.cov(data, rowvar=False, bias=False, **kws)
+        data_covariance = cov_nearest(data_covariance)
+        return data_covariance
+
+    @beartype
+    def get_bw(self, data: Numeric2DArray, weights: Union[None, Numeric1DArray] = None):
+        """Calculate bandwith matrix using the rule of thumb.
+
+        Parameters
+        ----------
+        data : Numeric2DArray
+            Data to be used
+        weights : Union[None, Numeric1DArray]
+            Optional weights to be used.
+        """
+        # This function does not consider the case
+        # of weights being zero, so they should be at least > 1e-08.
+        data_covariance = self._get_data_covariance(data, weights)
+        factor = self._get_factor(data)
+        return data_covariance * factor**2
+
+
+@define
 class HKDE:
     """Kernel Density Estimation with variable bandwidth matrices (H).
 
@@ -173,6 +225,8 @@ class HKDE:
         *  an Array: the base bandwidth is taken as the given
            array. The array shape must be (n, d, d) where n is the
            number of observations and d is the number of dimensions.
+        *  a String: the name of the rule of thumb to be used. One of
+              "scott" or "silverman".
 
     Examples
     --------
@@ -184,9 +238,9 @@ class HKDE:
     """
 
     # input attrs
-    bw: Union[BandwidthSelector, Number, NumericArray] = field(
+    bw: Union[BandwidthSelector, Number, NumericArray, str] = field(
         default=PluginSelector(),
-        validator=_type(Union[BandwidthSelector, Number, NumericArray]),
+        validator=_type(Union[BandwidthSelector, Number, NumericArray, str]),
     )
 
     # internal attrs
@@ -309,6 +363,8 @@ class HKDE:
     def _get_bw_matrices(self, data: Numeric2DArray):
         if isinstance(self.bw, BandwidthSelector):
             bw_matrix = self.bw.get_bw(data[self._eff_mask])
+        elif isinstance(self.bw, str):
+            bw_matrix = RuleOfThumbSelector(rule=self.bw).get_bw(data[self._eff_mask], self._weights[self._eff_mask])
         elif isinstance(self.bw, np.ndarray):
             if len(self.bw.shape) == 1 and self.bw.shape[0] == self._d:
                 bw_matrix = np.diag(self.bw)
