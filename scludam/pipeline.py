@@ -356,8 +356,13 @@ class DEP:
         # add row for field prob
         global_proba = np.array(global_proba).T
         _, total_clusters = global_proba.shape
-        result = np.empty((n, total_clusters + 1))
-        result[:, 1:] = global_proba
+        col_idx = global_proba.argmax(axis=1) + 1
+        row_idx = np.arange(0, global_proba.shape[0])
+        idx = tuple(map(tuple, np.stack([row_idx, col_idx])))
+        result = np.zeros((n, total_clusters + 1))
+        # in tcase of region overlap, only the highest prob is kept
+
+        result[idx] = global_proba.max(axis=1)
         result[:, 0] = 1 - global_proba.sum(axis=1)
         self.proba = result
         self.labels = np.argmax(self.proba, axis=1) - 1
@@ -392,7 +397,11 @@ class DEP:
         cols = [f"proba({i-1})" for i in range(self.proba.shape[1])]
         df = pd.DataFrame(self.proba, columns=cols)
         df["label"] = self.labels
-        return pd.concat([self._df, df], axis=1, sort=False)
+        return pd.concat(
+            [self._df.reset_index(drop=True), df.reset_index(drop=True)],
+            axis=1,
+            sort=False,
+        )
 
     def write(self, path: str, **kwargs):
         """Write the data frame with the probabilities to a file.

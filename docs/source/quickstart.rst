@@ -26,7 +26,7 @@ Documentation quick guide
 
 * Probability Estimation: :class:`~scludam.membership.DBME`
 
-* Kernel Density Estimation with per observation bandwidth and plugin method: :class:`~scludam.hkde.HKDE`
+* Kernel Density Estimation with per-observation-bandwidth, plugin or rule-of-thumb methods: :class:`~scludam.hkde.HKDE`
 
 Documentation module guide
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
