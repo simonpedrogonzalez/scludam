@@ -18,7 +18,8 @@
 
 The module provides a class for multivariate Kernel Density Estimation with a bandwidth
 matrix per observation. Such matrices are created from a baseline bandwidth calculated
-from the Plugin method. Variable errors and covariances can be added to the matrices.
+from the Plugin or Rule Of Thumb (scott or silverman) methods. Variable errors and
+covariances can be added to the matrices.
 
 """
 
@@ -86,7 +87,7 @@ class PluginSelector(BandwidthSelector):
     parameter values. All attributes are passed
     to ``ks::Hpi`` function.
 
-    Parameters
+    Attributes
     ----------
     nstage : int, optional
         Number of calculation stages, can be
@@ -154,21 +155,32 @@ class PluginSelector(BandwidthSelector):
 
 @define
 class RuleOfThumbSelector(BandwidthSelector):
+    """Bandwidth selector based on the Rule of Thumb method.
 
-    rule: str = field(
-        default="scott",
-        validator=validators.in_(["scott", "silverman"])
-    )
+    Attributes
+    ----------
+    rule : str, optional
+        Name of the rule of thumb to use, by default "scott".
+        Can be "scott" or "silverman".
+
+    Raises
+    ------
+    ValueError
+        If rule is not "scott" or "silverman".
+
+    """
+
+    rule: str = field(default="scott", validator=validators.in_(["scott", "silverman"]))
 
     def _scotts_factor(self, data):
         n = data.shape[0]
         d = data.shape[1]
-        return np.power(n, -1./(d+4))
+        return np.power(n, -1.0 / (d + 4))
 
     def _silverman_factor(self, data):
         n = data.shape[0]
         d = data.shape[1]
-        return np.power(n*(d+2.0)/4.0, -1./(d+4))
+        return np.power(n * (d + 2.0) / 4.0, -1.0 / (d + 4))
 
     def _get_factor(self, data):
         if self.rule == "scott":
@@ -196,6 +208,7 @@ class RuleOfThumbSelector(BandwidthSelector):
             Data to be used
         weights : Union[None, Numeric1DArray]
             Optional weights to be used.
+
         """
         # This function does not consider the case
         # of weights being zero, so they should be at least > 1e-08.
@@ -364,7 +377,9 @@ class HKDE:
         if isinstance(self.bw, BandwidthSelector):
             bw_matrix = self.bw.get_bw(data[self._eff_mask])
         elif isinstance(self.bw, str):
-            bw_matrix = RuleOfThumbSelector(rule=self.bw).get_bw(data[self._eff_mask], self._weights[self._eff_mask])
+            bw_matrix = RuleOfThumbSelector(rule=self.bw).get_bw(
+                data[self._eff_mask], self._weights[self._eff_mask]
+            )
         elif isinstance(self.bw, np.ndarray):
             if len(self.bw.shape) == 1 and self.bw.shape[0] == self._d:
                 bw_matrix = np.diag(self.bw)

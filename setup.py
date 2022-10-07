@@ -33,7 +33,8 @@ setup(
         "astropy>=4.3.1",  # "astropy>=5.1",  # "astropy>=4.2.1",
         "astroquery>=0.4.6",  # "astroquery>=0.4.7",  # "astroquery>=0.4.1",
         "pandas>=1.3.5",  # "pandas>=1.4.2",  # "pandas>=1.1.4",
-        "hdbscan==0.8.27",
+        "hdbscan==0.8.28",
+        "joblib==1.1.0",  # in order to hdbscan to work
         "scikit-learn>=1.0.2",  # "scikit-learn>=0.23.1",
         "scikit-image>=0.18.1",
         "rpy2>=3.5.2",  # "rpy2>=3.1.0",

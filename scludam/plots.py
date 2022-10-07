@@ -485,7 +485,8 @@ def heatmap2D(
     # set tick labels as the value of the center of the bins, not the indices
     if ticks:
         labels = [
-            np.round((edges[i] + bin_shape[i] / 2).astype(float), tick_prec)[:-1] for i in range(2)
+            np.round((edges[i] + bin_shape[i] / 2).astype(float), tick_prec)[:-1]
+            for i in range(2)
         ]
         kwargs["yticklabels"] = labels[0]
         kwargs["xticklabels"] = labels[1]
@@ -949,18 +950,20 @@ def horizontal_lineplots(ys: List[np.ndarray], cols=[], **kwargs):
 
     """
     import matplotlib.ticker as ticker
+
     if not cols:
         cols = [f"col{i}" for i in range(len(ys))]
     df = pd.DataFrame({col: y for col, y in zip(cols, ys)})
     df["index"] = df.index
     sns.set_style("whitegrid")
     default_kws = {
-            "marker": "o", "color": "k",
-        }
+        "marker": "o",
+        "color": "k",
+    }
     default_kws.update(kwargs)
     fig, ax = plt.subplots(nrows=len(ys), sharex=True)
     for i, col in enumerate(cols):
-        sns.lineplot(data=df, x=df['index'], y=col, ax=ax[i], **default_kws)
+        sns.lineplot(data=df, x=df["index"], y=col, ax=ax[i], **default_kws)
         ax[i].xaxis.set_major_locator(ticker.MultipleLocator(1))
         ax[i].xaxis.set_major_formatter(ticker.ScalarFormatter())
     return ax
