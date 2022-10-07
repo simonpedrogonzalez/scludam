@@ -40,7 +40,7 @@ from scipy import ndimage
 from skimage.feature import peak_local_max
 
 from scludam.masker import RangeMasker
-from scludam.plots import heatmap2D
+from scludam.plots import heatmap2D, horizontal_lineplots
 from scludam.type_utils import (
     ArrayLike,
     Numeric1DArrayLike,
@@ -995,3 +995,26 @@ class CountPeakDetector:
         )
 
         return hm
+
+    def lineplot(self, **kwargs):
+        """Plot the last result as a line plot.
+
+        Plots scores and counts for all peaks found.
+
+        Returns
+        -------
+        AxesSubplot
+            Line plot of the scores and counts.
+
+        Raises
+        ------
+        ValueError
+            No results available.
+        """
+        if self._last_result is None:
+            raise ValueError("No result available, run detect function first.")
+        return horizontal_lineplots(
+            ys=[self._last_result.scores, self._last_result.counts],
+            cols=["scores", "counts"],
+            **kwargs,
+        )

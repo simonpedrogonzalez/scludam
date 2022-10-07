@@ -485,7 +485,8 @@ def heatmap2D(
     # set tick labels as the value of the center of the bins, not the indices
     if ticks:
         labels = [
-            np.round(edges[i] + bin_shape[i] / 2, tick_prec)[:-1] for i in range(2)
+            np.round((edges[i] + bin_shape[i] / 2).astype(float), tick_prec)[:-1]
+            for i in range(2)
         ]
         kwargs["yticklabels"] = labels[0]
         kwargs["xticklabels"] = labels[1]
@@ -768,11 +769,11 @@ def scatter2dprobaplot(
 
     plotdf = pd.concat(
         [
-            df,
+            df.reset_index(drop=True),
             pd.DataFrame(
                 np.vstack((np.max(proba, axis=1), labels)).T,
                 columns=["Probability", "Label"],
-            ),
+            ).reset_index(drop=True),
         ],
         axis=1,
         sort=False,
@@ -788,6 +789,7 @@ def scatter2dprobaplot(
         "palette": palette,
     }
     default_kws.update(bg_kws)
+
     ax = sns.scatterplot(data=plotdf[labels == -1], x=cols[0], y=cols[1], **default_kws)
 
     default_kws = {
@@ -930,4 +932,38 @@ def plot_kernels(ax, means, covariances, nstd=3, **kwargs):
     """
     for i in range(means.shape[0]):
         _plot_cov_ellipse(cov=covariances[i], pos=means[i], nstd=nstd, ax=ax, **kwargs)
+    return ax
+
+
+def horizontal_lineplots(ys: List[np.ndarray], cols=[], **kwargs):
+    """Plot a list of 1d arrays as horizontal lineplots.
+
+    Parameters
+    ----------
+    ys : List[np.ndarray]
+        List of 1d arrays to plot.
+
+    Returns
+    -------
+    Axes
+        axis with ploted lineplots.
+
+    """
+    import matplotlib.ticker as ticker
+
+    if not cols:
+        cols = [f"col{i}" for i in range(len(ys))]
+    df = pd.DataFrame({col: y for col, y in zip(cols, ys)})
+    df["index"] = df.index
+    sns.set_style("whitegrid")
+    default_kws = {
+        "marker": "o",
+        "color": "k",
+    }
+    default_kws.update(kwargs)
+    fig, ax = plt.subplots(nrows=len(ys), sharex=True)
+    for i, col in enumerate(cols):
+        sns.lineplot(data=df, x=df["index"], y=col, ax=ax[i], **default_kws)
+        ax[i].xaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax[i].xaxis.set_major_formatter(ticker.ScalarFormatter())
     return ax
