@@ -267,12 +267,6 @@
 <path fill="none" stroke="black" d="M525.99,-180.03C538.16,-189.04 551.11,-201.3 557.73,-216 564.31,-230.59 563.3,-237 557.73,-252 540.14,-299.38 492.21,-334.2 455.62,-354.89"/>
 <polygon fill="black" stroke="black" points="446.58,-359.84 453.19,-351.09 450.97,-357.44 455.35,-355.04 455.35,-355.04 455.35,-355.04 450.97,-357.44 457.52,-358.98 446.58,-359.84 446.58,-359.84"/>
 </g>
-<!-- scludam.utils -->
-<g id="node13" class="node">
-<title>scludam.utils</title>
-<polygon fill="none" stroke="black" points="580.5,-252 491.5,-252 491.5,-216 580.5,-216 580.5,-252"/>
-<text text-anchor="middle" x="536" y="-230.3" font-family="Times,serif" font-size="14.00">scludam.utils</text>
-</g>
 <!-- scludam.shdbscan&#45;&gt;scludam.utils -->
 <g id="edge30" class="edge">
 <title>scludam.shdbscan&#45;&gt;scludam.utils</title>
