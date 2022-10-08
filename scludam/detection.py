@@ -1010,6 +1010,7 @@ class CountPeakDetector:
         ------
         ValueError
             No results available.
+
         """
         if self._last_result is None:
             raise ValueError("No result available, run detect function first.")

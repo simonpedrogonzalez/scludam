@@ -692,8 +692,12 @@ def _coords_to_radec(table):
     return table
 
 
+@beartype
 def search_objects_near_data(
-    df: pd.DataFrame, allow_missing_values=True, fields=[], **kwargs
+    df: pd.DataFrame,
+    allow_missing_values: bool = True,
+    fields: List[str] = [],
+    **kwargs,
 ):
     """Search for objects in an area defined by dataframe.
 
@@ -745,7 +749,10 @@ def search_objects_near_data(
         "fluxdata(B)",
         "fluxdata(R)",
     ]
-    simbad.add_votable_fields(*list(set(necessary_fields + default_fields + fields)))
+    print(list(set(necessary_fields + default_fields + fields)))
+    simbad.add_votable_fields(
+        *sorted(list(set(necessary_fields + default_fields + fields)))
+    )
 
     mins = df[cols].min()
     maxs = df[cols].max()
@@ -765,6 +772,7 @@ def search_objects_near_data(
             [f"{_gaia2criteria[col]} <= {maxs[col]}" for col in ["ra", "dec"]]
         )
     conditions = f"{min_conditions} & {max_conditions}"
+    print(conditions)
     table = simbad.query_criteria(conditions, **kwargs)
     table = _coords_to_radec(table)
 

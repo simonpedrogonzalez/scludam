@@ -355,6 +355,11 @@ class DEP:
 
         # add row for field prob
         global_proba = np.array(global_proba).T
+        if global_proba.size == 0:
+            self.n_detected = 0
+            self.n_estimated = 0
+            self.proba = np.ones(n).reshape(-1, 1)
+            return self
         _, total_clusters = global_proba.shape
         col_idx = global_proba.argmax(axis=1) + 1
         row_idx = np.arange(0, global_proba.shape[0])
