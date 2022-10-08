@@ -11,7 +11,7 @@ from astroquery.utils.tap.model.job import Job
 from astroquery.utils.tap.model.tapcolumn import TapColumn
 from astroquery.utils.tap.model.taptable import TapTableMeta
 
-from scludam import Query, search_object, search_table
+from scludam import Query, search_object, search_objects_near_data, search_table
 from scludam.fetcher import Config, SimbadResult
 
 
@@ -19,6 +19,10 @@ def simbad_query_object(identifier):
     if identifier == "ic2395":
         return Table.read("tests/files/simbad_response.xml", format="votable")
     return None
+
+
+def query_criteria_mock():
+    return Table.read("tests/files/query_criteria.xml", format="votable")
 
 
 def gaia_load_tables():
@@ -118,6 +122,14 @@ def mock_gaia_load_tables(mocker):
 def mock_search_object(mocker):
     return mocker.patch(
         "scludam.fetcher.search_object", return_value=search_object_mock()
+    )
+
+
+@pytest.fixture
+def mock_simbad_query_criteria(mocker):
+    return mocker.patch(
+        "astroquery.simbad.SimbadClass.query_criteria",
+        return_value=query_criteria_mock(),
     )
 
 
@@ -407,3 +419,33 @@ class TestQuery:
             query=query, dump_to_file=True, output_file="test_file.xml"
         )
         assert result is None
+
+    def test_get_objects_near_data(
+        self, mock_simbad_add_votable_columns, mock_simbad_query_criteria, mocker
+    ):
+        df = Table.read("tests/data/ngc2323_data.fits").to_pandas()
+        result = search_objects_near_data(df).to_pandas()
+        included_cols = sorted(
+            [
+                "fluxdata(B)",
+                "fluxdata(R)",
+                "parallax",
+                "propermotions",
+                "otype",
+                "coordinates",
+                "diameter",
+                "fluxdata(G)",
+                "typed_id",
+            ]
+        )
+        criteria = (
+            "ra >= 104.99113744429378 & dec >= -9.03711496168022 & ra <="
+            " 106.40326142636158 & dec <= -7.6386969625395436"
+        )
+        mock_simbad_add_votable_columns.assert_called_with(*included_cols)
+        mock_simbad_query_criteria.assert_called_with(criteria)
+        correct_result = Table.read(
+            "tests/files/object_near_data_result.xml"
+        ).to_pandas()
+        assert correct_result.shape == result.shape
+        assert sorted(correct_result.columns) == sorted(result.columns)

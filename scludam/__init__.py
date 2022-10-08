@@ -5,8 +5,8 @@ Star Cluster Detection and Membership Probability Calculation
 """
 
 from .detection import CountPeakDetector, default_mask, extend_1dmask
-from .fetcher import Query, search_object, search_table
-from .hkde import HKDE
+from .fetcher import Query, search_object, search_objects_near_data, search_table
+from .hkde import HKDE, PluginSelector, RuleOfThumbSelector
 from .membership import DBME
 from .pipeline import DEP
 from .shdbscan import SHDBSCAN

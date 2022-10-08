@@ -640,3 +640,13 @@ def test_detector_plot_images(peak, x, y, mode, three_clusters_sample):
         peak=peak, x=x, y=y, mode=mode, annot_kws={"fontsize": 4}
     ).get_figure()
     return fig
+
+
+@pytest.mark.mpl_image_compare
+def test_detector_lineplot(three_clusters_sample):
+    sns.set(font_scale=0.5)
+    data = three_clusters_sample[["pmra", "pmdec", "log10_parallax"]].values
+    detector = CountPeakDetector(bin_shape=[0.5, 0.5, 0.05])
+    detector.detect(data)
+    fig, ax = detector.lineplot()
+    return fig
