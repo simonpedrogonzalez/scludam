@@ -13,7 +13,7 @@ from scludam import (
 )
 from scludam.detection import DetectionResult
 
-sample2cdf = Table.read("/home/simon/test-scludam/data/ngc2323_data.fits").to_pandas()
+sample2cdf = Table.read("tests/data/ngc2323_data.fits").to_pandas()
 
 
 def test_real_sample2c():
