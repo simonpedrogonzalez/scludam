@@ -966,4 +966,4 @@ def horizontal_lineplots(ys: List[np.ndarray], cols=[], **kwargs):
         sns.lineplot(data=df, x=df["index"], y=col, ax=ax[i], **default_kws)
         ax[i].xaxis.set_major_locator(ticker.MultipleLocator(1))
         ax[i].xaxis.set_major_formatter(ticker.ScalarFormatter())
-    return ax
+    return fig, ax
