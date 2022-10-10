@@ -3,20 +3,13 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. Welcome to scludam's documentation!
-.. ===================================
-.. .. only:: html
+Welcome to scludam's documentation!
+===================================
 
-..     .. image:: _static/logo.png
-..         :align: center
-..         :scale: 30 %
-
-
-.. include:: readme.rst
-
+Here goes a general description of the software.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 5
    :caption: Contents:
 
    readme
