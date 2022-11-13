@@ -3,10 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to scludam's documentation!
+Welcome to SCLUDAM's documentation!
 ===================================
 
-Here goes a general description of the software.
+Python library for star cluster detection and membership estimation.
 
 .. toctree::
    :maxdepth: 5
@@ -20,9 +20,11 @@ Here goes a general description of the software.
 
    diagrams
 
-Indices and tables
-==================
+.. only:: html
+   
+   Indices and tables
+   ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`

@@ -14,7 +14,7 @@ Main functionality example
 Documentation quick guide
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-* Building queries for GAIA and retrieving data: :class:`~scludam.fetcher.Query`
+* Building queries for GAIA catalogues and retrieving data: :class:`~scludam.fetcher.Query`
 
 * Detection and membership estimation pipeline: :class:`~scludam.pipeline.DEP`
 
@@ -26,7 +26,7 @@ Documentation quick guide
 
 * Probability Estimation: :class:`~scludam.membership.DBME`
 
-* Kernel Density Estimation with per-observation-bandwidth, plugin or rule-of-thumb methods: :class:`~scludam.hkde.HKDE`
+* Kernel Density Estimation with per-observation or per-dimension bandwidth, plugin or rule-of-thumb methods: :class:`~scludam.hkde.HKDE`
 
 Documentation module guide
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
