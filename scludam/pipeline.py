@@ -244,7 +244,6 @@ class DEP:
         return is_clusterable
 
     def _estimate_membership(self, df: pd.DataFrame, count: int, center: np.ndarray):
-
         data = df[self.mem_cols].values
 
         # create a clusterer for the data
@@ -332,7 +331,6 @@ class DEP:
         # plt.show()
         print(f"found {self.detection_result.centers.shape[0]} overdensities")
         for i, center in enumerate(self.detection_result.centers):
-
             count = self.detection_result.counts[i]
             sigma = self.detection_result.sigmas[i]
             mask = self._get_region_mask(df, center, sigma)

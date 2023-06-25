@@ -728,7 +728,6 @@ class CountPeakDetector:
 
             _, peak_count = clusters_idx.shape
             if peak_count != 0:
-
                 iter_indcs = clusters_idx.T
                 iter_counts = sharp[tuple(clusters_idx)]
                 iter_scores = normalized[tuple(clusters_idx)]

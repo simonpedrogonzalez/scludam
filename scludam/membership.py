@@ -70,7 +70,7 @@ class DBME:
     kde_leave1out : bool
         Whether to use leave-one-out KDE estimation, by default True.
 
-    pdf_estimator : Union[:class:`~scludam.hkde.HKDE`, List[:class:`~scludam.hkde.HKDE`]]
+    pdf_estimator : Union[:class:`~scludam.hkde.HKDE`, List[HKDE]]
         Estimator used to estimate the density, by default an instance of HKDE with
         default parameters. If list is provided, it is asumed either 1 per class or
         first for first class and 2nd for the rest.

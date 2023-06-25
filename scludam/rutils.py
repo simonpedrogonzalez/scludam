@@ -37,7 +37,7 @@ def disable_r_warnings():
 
 def disable_r_console_output():
     """Disable R console output in python."""
-    # flush any R console output
+
     def add_to_stdout(line):
         pass
 
