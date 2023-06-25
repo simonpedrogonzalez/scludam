@@ -265,3 +265,68 @@ def test_cero_estimated():
     # all field probabilities
     assert dep.proba.shape == (sample2cdf.shape[0], 1)
     assert np.allclose(dep.proba, 1)
+
+
+def test_multiple_estimators_configuration():
+    df = sample2cdf.copy()
+    dep1 = DEP(
+        # # Detector configuration for the detection step
+        det_cols=["pmra", "pmdec", "parallax"],
+        detector=CountPeakDetector(
+            bin_shape=[0.7, 0.7, 0.1],
+            min_score=6,
+            max_n_peaks=1,
+        ),
+        sample_sigma_factor=1.5,
+        mem_cols=["pmra", "pmdec"],
+        estimator=DBME(
+            pdf_estimator=HKDE(
+                bw=RuleOfThumbSelector(rule="scott", diag=True),
+            ),
+            kernel_calculation_mode="per_class",
+        ),
+    ).fit(df)
+
+    fe1 = dep1.estimators[0]._estimators[0]
+    fbw1 = fe1._base_bw
+    ce1 = dep1.estimators[0]._estimators[1]
+    cbw1 = ce1._base_bw
+
+    bw1 = [fbw1[0,0], fbw1[1,1]]
+    bw2 = [cbw1[0,0], cbw1[1,1]]
+
+    dep2 = DEP(
+        # # Detector configuration for the detection step
+        det_cols=["pmra", "pmdec", "parallax"],
+        detector=CountPeakDetector(
+            bin_shape=[0.7, 0.7, 0.1],
+            min_score=6,
+            max_n_peaks=1,
+        ),
+        sample_sigma_factor=1.5,
+        mem_cols=["pmra", "pmdec"],
+        estimator=DBME(
+            pdf_estimator=[
+                HKDE(bw=bw1),
+                HKDE(bw=bw2),
+            ],
+            kernel_calculation_mode="per_class",
+        ),
+    ).fit(df)
+
+    fe1 = dep1.estimators[0]._estimators[0]
+    fcov1 = fe1._covariances[0]
+    ce1 = dep1.estimators[0]._estimators[1]
+    ccov1 = ce1._covariances[0]
+
+    fe2 = dep2.estimators[0]._estimators[0]
+    fcov2 = fe2._covariances[0]
+    ce2 = dep2.estimators[0]._estimators[1]
+    ccov2 = ce2._covariances[0]
+
+    assert np.allclose(fcov1, fcov2)
+    assert np.allclose(ccov1, ccov2)
+
+    p1 = dep1.proba_df()
+    p2 = dep2.proba_df()
+    assert np.allclose(p1, p2)
