@@ -25,7 +25,7 @@ covariances can be added to the matrices.
 
 from abc import abstractmethod
 from numbers import Number
-from typing import Optional, Tuple, Union, List
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -162,7 +162,7 @@ class RuleOfThumbSelector(BandwidthSelector):
     rule : str, optional
         Name of the rule of thumb to use, by default "scott".
         Can be "scott" or "silverman".
-    
+
     diag : bool, optional
         Whether to use the diagonal bandwidth,
         by default False.
@@ -200,10 +200,12 @@ class RuleOfThumbSelector(BandwidthSelector):
         if weights is not None:
             kws["aweights"] = weights
         if self.diag:
-            data_covariance = np.diagflat([
-                np.cov(data[:, i], rowvar=False, bias=False, **kws)
-                for i in range(data.shape[1])
-            ])
+            data_covariance = np.diagflat(
+                [
+                    np.cov(data[:, i], rowvar=False, bias=False, **kws)
+                    for i in range(data.shape[1])
+                ]
+            )
         else:
             data_covariance = np.cov(data, rowvar=False, bias=False, **kws)
         data_covariance = cov_nearest(data_covariance)
@@ -264,7 +266,9 @@ class HKDE:
     # input attrs
     bw: Union[BandwidthSelector, Number, NumericArray, List[Number], str] = field(
         default=PluginSelector(),
-        validator=_type(Union[BandwidthSelector, Number, List[Number], NumericArray, str]),
+        validator=_type(
+            Union[BandwidthSelector, Number, List[Number], NumericArray, str]
+        ),
     )
 
     # internal attrs

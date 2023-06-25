@@ -18,6 +18,7 @@
 """Module for Density Based Membership Estimation."""
 
 from copy import deepcopy
+from typing import List, Union
 
 import numpy as np
 from attrs import Factory, define, field, validators
@@ -36,7 +37,6 @@ from scludam.type_utils import (
     OptionalNumericArray,
     _type,
 )
-from typing import List, Union
 
 
 @define
@@ -70,9 +70,10 @@ class DBME:
     kde_leave1out : bool
         Whether to use leave-one-out KDE estimation, by default True.
 
-    pdf_estimator : :class:`~scludam.hkde.HKDE`
+    pdf_estimator : Union[:class:`~scludam.hkde.HKDE`, List[:class:`~scludam.hkde.HKDE`]]
         Estimator used to estimate the density, by default an instance of HKDE with
-        default parameters.
+        default parameters. If list is provided, it is asumed either 1 per class or
+        first for first class and 2nd for the rest.
 
     n_classes: int
         Number of detected classes. Only available after the
@@ -108,7 +109,9 @@ class DBME:
         validator=validators.in_(["same", "per_class", "per_class_per_iter"]),
         default="per_class",
     )
-    pdf_estimator: HKDE = field(default=HKDE(), validator=_type(Union[HKDE, List[HKDE]]))
+    pdf_estimator: HKDE = field(
+        default=HKDE(), validator=_type(Union[HKDE, List[HKDE]])
+    )
 
     # internal attrs
     _n: int = None
@@ -307,17 +310,13 @@ class DBME:
                 "per_class",
                 "per_class_per_iter",
             ]:
-                raise ValueError(
-                    "kernel_calculation_mode and n_estimators mismatch"
-                )
+                raise ValueError("kernel_calculation_mode and n_estimators mismatch")
             # now check against n_classes, n_estimators can be only
             # either == n_classes, or 2 (field, clusters)
             # we assume n_classes = 1 is not possible because
             # in fit we already returned init_proba in that case
             if self._n_estimators != self.n_classes and self._n_estimators != 2:
-                raise ValueError(
-                    "n_estimators should be 1, 2 or n_classes"
-                )
+                raise ValueError("n_estimators should be 1, 2 or n_classes")
         return
 
     def fit(

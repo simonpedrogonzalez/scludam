@@ -262,7 +262,7 @@ def test_multiple_estimator_configuration_ok(sample2c):
         sample2c[["p_pm_field", "p_pm_cluster1", "p_pm_cluster2"]].values
     )
     init_proba = one_hot_encode(labels)
-    bws = [[.1, .1], [.2, .2], [.3, .3]]
+    bws = [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]]
     dbme = DBME(
         pdf_estimator=[HKDE(bw=bws[0]), HKDE(bw=bws[1]), HKDE(bw=bws[2])],
     )
@@ -277,13 +277,14 @@ def test_multiple_estimator_configuration_ok(sample2c):
         diag = estimator._covariances[init_proba[:, i] > 0][0].diagonal()
         assert np.allclose(diag, bws[i])
 
+
 def test_two_estimator_configuration_ok(sample2c):
     data = sample2c[["pmra", "pmdec"]].values
     labels = get_labels(
         sample2c[["p_pm_field", "p_pm_cluster1", "p_pm_cluster2"]].values
     )
     init_proba = one_hot_encode(labels)
-    bws = [[.1, .1], [.2, .2]]
+    bws = [[0.1, 0.1], [0.2, 0.2]]
     dbme = DBME(
         # debería usar 1er para 1era clase y 2ndo para el resto
         pdf_estimator=[HKDE(bw=bws[0]), HKDE(bw=bws[1])],

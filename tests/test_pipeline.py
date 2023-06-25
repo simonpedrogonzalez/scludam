@@ -292,8 +292,8 @@ def test_multiple_estimators_configuration():
     ce1 = dep1.estimators[0]._estimators[1]
     cbw1 = ce1._base_bw
 
-    bw1 = [fbw1[0,0], fbw1[1,1]]
-    bw2 = [cbw1[0,0], cbw1[1,1]]
+    bw1 = [fbw1[0, 0], fbw1[1, 1]]
+    bw2 = [cbw1[0, 0], cbw1[1, 1]]
 
     dep2 = DEP(
         # # Detector configuration for the detection step
