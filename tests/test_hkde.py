@@ -4,9 +4,11 @@ from astropy.table.table import Table
 from scipy.stats._multivariate import multi_rv_frozen
 from sklearn.datasets import load_iris
 from utils import raises_exception
+from scipy.stats import gaussian_kde
+from sklearn.datasets import load_iris
 
 from scludam import HKDE
-from scludam.hkde import PluginSelector
+from scludam.hkde import PluginSelector, RuleOfThumbSelector
 from scludam.hkde import r as rsession
 from scludam.rutils import disable_r_console_output, disable_r_warnings, load_r_packages
 from scludam.utils import Colnames
@@ -133,6 +135,36 @@ class TestBandwidths:
                 nstage=nstage, pilot=pilot, binned=binned, diag=diag
             ).get_bw(data)
             assert np.all(np.isclose(correct_result, bw))
+
+    def test_rule_of_thimb_selector__yields_equal_results_than_scipy(self):
+        iris = load_iris()
+        data = iris.data
+
+        hkde = HKDE(bw=RuleOfThumbSelector(rule='silverman')).fit(data)
+        hkde_res = hkde.pdf(data, leave1out=False)
+
+        scipy_kde = gaussian_kde(data.T, bw_method='silverman')
+        scipy_res = scipy_kde.evaluate(data.T)
+
+        # selector
+        rots = RuleOfThumbSelector(rule='silverman')
+        assert rots._silverman_factor(data) == scipy_kde.silverman_factor()
+        assert rots._scotts_factor(data) == scipy_kde.scotts_factor()
+        weights = np.ones(data.shape[0])
+        assert np.allclose(
+            rots._get_data_covariance(data, weights),
+            scipy_kde._data_covariance
+        )
+        assert np.allclose(scipy_res, hkde_res)
+
+    def test_rule_of_thumb_selector_diag__yields_equal_results_than_scipy(self):
+        zero_corr_dataset = np.array([[8, 6, 4, 6, 8],
+                                      [10, 12, 14, 16, 18]]).T
+        scipy_kde = gaussian_kde(zero_corr_dataset.T, bw_method='silverman')
+        scipy_cov = scipy_kde.covariance
+        rots = RuleOfThumbSelector(rule='silverman', diag=True)
+        hkde_cov = HKDE(bw=rots).fit(zero_corr_dataset)._covariances[0]
+        assert np.allclose(scipy_cov, hkde_cov)
 
 
 class TestHKDE:
