@@ -25,7 +25,7 @@ covariances can be added to the matrices.
 
 from abc import abstractmethod
 from numbers import Number
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -163,6 +163,10 @@ class RuleOfThumbSelector(BandwidthSelector):
         Name of the rule of thumb to use, by default "scott".
         Can be "scott" or "silverman".
 
+    diag : bool, optional
+        Whether to use the diagonal bandwidth,
+        by default False.
+
     Raises
     ------
     ValueError
@@ -171,6 +175,7 @@ class RuleOfThumbSelector(BandwidthSelector):
     """
 
     rule: str = field(default="scott", validator=validators.in_(["scott", "silverman"]))
+    diag: bool = False
 
     def _scotts_factor(self, data):
         n = data.shape[0]
@@ -194,7 +199,15 @@ class RuleOfThumbSelector(BandwidthSelector):
         kws = {}
         if weights is not None:
             kws["aweights"] = weights
-        data_covariance = np.cov(data, rowvar=False, bias=False, **kws)
+        if self.diag:
+            data_covariance = np.diagflat(
+                [
+                    np.cov(data[:, i], rowvar=False, bias=False, **kws)
+                    for i in range(data.shape[1])
+                ]
+            )
+        else:
+            data_covariance = np.cov(data, rowvar=False, bias=False, **kws)
         data_covariance = cov_nearest(data_covariance)
         return data_covariance
 
@@ -251,15 +264,18 @@ class HKDE:
     """
 
     # input attrs
-    bw: Union[BandwidthSelector, Number, NumericArray, str] = field(
+    bw: Union[BandwidthSelector, Number, NumericArray, List[Number], str] = field(
         default=PluginSelector(),
-        validator=_type(Union[BandwidthSelector, Number, NumericArray, str]),
+        validator=_type(
+            Union[BandwidthSelector, Number, List[Number], NumericArray, str]
+        ),
     )
 
     # internal attrs
     _kernels: ArrayLike = None
     _weights: Numeric1DArrayLike = None
     _covariances: NumericArray = None
+    _base_bw: NumericArray = None
     _data: Numeric2DArray = None
     _n: int = None
     _d: int = None
@@ -380,13 +396,16 @@ class HKDE:
             bw_matrix = RuleOfThumbSelector(rule=self.bw).get_bw(
                 data[self._eff_mask], self._weights[self._eff_mask]
             )
-        elif isinstance(self.bw, np.ndarray):
+        elif isinstance(self.bw, np.ndarray) or isinstance(self.bw, list):
+            if isinstance(self.bw, list):
+                self.bw = np.array(self.bw)
             if len(self.bw.shape) == 1 and self.bw.shape[0] == self._d:
                 bw_matrix = np.diag(self.bw)
             elif self.bw.shape == (self._d, self._d):
                 bw_matrix = self.bw
             else:
                 raise ValueError("Incorrect shape of bandwidth array")
+        self._base_bw = bw_matrix
         return np.repeat(bw_matrix[:, np.newaxis], self._n, 1).swapaxes(0, 1)
 
     def _get_cov_matrices(

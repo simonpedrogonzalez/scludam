@@ -238,3 +238,68 @@ def test_get_posteriors(sample2c):
     dbme = DBME().fit(data=data, init_proba=init_proba)
     densities = dbme._get_densities(data, None, None, dbme.posteriors)
     assert np.allclose(dbme._get_posteriors(densities).sum(axis=1), np.ones(len(data)))
+
+
+def test_multiple_estimator_configuration_errors(sample2c):
+    data = sample2c[["pmra", "pmdec"]].values
+    labels = get_labels(
+        sample2c[["p_pm_field", "p_pm_cluster1", "p_pm_cluster2"]].values
+    )
+    init_proba = one_hot_encode(labels)
+
+    dbme = DBME(
+        # problema es que tenemos 3 clases y 4 estimadores
+        pdf_estimator=[HKDE(), HKDE(), HKDE(), HKDE()],
+    )
+    message = "n_estimators should be 1, 2 or n_classes"
+    with pytest.raises(ValueError, match=message):
+        dbme.fit(data=data, init_proba=init_proba)
+
+
+def test_multiple_estimator_configuration_ok(sample2c):
+    data = sample2c[["pmra", "pmdec"]].values
+    labels = get_labels(
+        sample2c[["p_pm_field", "p_pm_cluster1", "p_pm_cluster2"]].values
+    )
+    init_proba = one_hot_encode(labels)
+    bws = [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]]
+    dbme = DBME(
+        pdf_estimator=[HKDE(bw=bws[0]), HKDE(bw=bws[1]), HKDE(bw=bws[2])],
+    )
+    dbme.fit(data=data, init_proba=init_proba)
+    assert dbme._is_fitted()
+    assert len(dbme._estimators) == 3
+    for i, estimator in enumerate(dbme._estimators):
+        assert isinstance(estimator, HKDE)
+        assert np.allclose(estimator.bw, bws[i])
+        # que se haya usado el bw correcto
+        # la 1er covarianza tenga diagonal igual al bw
+        diag = estimator._covariances[init_proba[:, i] > 0][0].diagonal()
+        assert np.allclose(diag, bws[i])
+
+
+def test_two_estimator_configuration_ok(sample2c):
+    data = sample2c[["pmra", "pmdec"]].values
+    labels = get_labels(
+        sample2c[["p_pm_field", "p_pm_cluster1", "p_pm_cluster2"]].values
+    )
+    init_proba = one_hot_encode(labels)
+    bws = [[0.1, 0.1], [0.2, 0.2]]
+    dbme = DBME(
+        # debería usar 1er para 1era clase y 2ndo para el resto
+        pdf_estimator=[HKDE(bw=bws[0]), HKDE(bw=bws[1])],
+    )
+    dbme.fit(data=data, init_proba=init_proba)
+    assert dbme._is_fitted()
+    assert len(dbme._estimators) == 3
+    for i, estimator in enumerate(dbme._estimators):
+        assert isinstance(estimator, HKDE)
+        if i == 2:
+            j = 1
+        else:
+            j = i
+        assert np.allclose(estimator.bw, bws[j])
+        # que se haya usado el bw correcto
+        # la 1er covarianza tenga diagonal igual al bw
+        diag = estimator._covariances[init_proba[:, i] > 0][0].diagonal()
+        assert np.allclose(diag, bws[j])

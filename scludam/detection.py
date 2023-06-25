@@ -81,7 +81,7 @@ def default_mask(dim: int):
     References
     ----------
     .. [1] Alejo, A.D., González, J.F., González, S. P. (2020).
-        Estudio de membresı́a de cúmulos estelares utilizando Gaia DR2.
+        Estudio de membresía de cúmulos estelares utilizando Gaia DR2.
         Cuaderno de Resúmenes 62a Reunión Anual Asociación
         Argentina de Astronomía, Rosario, Provincia de Santa Fe, 64.
 
@@ -603,6 +603,7 @@ class CountPeakDetector:
             combinations = np.array(np.meshgrid(*values)).T.reshape((-1, dim))
             self._offsets = np.flip(combinations, axis=0)
 
+    @beartype
     def detect(self, data: Numeric2DArray):
         """Detect peaks in the provided data.
 
@@ -727,7 +728,6 @@ class CountPeakDetector:
 
             _, peak_count = clusters_idx.shape
             if peak_count != 0:
-
                 iter_indcs = clusters_idx.T
                 iter_counts = sharp[tuple(clusters_idx)]
                 iter_scores = normalized[tuple(clusters_idx)]

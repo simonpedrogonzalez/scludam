@@ -230,14 +230,12 @@ class SHDBSCAN:
             raise ValueError("min_cluster_size must be greater than 1.")
 
     def _cluster(self, data: Numeric2DArray):
-
         if self._centers is not None or self.auto_allow_single_cluster:
             allow_single_cluster = False
         else:
             allow_single_cluster = self.allow_single_cluster
 
         if self.clusterer is None:
-
             if self.min_samples is None:
                 min_samples = self.min_cluster_size
             else:
@@ -260,7 +258,6 @@ class SHDBSCAN:
 
         # if no clusters found & auto_toggle_single_cluster & not allow_single_cluster
         if np.all(unique_labels == -1) and self.auto_allow_single_cluster:
-
             self.clusterer = HDBSCAN(
                 min_samples=self.clusterer.min_samples,
                 min_cluster_size=self.clusterer.min_cluster_size,
@@ -276,7 +273,6 @@ class SHDBSCAN:
     # accounting for outlier scores and labeling given
     # by the clusterer
     def _get_proba(self):
-
         # Outlier score is an implementation of GLOSH, it catches local outliers as
         # well as just points that are far away from everything.
         # Thus a point can be "in"
@@ -422,7 +418,6 @@ class SHDBSCAN:
         labels: Numeric1DArray,
         input_centers: Numeric2DArrayLike,
     ):
-
         # compares input cluster centers with obtained cluster centers
         # if input cluster centers are less than obtained, then select
         # onbtained clusters that match input centers the best

@@ -482,7 +482,8 @@ def test_count_based_outlier_removal_high_min_count():
 @pytest.mark.parametrize(
     "data, mask, bin_shape",
     [
-        (np.zeros(10), [1, 1], [1, 1]),
+        # this is controlled by beartype now
+        # (np.zeros(10), [1, 1], [1, 1]),
         (diagonal1_data(), [1, 1, 1], [1, 1]),
         (diagonal1_data(), [1, 1], [1, 1, 1]),
     ],

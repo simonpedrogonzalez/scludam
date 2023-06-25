@@ -38,6 +38,7 @@ import numpy as np
 import pandas as pd
 from astropy.table.table import Table
 from attrs import Factory, define, field, validators
+from beartype import beartype
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 
 from scludam.detection import CountPeakDetector, DetectionResult
@@ -243,7 +244,6 @@ class DEP:
         return is_clusterable
 
     def _estimate_membership(self, df: pd.DataFrame, count: int, center: np.ndarray):
-
         data = df[self.mem_cols].values
 
         # create a clusterer for the data
@@ -283,6 +283,7 @@ class DEP:
 
         return estimator.posteriors
 
+    @beartype
     def fit(self, df: pd.DataFrame):
         """Perform the detection and membership estimation.
 
@@ -330,7 +331,6 @@ class DEP:
         # plt.show()
         print(f"found {self.detection_result.centers.shape[0]} overdensities")
         for i, center in enumerate(self.detection_result.centers):
-
             count = self.detection_result.counts[i]
             sigma = self.detection_result.sigmas[i]
             mask = self._get_region_mask(df, center, sigma)
@@ -379,6 +379,7 @@ class DEP:
     def _is_fitted(self):
         return self.proba is not None
 
+    @beartype
     def proba_df(self):
         """Return the data frame with the probabilities.
 
@@ -408,6 +409,7 @@ class DEP:
             sort=False,
         )
 
+    @beartype
     def write(self, path: str, **kwargs):
         """Write the data frame with the probabilities to a file.
 
@@ -439,6 +441,7 @@ class DEP:
         default_kws.update(kwargs)
         return table.write(path, **default_kws)
 
+    @beartype
     def cm_diagram(
         self,
         cols: str = ["bp_rp", "phot_g_mean_mag"],
@@ -489,6 +492,7 @@ class DEP:
             self._plot_objects(ax, cols)
         return ax
 
+    @beartype
     def radec_plot(
         self,
         cols: str = ["ra", "dec"],
@@ -540,6 +544,7 @@ class DEP:
             self._plot_objects(ax, cols)
         return ax
 
+    @beartype
     def scatterplot(
         self,
         cols: List[str] = ["pmra", "pmdec"],
