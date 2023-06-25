@@ -55,6 +55,7 @@ dep = DEP(
     detector=CountPeakDetector(
         bin_shape=[0.3, 0.3, 0.07],
         min_score=3,
+        min_count=5,
     ),
     det_cols=["pmra", "pmdec", "parallax"],
     sample_sigma_factor=2,

@@ -22,6 +22,7 @@ before_install:
   - R --version
   - LIBPATH=$(Rscript <(echo ".libPaths()"))
   - sudo chmod 777 $(awk -F'[1] "|"' '{print $2}' <<< "$LIBPATH")
+  - sudo apt install -y latexmk
 
 install:
   - pip install tox

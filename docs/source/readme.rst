@@ -32,7 +32,8 @@ SCLUDAM (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership e
    :target: https://tldrlegal.com/license/gnu-lesser-general-public-license-v3-(lgpl-3)
    :alt: License
 
-**scludam** (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership estimation) is a Python package for GAIA catalogues **data fetching**\ , **star cluster detection** and **star cluster membership estimation**.
+
+**SCLUDAM** (\ **S**\ tar **CLU**\ ster **D**\ etection **A**\ nd **M**\ embership estimation) is a Python package for GAIA catalogues **data fetching**\ , **star cluster detection** and **star cluster membership estimation**.
 
 Repository and issues
 ^^^^^^^^^^^^^^^^^^^^^
@@ -43,45 +44,48 @@ Authors
 ^^^^^^^
 
 
-* Simón Pedro González
-  email: `simon.pedro.g@gmail.com <simon.pedro.g@gmail.com>`_
+* Simón Pedro González. 
+  Email: `simon.pedro.g@gmail.com <simon.pedro.g@gmail.com>`_
 
 Features
 ^^^^^^^^
 
-Currently **scludam** is a work in progress. Modules and features already included are:
+Included modules and features are:
 
 
 * 
-  **fetcher**\ : simple query builder to get data from the GAIA catalogue more easily, and some extra useful functions.
+  **fetcher**\ : Query builder for easy access to GAIA catalogues data, functions to get catalogues and SIMBAD objects information.
 
 * 
-  **stat_tests**\ : set of 3 clusterability tests that can be used to detect the presence of a cluster in a sample.
+  **stat_tests**\ : Set of three clusterability tests that can be used to detect the presence of a cluster in a sample.
 
 * 
-  **synthetic**\ : classes that can be used to generate synthetic astrometric samples by specifying the distributions to use and parameter values.
+  **synthetic**\ : Classes that can be used to generate synthetic astrometric samples by specifying the distributions and parameter values.
 
 * 
-  **detection**\ : classes that can be used to detect the presence of a cluster in a sample.
+  **detection**\ : Detection of star clusters in a sample using an improved version of the Star Counts algorithm.
 
 * 
-  **shdbscan**\ : soft clustering based on the **HDBSCAN** algorithm.
+  **shdbscan**\ : Soft clustering based on the **HDBSCAN** algorithm.
 
 * 
-  **hkde**\ : kernel density estimation with variable bandwidth.
+  **hkde**\ : Kernel density estimation with per-observation or per-dimension variable bandwidth.
 
 * 
-  **membership**\ : membership calculation based on **hkde** smoothing.
+  **membership**\ : Membership probability estimation based on **hkde** smoothing.
 
 * 
-  **pipeline**\ : pipeline for the detection and membership estimation, with default values and convenience functions.
+  **pipeline**\ : Pipeline for the detection and membership estimation, with default values and convenience functions.
+
+* 
+  **plots**\ : Plot detection and membership estimation results alongside SIMBAD objects for better result interpretation.
 
 ----
 
 Requirements
 ^^^^^^^^^^^^
 
-You need **Python 3.7.6+** and **R 3.6.3+** to run scludam. It is recommended to install scludam in a separate environment created with pyenv or conda, to avoid dependencies issues with other preinstalled packages you may have in the base environment. The following dependencies will be installed with SCLUDAM:
+**Python 3.7.6+** and **R 3.6.3+** are needed to run SCLUDAM. It is recommended to install scludam in a separate environment created with pyenv or conda, to avoid dependencies issues with other preinstalled packages in the base environment. The following dependencies will be installed along with SCLUDAM:
 
 
 * numpy>=1.21.6
@@ -122,14 +126,14 @@ Update scludam in a Conda environment
    python -m pip install -U scludam
    python -m pip show scludam
 
-User install
-^^^^^^^^^^^^
+Simple user install
+^^^^^^^^^^^^^^^^^^^
 
 Install from PyPi:
 ``python -m pip install scludam``
 
-User update
-^^^^^^^^^^^
+Simple user update
+^^^^^^^^^^^^^^^^^^
 
 Update from PyPi:
 ``python -m pip install -U scludam``

@@ -24,7 +24,7 @@ copyright = "2022, Simón Pedro González"
 author = "Simón Pedro González"
 
 # The full version, including alpha/beta/rc tags
-release = "1.0.2"
+release = "1.0.3"
 
 
 # -- General configuration ---------------------------------------------------
@@ -40,6 +40,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",
+    "sphinx.ext.imgconverter",
     # 'nbsphinx'
 ]
 
@@ -83,3 +84,15 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+latex_elements = {
+    'papersize': 'a4paper',
+    'pointsize': '10pt',
+    'extrapackages': r'\usepackage{isodate}',
+    'babel': r'\usepackage[english]{babel}',
+    'preamble': r'''
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\nonstopmode
+'''
+}

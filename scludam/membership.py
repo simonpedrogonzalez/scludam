@@ -18,6 +18,7 @@
 """Module for Density Based Membership Estimation."""
 
 from copy import deepcopy
+from typing import List, Union
 
 import numpy as np
 from attrs import Factory, define, field, validators
@@ -69,9 +70,10 @@ class DBME:
     kde_leave1out : bool
         Whether to use leave-one-out KDE estimation, by default True.
 
-    pdf_estimator : :class:`~scludam.hkde.HKDE`
+    pdf_estimator : Union[:class:`~scludam.hkde.HKDE`, List[HKDE]]
         Estimator used to estimate the density, by default an instance of HKDE with
-        default parameters.
+        default parameters. If list is provided, it is asumed either 1 per class or
+        first for first class and 2nd for the rest.
 
     n_classes: int
         Number of detected classes. Only available after the
@@ -107,7 +109,9 @@ class DBME:
         validator=validators.in_(["same", "per_class", "per_class_per_iter"]),
         default="per_class",
     )
-    pdf_estimator: HKDE = field(default=HKDE(), validator=_type(HKDE))
+    pdf_estimator: HKDE = field(
+        default=HKDE(), validator=_type(Union[HKDE, List[HKDE]])
+    )
 
     # internal attrs
     _n: int = None
@@ -115,6 +119,7 @@ class DBME:
     _unique_labels: Numeric1DArray = None
     _data: Numeric2DArray = None
     _estimators: list = Factory(list)
+    _n_estimators: int = None
     _iter_priors: list = Factory(list)
     _iter_counts: list = Factory(list)
     _iter_label_diff: list = Factory(list)
@@ -191,17 +196,61 @@ class DBME:
 
     #     return new_posteriors
 
-    def _get_densities(
+    def _fit_several_estimators(
         self,
         data: Numeric2DArray,
         err: OptionalNumeric2DArray,
         corr: OptionalNumericArray,
         weights: OptionalNumeric2DArray,
     ):
-        densities = np.zeros((self._n, self.n_classes))
-
         # estimator(s) fitting
-        if not self._estimators or self.kernel_calculation_mode == "per_class_per_iter":
+        first_iter = not self._estimators
+        each_time = self.kernel_calculation_mode == "per_class_per_iter"
+        if first_iter or each_time:
+            self._estimators = []
+            if self._n_estimators == 2:
+                # one for first class and copy the 2nd for the other classes
+                # no need to copy the first one
+                self._estimators.append(
+                    self.pdf_estimator[0].fit(
+                        data=data,
+                        err=err,
+                        corr=corr,
+                        weights=weights[:, 0],
+                    )
+                )
+                for i in range(1, self.n_classes):
+                    self._estimators.append(
+                        deepcopy(self.pdf_estimator[1]).fit(
+                            data=data,
+                            err=err,
+                            corr=corr,
+                            weights=weights[:, i],
+                        ),
+                    )
+            else:  # assume n_estimators == n_classes
+                for i in range(self.n_classes):
+                    self._estimators.append(
+                        self.pdf_estimator[i].fit(
+                            data=data,
+                            err=err,
+                            corr=corr,
+                            weights=weights[:, i],
+                        ),
+                    )
+
+    def _fit_one_estimator(
+        self,
+        data: Numeric2DArray,
+        err: OptionalNumeric2DArray,
+        corr: OptionalNumericArray,
+        weights: OptionalNumeric2DArray,
+    ):
+        # estimator(s) fitting
+        first_iter = not self._estimators
+        each_time = self.kernel_calculation_mode == "per_class_per_iter"
+
+        if first_iter or each_time:
             if self.kernel_calculation_mode == "same":
                 self._estimators = [self.pdf_estimator.fit(data, err, corr)]
             else:
@@ -216,6 +265,20 @@ class DBME:
                         ),
                     )
 
+    def _get_densities(
+        self,
+        data: Numeric2DArray,
+        err: OptionalNumeric2DArray,
+        corr: OptionalNumericArray,
+        weights: OptionalNumeric2DArray,
+    ):
+        densities = np.zeros((self._n, self.n_classes))
+
+        if self._n_estimators == 1:
+            self._fit_one_estimator(data, err, corr, weights)
+        else:
+            self._fit_several_estimators(data, err, corr, weights)
+
         # pdf estimation
         for i in range(self.n_classes):
             if self.kernel_calculation_mode == "same":
@@ -227,6 +290,34 @@ class DBME:
             )
 
         return densities
+
+    def _validate_n_estimators(self):
+        # if self.pdf_estimator is class HKDE, set _n_estimators to 1
+        if isinstance(self.pdf_estimator, HKDE):
+            self._n_estimators = 1
+            return
+        else:
+            # is list of hkde
+            self._n_estimators = len(self.pdf_estimator)
+        if self._n_estimators == 1:
+            # normal case, return
+            self.pdf_estimator = self.pdf_estimator[0]
+            return
+        # if len > 1 then kernel_calculation_mode should be
+        # either per_class or per_class_per_iter
+        else:
+            if self.kernel_calculation_mode not in [
+                "per_class",
+                "per_class_per_iter",
+            ]:
+                raise ValueError("kernel_calculation_mode and n_estimators mismatch")
+            # now check against n_classes, n_estimators can be only
+            # either == n_classes, or 2 (field, clusters)
+            # we assume n_classes = 1 is not possible because
+            # in fit we already returned init_proba in that case
+            if self._n_estimators != self.n_classes and self._n_estimators != 2:
+                raise ValueError("n_estimators should be 1, 2 or n_classes")
+        return
 
     def fit(
         self,
@@ -283,6 +374,8 @@ class DBME:
         if self.n_classes == 1:
             # there are no populations to fit
             return self
+
+        self._validate_n_estimators()
 
         for i in range(self.n_iters):
             # is copy actually needed?
