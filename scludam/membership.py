@@ -160,6 +160,8 @@ class DBME:
             .repeat(self.n_classes, axis=1)
         )
         posteriors = densities * self.counts / total_density
+        # it could be caused when all densities are 0
+        posteriors[np.isnan(posteriors)] = 0
         return posteriors
 
     def _get_posteriors2(self, densities):
@@ -383,6 +385,10 @@ class DBME:
             weights = previous_posteriors
             densities = self._get_densities(data, err, corr, weights)
             self.posteriors = self._get_posteriors(densities)
+            # if np.any(self.posteriors) < 0:
+            #     print('stop')
+            # if np.any(self.posteriors) > 1:
+            #     print('stop')
             self._update_class_mixtures(self.posteriors)
         return self
 

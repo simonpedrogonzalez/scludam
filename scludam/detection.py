@@ -471,6 +471,9 @@ class CountPeakDetector:
                 ``std(s) = sqrt(var(h) + var(b) - 2*cov(h,b))``.
             *   Considering ``2*cov(h,b)~0``, the approximation is:
                 ``std(s) = sqrt(h + b)``.
+    select_index: int, optional
+        Detection process only returns the peak with the index provided,
+        by default None.
 
     Notes
     -----
@@ -547,6 +550,7 @@ class CountPeakDetector:
     min_sigma_dif: Number = field(default=None)
     min_score: Number = field(default=2)
     max_n_peaks: int = field(default=10)
+    select_index: int = field(default=None)
     min_interpeak_dist: int = field(default=1, validator=_type(int))
     remove_low_density_regions: bool = field(default=True, validator=_type(bool))
     norm_mode: str = field(default="std", validator=validators.in_(["std", "approx"]))
@@ -795,6 +799,16 @@ class CountPeakDetector:
         g_indices = np.array(g_indices)[g_ind]
         g_counts = np.array(g_counts)[g_ind]
         g_offsets = np.array(g_offsets)[g_ind]
+
+        # if select_index is set, return only the selected peak
+        if self.select_index is not None:
+            g_centers = np.array([g_centers[self.select_index]])
+            g_scores = np.array([g_scores[self.select_index]])
+            g_edges = np.array([g_edges[self.select_index]])
+            g_sigmas = np.array([g_sigmas[self.select_index]])
+            g_indices = np.array([g_indices[self.select_index]])
+            g_counts = np.array([g_counts[self.select_index]])
+            g_offsets = np.array([g_offsets[self.select_index]])
 
         self._last_result = DetectionResult(
             centers=g_centers,

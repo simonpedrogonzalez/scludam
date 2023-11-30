@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from attrs import define, field, validators
 from beartype import beartype
+from itertools import product
 from rpy2.robjects import r
 from scipy.stats import multivariate_normal
 from statsmodels.stats.correlation_tools import corr_nearest, cov_nearest
@@ -253,7 +254,23 @@ class HKDE:
            number of observations and d is the number of dimensions.
         *  a String: the name of the rule of thumb to be used. One of
               "scott" or "silverman".
-
+    error_convolution: bool, optional
+        When true:
+        *  It can only estimate density for the same points as the data.
+        That is, eval points are equal to data points.
+        *  It always is a leave-one-out estimation.
+        *  To calculate the contribution of point A to the density
+        evaluated at point B, both the bandwidth matrix of point A and
+        the bandwidth matrix of point B are convolved.
+        *  This option should be used to get an accurate measure of the
+        density at the data points considering the uncertainty of all
+        points, themselves included.
+        *  As a new matrix is calculated for each combination of points,
+        is the slowest option. Although it has been optimized with ball
+        tree to reduce the number of matrices used, it could be
+        problematic for big concentrated datasets.
+        *  Default is False.
+    
     Examples
     --------
     .. literalinclude:: ../../examples/hkde/hkde.py
@@ -270,6 +287,7 @@ class HKDE:
             Union[BandwidthSelector, Number, List[Number], NumericArray, str]
         ),
     )
+    error_convolution: bool = False
 
     # internal attrs
     _kernels: ArrayLike = None
@@ -538,6 +556,93 @@ class HKDE:
             or self._covariances is None
         )
 
+    def _calculate_biggest_hypersphere(self):
+        # If sum of diagonal is bigger when correlations are small, then matrix is bigger
+        # get the self._covariances matrix which diagonal sums the biggest
+        sums = np.array([np.diagonal(cc).sum() for cc in self._covariances])
+        # get the 99 percentile of the sums
+        biggest_cov = np.percentile(sums, 99)
+        closest_cov = np.argmin(np.abs(sums - biggest_cov))
+        # get the index of the biggest matrix
+        biggest_matrix = self._covariances[closest_cov]
+        # get the biggest matrix
+        # create a multivariate normal around 0 with the biggest matrix, accounting for dims
+        biggest_kde = multivariate_normal(
+            np.zeros(self._d),
+            biggest_matrix,
+        )
+        # determine where the pdf is <= 1e-08 in all dimensions
+        # and take the distance between 0 and that point
+        # as the radius of the biggest sphere
+        grid_range = (-3, 3)
+        resolution = 10
+        threshold = 1e-08
+        grid_linspace = np.linspace(grid_range[0], grid_range[1], resolution)
+        dim = self._d
+        points = np.array(list(product(grid_linspace, repeat=dim)))
+        pdf_values = biggest_kde.pdf(points)
+        points_above_threshold = points[pdf_values > threshold]
+        distances = np.linalg.norm(points_above_threshold, axis=1)
+        max_distance = np.min(distances)
+        return max_distance
+
+    def _build_tree_ball(self, radius: float, neighbours: Numeric2DArray, eval_points: Numeric2DArray):
+        from sklearn.neighbors import BallTree
+        # build a ball tree with the data
+        tree = BallTree(neighbours)
+        # get the indexes of the points that are inside the ball
+        return tree.query_radius(eval_points, radius)
+
+    def _pdf_with_error_convolution(self):
+        if not self._is_fitted():
+            raise Exception("Model not fitted. Try excecuting fit function first.")
+        eval_points = np.asarray(self._data)
+        obs, dims = eval_points.shape
+        if dims != self._d:
+            raise ValueError("Eval points must have same dims as data.")
+        if obs < 1:
+            raise ValueError("Eval points cannot be empty")
+
+        if self._n_eff <= 0:
+            return np.zeros(obs)
+
+        pdf = np.zeros(obs)
+        all_covariances = self._covariances
+        weights = self._weights[self._eff_mask]
+        covariances = self._covariances[self._eff_mask]
+        data = self._data[self._eff_mask]
+        n = self._n_eff
+
+        tree = self._build_tree_ball(self._calculate_biggest_hypersphere(), data, self._data)
+
+        # put weights and normalization toghether in each step
+        # pdf(point) = sum(ki(point)*wi/(sum(w)-wi))
+        norm_weigths = weights / (n - weights)
+        pdf = np.zeros(self._n)
+        for j, p in enumerate(eval_points):
+            # print(f'hkde progress: {round(j/self._n * 100, 2)}')
+            # get the indexes of the points that are inside the ball
+            indexes = tree[j]
+            # get the covariances of the points that are inside the ball
+            point_cov = all_covariances[j]
+            applied_ks = 0
+            for idx in indexes:
+                mean = data[idx]
+                if not np.allclose(mean, p):
+                    cov = covariances[idx] + point_cov
+                    k = multivariate_normal(
+                        mean,
+                        cov
+                    )
+                    tosum = k.pdf(p) * norm_weigths[idx]
+                    applied_ks += tosum
+            pdf[j] = applied_ks
+
+        if obs == 1:
+            # return as float value
+            return pdf[0]
+        return pdf
+
     def pdf(self, eval_points: Numeric2DArray, leave1out: bool = True):
         """Probability density function.
 
@@ -566,6 +671,11 @@ class HKDE:
             the fitted KDE model.
 
         """
+        if self.error_convolution:
+            # ignores the rest of parameters as it only
+            # works with the data and its alwas leave1out
+            return self._pdf_with_error_convolution()
+
         if not self._is_fitted():
             raise Exception("Model not fitted. Try excecuting fit function first.")
         eval_points = np.asarray(eval_points)

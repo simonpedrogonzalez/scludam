@@ -688,7 +688,7 @@ def _select_labels(labels, proba, select_labels):
     if len(select_labels) == 0:
         return labels, proba
     new_proba = proba.copy()
-    new_labels = labels.copy()
+    new_labels = proba.argmax(axis=1)
     new_labels[~np.isin(labels, select_labels)] = -1
     selected_cols = np.array(select_labels) + 1
     summarize_cols = np.array(list(set(np.arange(proba.shape[1])) - set(selected_cols)))
@@ -696,6 +696,16 @@ def _select_labels(labels, proba, select_labels):
     new_proba[:, 0] = non_selected_sum
     new_proba = new_proba[:, np.array([0] + list(selected_cols))]
     return new_labels, new_proba
+
+def _select_1(proba, select_1):
+    # 0 if proba [select_1] > 0, -1 otherwise
+    new_labels = np.ones(proba.shape[0], dtype=int)*-1
+    new_labels[proba[:, select_1] > 0] = 0
+    new_proba = np.zeros((proba.shape[0], 2))
+    new_proba[:, 1] = proba[:, select_1]
+    new_proba[:, 0] = 1 - proba[:, select_1]
+    return new_labels, new_proba
+
 
 
 def scatter2dprobaplot(
@@ -705,6 +715,7 @@ def scatter2dprobaplot(
     cols: Optional[List[str]] = None,
     palette: str = "Set1",
     select_labels: Optional[Union[List[int], int]] = None,
+    select_1: Optional[int] = None,
     bg_kws: dict = {},
     fg_kws: dict = {},
 ):
@@ -721,6 +732,10 @@ def scatter2dprobaplot(
     select_labels : Optional[Union[List[int], int]], optional
         Select labels to plot, by default None. If None, all
         labels are plotted.
+    select_1: Optional[int], optional
+        Used to select only one of the labels. Only plots
+        that population and the background (noise lable -1),
+        by default None.
     cols : Optional[List[str]], optional
         Axes labels to be used, by default None.
         If None, the columns of data are used.
@@ -750,6 +765,8 @@ def scatter2dprobaplot(
     sns.set_style("whitegrid")
     if select_labels is not None:
         labels, proba = _select_labels(labels, proba, select_labels)
+    if select_1 is not None:
+        labels, proba = _select_1(proba, select_1)
     if data.shape[1] != 2:
         raise ValueError("Data must have 2 columns")
     if isinstance(data, np.ndarray):
@@ -771,7 +788,9 @@ def scatter2dprobaplot(
         [
             df.reset_index(drop=True),
             pd.DataFrame(
-                np.vstack((np.max(proba, axis=1), labels)).T,
+                np.vstack((
+                    np.max(proba, axis=1) if select_1 is None else proba[np.arange(proba.shape[0]), labels+1],
+                    labels)).T,
                 columns=["Probability", "Label"],
             ).reset_index(drop=True),
         ],

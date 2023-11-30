@@ -347,6 +347,9 @@ class DEP:
                 n_classes = proba.shape[1]
                 n_clusters = n_classes - 1
 
+                # if np.any(proba) > 1 or np.any(proba) < 0:
+                #     print("stop")
+
                 # add each found cluster probs
                 for n_c in range(n_clusters):
                     cluster_proba = np.zeros(n)
@@ -368,7 +371,7 @@ class DEP:
         # in tcase of region overlap, only the highest prob is kept
 
         result[idx] = global_proba.max(axis=1)
-        result[:, 0] = 1 - global_proba.sum(axis=1)
+        result[:, 0] = 1 - result[idx]
         self.proba = result
         self.labels = np.argmax(self.proba, axis=1) - 1
         self.n_detected = self.detection_result.centers.shape[0]
