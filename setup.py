@@ -21,7 +21,7 @@ setup(
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     classifiers=[
-        "Development Status :: 2 - Beta",
+        "Development Status :: 2 - Pre-Alpha",
         "Topic :: Scientific/Engineering :: Astronomy",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     ],
