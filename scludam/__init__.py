@@ -44,3 +44,4 @@ from .membership import DBME
 from .pipeline import DEP
 from .shdbscan import SHDBSCAN
 from .stat_tests import DipDistTest, HopkinsTest, RipleysKTest
+from .cli import launch
