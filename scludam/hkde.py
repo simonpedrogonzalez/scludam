@@ -557,31 +557,48 @@ class HKDE:
         )
 
     def _calculate_biggest_hypersphere(self):
-        # If sum of diagonal is bigger when correlations are small, then matrix is bigger
-        # get the self._covariances matrix which diagonal sums the biggest
-        sums = np.array([np.diagonal(cc).sum() for cc in self._covariances])
-        # get the 99 percentile of the sums
-        biggest_cov = np.percentile(sums, 99)
-        closest_cov = np.argmin(np.abs(sums - biggest_cov))
-        # get the index of the biggest matrix
-        biggest_matrix = self._covariances[closest_cov]
-        # get the biggest matrix
-        # create a multivariate normal around 0 with the biggest matrix, accounting for dims
-        biggest_kde = multivariate_normal(
-            np.zeros(self._d),
-            biggest_matrix,
-        )
-        # determine where the pdf is <= 1e-08 in all dimensions
-        # and take the distance between 0 and that point
-        # as the radius of the biggest sphere
-        grid_range = (-3, 3)
-        resolution = 10
-        threshold = 1e-08
-        grid_linspace = np.linspace(grid_range[0], grid_range[1], resolution)
-        dim = self._d
-        points = np.array(list(product(grid_linspace, repeat=dim)))
-        pdf_values = biggest_kde.pdf(points)
-        points_above_threshold = points[pdf_values > threshold]
+        
+        def _get_biggest_cov_that_still_contributes(self, percentile):
+            # If sum of diagonal is bigger when correlations are small, then matrix is bigger
+            # get the self._covariances matrix which diagonal sums the biggest
+            sums = np.array([np.diagonal(cc).sum() for cc in self._covariances])
+            # get the a certain percentile of the sums
+            # the bigger, the more "precise" the result
+            # the smaller, the more "skips" in the calculation, the faster it runs
+            biggest_cov = np.percentile(sums, percentile)
+            closest_cov = np.argmin(np.abs(sums - biggest_cov))
+            # get the index of the biggest matrix
+            biggest_matrix = self._covariances[closest_cov]
+            # get the biggest matrix
+            # create a multivariate normal around 0 with the biggest matrix, accounting for dims
+            biggest_kde = multivariate_normal(
+                np.zeros(self._d),
+                biggest_matrix,
+            )
+            # determine where the pdf is <= 1e-08 in all dimensions
+            # and take the distance between 0 and that point
+            # as the radius of the biggest sphere
+            grid_range = (-3, 3)
+            resolution = 10
+            threshold = 1e-08
+            grid_linspace = np.linspace(grid_range[0], grid_range[1], resolution)
+            dim = self._d
+            points = np.array(list(product(grid_linspace, repeat=dim)))
+            pdf_values = biggest_kde.pdf(points)
+            points_above_threshold = points[pdf_values > threshold]
+            if points_above_threshold.shape[0] == 0:
+                return None
+            return points_above_threshold
+
+        points_above_threshold = None
+        percentile = 99
+
+        # this process should take only a couple of iterations
+        while points_above_threshold is None and percentile > 0:
+            # todo: maybe throw warn?
+            points_above_threshold = _get_biggest_cov_that_still_contributes(self, percentile)
+            percentile -= 1
+
         distances = np.linalg.norm(points_above_threshold, axis=1)
         max_distance = np.min(distances)
         return max_distance
