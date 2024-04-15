@@ -203,7 +203,12 @@ def calculate_antonio(df):
     return df
 
 def change_column_names_antonio(df):
-    headerList = ['Ra_J2000', 'Dec_J2000', 'Plx_mas','e_plx','pm_RA','e_pmRA','pm_DEC','e_pmDEC','G_mag','BP_RP_mag','RV','e_RV','l','b','astrometric_excess_noise','astrometric_excess_noise_sig','Fe/H','e_G','e_BP-RP'] # agregar col de probabilidad de pertenencia
+    
+    selected = prompt_cli_selector("Change column names according to Antonio's script?", ['Yes', 'No'], ["yes", "no"], default_index=0)
+    
+    if not selected:
+        return df
+
     name_mapping = {
         'ra': 'Ra_J2000',
         'dec': 'Dec_J2000',
@@ -221,15 +226,20 @@ def change_column_names_antonio(df):
         'b': 'b',
         'astrometric_excess_noise': 'astrometric_excess_noise',
         'astrometric_excess_noise_sig': 'astrometric_excess_noise_sig',
-        'mh_gspphot': 'Fe/H',
-        'phot_g_mean_flux': 'e_G',
-        'phot_g_mean_flux_error': 'e_BP-RP',
-        'phot_bp_mean_flux': 'Unused_1',
-        'phot_bp_mean_flux_error': 'Unused_2',
-        'phot_rp_mean_flux': 'Unused_3',
-        'phot_rp_mean_flux_error': 'Unused_4'
+        'mh_gspphot': 'Fe/H'
     }
-    # todo
+    order = ['Ra_J2000', 'Dec_J2000', 'Plx_mas','e_plx','pm_RA','e_pmRA','pm_DEC','e_pmDEC','G_mag','BP_RP_mag','RV','e_RV','l','b','astrometric_excess_noise','astrometric_excess_noise_sig','Fe/H','e_G','e_BP-RP']
+
+    # change the names in the dataframe to the ones in the mapping, but leave others as they are
+    df.columns = [name_mapping[col] if col in name_mapping else col for col in df.columns]
+    # order the variables as stated in order list, the ones that are not in the list will be at the end
+    # the ones that are ordered, if they are present, if not, dont take them. should not throw error
+    columns_that_are_on_order_and_df = [col for col in order if col in df.columns]
+    df_ordered = df[columns_that_are_on_order_and_df]
+    # the ones that are not ordered
+    df_not_ordered = df[[col for col in df.columns if col not in order]]
+    # concatenate both
+    df = pd.concat([df_ordered, df_not_ordered], axis=1)
     return df
 
 def prompt_cli_int_input(prompt, default=None):

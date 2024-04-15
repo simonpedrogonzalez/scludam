@@ -354,12 +354,16 @@ def save_results(dep, di=None):
         else:
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             name = f"result_{timestamp}"
-        name2 = input(f"Name of the output file (press enter for '{name}'):")
+        name2 = input(f"Name of the output file (press enter for '{name}'):\n>")
         if name2 == "":
             return name
         return name2
     
+
     data = dep.proba_df()
+    
+    data = change_column_names_antonio(data)
+
     data = Table.from_pandas(data)
 
     output_format = select_output_format()

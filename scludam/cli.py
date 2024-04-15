@@ -36,12 +36,12 @@ def launch():
             else:
                 _ = system('clear')
         clear()
-        main()
+        launch()
     if selected == "load":
         di = select_input()
-        main()
+        launch()
     if selected == "analysis":
         analysis_menu(di)
-        main()
+        launch()
     
     

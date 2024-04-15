@@ -122,6 +122,32 @@ def select_output_file_name(location):
         return name
     return name2
 
+def add_calculated_columns(df):
+    
+    selected = prompt_cli_selector(
+        "Add calculated columns? (e_G, e_bprp)",
+        ['Yes', 'No'],
+        ["yes", "no"],
+        default_index=0
+    )
+
+    if selected == "no":
+        return df
+
+    dflux = df['phot_g_mean_flux_error']
+    flux = df['phot_g_mean_flux']
+    dfluxBP = df['phot_bp_mean_flux_error']
+    fluxBP = df['phot_bp_mean_flux']
+    dfluxRP = df['phot_rp_mean_flux_error']
+    fluxRP = df['phot_rp_mean_flux']
+
+    df['e_G'] = 2.5 * np.log10(np.e) * dflux / flux
+    df['e_BPRP'] = 2.5 * np.log10(np.e) * np.sqrt((dfluxBP/fluxBP)**2 + (dfluxRP/fluxRP)**2)
+
+    return df
+
+        
+
 def dowload_from_catalog():
     location = select_location()
     radius = select_radius()
@@ -141,6 +167,9 @@ def dowload_from_catalog():
     # print(f"Dropped: {nrows - len(data)} rows")
 
     # Guardar los datos
+    df = data.to_pandas()
+    df = add_calculated_columns(df)
+    data = Table.from_pandas(df)
     output_format = select_output_format()
     output_file = select_output_file_name(location)
 
