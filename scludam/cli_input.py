@@ -51,6 +51,7 @@ def select_columns():
     print("Default columns are:")
     print(final_colums)
     # todo ask for more cols
+    input("Press enter to continue\n>")
     return final_colums
 
 def select_location():
