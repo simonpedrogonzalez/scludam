@@ -39,7 +39,7 @@ def automatic_bin_shape_selection(df, det_cols, method):
             custom_prompt="Enter custom bandwidth as comma separated numbers (e.g. 0.1,0.2,0.3):",
         )
         if type(selected) == str:
-            return selected.split(",").remove(" ")
+            return selected.replace(" ", "").split(",")
         else:
             return selected
 
@@ -141,7 +141,7 @@ def configure_detection(df):
             custom_prompt="Enter columns separated by commas:",
         )
         if type(selected) == str:
-            return selected.split(",").remove(" ")
+            return selected.replace(" ", "").split(",")
         else:
             return selected
     det_cols = select_detection_columns()
