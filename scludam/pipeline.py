@@ -167,6 +167,9 @@ class DEP:
     _df: pd.DataFrame = None
     _colnames: Colnames = None
     _objects: pd.DataFrame = None
+    _not_nan_mask: np.ndarray = None
+    _needed_cols: set = None
+    _original_df: pd.DataFrame = None
 
     @test_cols.validator
     def _test_cols_validator(self, attr, value):
@@ -282,6 +285,45 @@ class DEP:
         self.estimators.append(estimator)
 
         return estimator.posteriors
+    
+    def _prepare_data(self, df: pd.DataFrame):
+
+        # store original df for output
+        self._original_df = df
+
+        # get basic needed cols
+        needed_cols = set(self.det_cols +\
+                            self.mem_cols +\
+                            [item for sublist in self.test_cols for item in sublist]
+        )
+        
+        # check needed cols exist
+        self._colnames = Colnames(df.columns)
+        self._check_cols(self.det_cols)
+        self._check_cols(self.mem_cols)
+        for i in range(len(self.test_cols)):
+            self._check_cols(self.test_cols[i])
+
+        # get err and corr for mem_cols and include them
+        # if they are sufficient to complete full
+        # covariance matrix
+        err_corr_cols = set()
+        err_cols = self._colnames.error(self.mem_cols)
+        corr_cols = self._colnames.corr(self.mem_cols)
+        if not self._colnames.missing_error(self.mem_cols):
+            err_corr_cols.update(err_cols)
+        if not self._colnames.missing_corr(self.mem_cols):
+            err_corr_cols.update(corr_cols)
+        needed_cols.update(err_corr_cols)
+
+        self._needed_cols = needed_cols
+
+        # get analysis df only with needed cols and dropping nan
+        self._not_nan_mask = df[needed_cols].notna().all(axis=1)
+        self._df = df[self._not_nan_mask][needed_cols]
+        if self._df.empty:
+            raise ValueError("No data to use after dropping nans for needed cols.")
+
 
     @beartype
     def fit(self, df: pd.DataFrame):
@@ -301,18 +343,13 @@ class DEP:
             Fitted instance of DEP.
 
         """
-        df = df.dropna()
-
-        self._df = df
+        
+        # this sets self._df, self._colnames, self._needed_cols
+        # self._non_nan_mask, self._original_df
+        self._prepare_data(df)
+        df = self._df
 
         n, d = df.shape
-
-        # check all columns
-        self._colnames = Colnames(df.columns)
-        self._check_cols(self.det_cols)
-        self._check_cols(self.mem_cols)
-        for i in range(len(self.test_cols)):
-            self._check_cols(self.test_cols[i])
 
         # detect
         print("detecting overdensities...")
@@ -383,7 +420,7 @@ class DEP:
         return self.proba is not None
 
     @beartype
-    def proba_df(self):
+    def proba_df(self, original: bool = True):
         """Return the data frame with the probabilities.
 
         Returns the full dataframe used for the process
@@ -406,6 +443,17 @@ class DEP:
         cols = [f"proba({i-1})" for i in range(self.proba.shape[1])]
         df = pd.DataFrame(self.proba, columns=cols)
         df["label"] = self.labels
+
+        if original:
+            # create empty columns for the original dataframe
+            empty_cols = df.columns.difference(self._original_df.columns)
+            original_df = self._original_df.copy()
+            for col in empty_cols:
+                original_df[col] = np.nan
+            # fill the values taking into account the mask
+            original_df.loc[self._not_nan_mask, df.columns] = df
+            return original_df
+
         return pd.concat(
             [self._df.reset_index(drop=True), df.reset_index(drop=True)],
             axis=1,
@@ -488,7 +536,7 @@ class DEP:
         """
         if not self._is_fitted():
             raise Exception("Not fitted, try running fit()")
-        df = self._df[cols]
+        df = self._original_df[self._not_nan_mask][cols]
         ax = scatter2dprobaplot(df, self.proba, self.labels, plotcols, **kwargs)
         ax.invert_yaxis()
         if plot_objects:
@@ -540,7 +588,7 @@ class DEP:
         """
         if not self._is_fitted():
             raise Exception("Not fitted, try running fit()")
-        df = self._df[cols]
+        df = self._original_df[self._not_nan_mask][cols]
         ax = scatter2dprobaplot(df, self.proba, self.labels, plotcols, **kwargs)
         ax.invert_xaxis()
         if plot_objects:
@@ -591,7 +639,7 @@ class DEP:
         """
         if not self._is_fitted():
             raise Exception("Not fitted, try running fit()")
-        df = self._df[cols]
+        df = self._original_df[self._not_nan_mask][cols]
         ax = scatter2dprobaplot(df, self.proba, self.labels, plotcols, **kwargs)
         if plot_objects:
             self._plot_objects(ax, cols)
