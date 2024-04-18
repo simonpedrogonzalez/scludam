@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name="scludam",
-    version="1.0.6",
+    version="1.0.7",
     author="Simón Pedro González",
     author_email="simon.pedro.g@gmail.com",
     description="Star cluster detection and membership estimation based on GAIA data.",
