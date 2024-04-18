@@ -56,6 +56,8 @@ from scludam.type_utils import (
     _type,
 )
 
+from tqdm import tqdm
+
 disable_r_warnings()
 disable_r_console_output()
 load_r_packages(r, ["ks"])
@@ -562,32 +564,41 @@ class HKDE:
             # If sum of diagonal is bigger when correlations are small, then matrix is bigger
             # get the self._covariances matrix which diagonal sums the biggest
             sums = np.array([np.diagonal(cc).sum() for cc in self._covariances])
-            # get the a certain percentile of the sums
-            # the bigger, the more "precise" the result
+            # get a certain percentile of the sums, because biggest sum tends to be
+            # exceptionally big, and will result in no benefit from
+            # using ball tree
+            # the bigger, the more "precise" the result, because it takes into
+            # account more contributions.
             # the smaller, the more "skips" in the calculation, the faster it runs
-            biggest_cov = np.percentile(sums, percentile)
-            closest_cov = np.argmin(np.abs(sums - biggest_cov))
-            # get the index of the biggest matrix
-            biggest_matrix = self._covariances[closest_cov]
-            # get the biggest matrix
+            biggest_sum = np.percentile(sums, percentile)
+            # abs(sums - biggest_sum) gets the distance between the biggest_cov and all the sums
+            # so as to get the index of the corresponding matrix
+            biggest_matrix_index = np.argmin(np.abs(sums - biggest_sum))
+            biggest_matrix = self._covariances[biggest_matrix_index]
+
             # create a multivariate normal around 0 with the biggest matrix, accounting for dims
             biggest_kde = multivariate_normal(
                 np.zeros(self._d),
                 biggest_matrix,
             )
-            # determine where the pdf is <= 1e-08 in all dimensions
+            # determine the furhtest point where the pdf turns to "practical 0",
+            # that is, <= 1e-08 in all dimensions
             # and take the distance between 0 and that point
-            # as the radius of the biggest sphere
+            # as the radius of the biggest needed sphere
             grid_range = (-3, 3)
+            # a bigger resolution is impractical for dim 5 or more
             resolution = 10
             threshold = 1e-08
             grid_linspace = np.linspace(grid_range[0], grid_range[1], resolution)
             dim = self._d
+            # get the points as list of coordinates instead of meshgrid
             points = np.array(list(product(grid_linspace, repeat=dim)))
+            # calculate pdf value for each point
             pdf_values = biggest_kde.pdf(points)
             points_above_threshold = points[pdf_values > threshold]
             if points_above_threshold.shape[0] == 0:
                 return None
+            # return the coordinates of the points that are not 0
             return points_above_threshold
 
         points_above_threshold = None
@@ -599,8 +610,13 @@ class HKDE:
             points_above_threshold = _get_biggest_cov_that_still_contributes(self, percentile)
             percentile -= 1
 
+        # from the coordinates of the points that are not 0 in pdf
+        # get the furthest point from the origin of coordinates
+        # which is the norm of the vectors of the points
         distances = np.linalg.norm(points_above_threshold, axis=1)
-        max_distance = np.min(distances)
+        max_distance = np.max(distances)
+        # this distance will serve as ball tree radius, defining
+        # the extent of the search of points that will contribute 
         return max_distance
 
     def _build_tree_ball(self, radius: float, neighbours: Numeric2DArray, eval_points: Numeric2DArray):
@@ -630,34 +646,47 @@ class HKDE:
         data = self._data[self._eff_mask]
         n = self._n_eff
 
-        tree = self._build_tree_ball(self._calculate_biggest_hypersphere(), data, self._data)
+        radius = self._calculate_biggest_hypersphere()
+        tree = self._build_tree_ball(radius, data, self._data)
 
         # put weights and normalization toghether in each step
         # pdf(point) = sum(ki(point)*wi/(sum(w)-wi))
         norm_weigths = weights / (n - weights)
         pdf = np.zeros(self._n)
-        for j, p in enumerate(eval_points):
-            # print(f'hkde progress: {round(j/self._n * 100, 2)}')
+        for j, p in enumerate(tqdm(eval_points)):
+
+            # for p point, we are going to sum all the contrubutions
+            # from surrounding points
             # get the indexes of the points that are inside the ball
             indexes = tree[j]
             # get the covariances of the points that are inside the ball
             point_cov = all_covariances[j]
+            # contribution accumulator
             applied_ks = 0
             for idx in indexes:
+                # location of the contributting point
+                # as mean of the multivariate normal
                 mean = data[idx]
+                # if the point is the same as the one being evaluated
+                # (we are doing always leave1out)
                 if not np.allclose(mean, p):
+                    # convolve the covariances of the eval and contributting points
                     cov = covariances[idx] + point_cov
                     k = multivariate_normal(
                         mean,
                         cov
                     )
+                    # apply the kernel to the point and get the contribution
                     tosum = k.pdf(p) * norm_weigths[idx]
+                    # add the contribution to the accumulator
                     applied_ks += tosum
+            # put the result of the accumulator in the resulting pdf array
             pdf[j] = applied_ks
 
         if obs == 1:
             # return as float value
             return pdf[0]
+        
         return pdf
 
     def pdf(self, eval_points: Numeric2DArray, leave1out: bool = True):
