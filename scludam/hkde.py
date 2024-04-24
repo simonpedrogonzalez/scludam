@@ -32,18 +32,18 @@ import numpy as np
 from attrs import define, field, validators
 from beartype import beartype
 from itertools import product
-from rpy2.robjects import r
+# from rpy2.robjects import r
 from scipy.stats import multivariate_normal
 from statsmodels.stats.correlation_tools import corr_nearest, cov_nearest
 
 from scludam.plots import bivariate_density_plot, univariate_density_plot
-from scludam.rutils import (
-    assign_r_args,
-    clean_r_session,
-    disable_r_console_output,
-    disable_r_warnings,
-    load_r_packages,
-)
+# from scludam.rutils import (
+#     assign_r_args,
+#     clean_r_session,
+#     disable_r_console_output,
+#     disable_r_warnings,
+#     load_r_packages,
+# )
 from scludam.type_utils import (
     ArrayLike,
     Numeric1DArray,
@@ -58,9 +58,9 @@ from scludam.type_utils import (
 
 from tqdm import tqdm
 
-disable_r_warnings()
-disable_r_console_output()
-load_r_packages(r, ["ks"])
+# disable_r_warnings()
+# disable_r_console_output()
+# load_r_packages(r, ["ks"])
 
 
 class BandwidthSelector:
@@ -122,15 +122,16 @@ class PluginSelector(BandwidthSelector):
     diag: bool = False
 
     def _build_r_command(self, data: Numeric2DArray):
-        params = {
-            "nstage": self.nstage,
-            "pilot": self.pilot,
-            "binned": self.binned,
-        }
-        # delete all previous session variables
-        clean_r_session(r, "var")
-        _, rparams = assign_r_args(r, x=data, **params)
-        return f'ks::Hpi{".diag" if self.diag else ""}({rparams})'
+        raise NotImplementedError("R integration is currently disabled. Use RuleOfThumbSelector instead.")
+        # params = {
+        #     "nstage": self.nstage,
+        #     "pilot": self.pilot,
+        #     "binned": self.binned,
+        # }
+        # # delete all previous session variables
+        # clean_r_session(r, "var")
+        # _, rparams = assign_r_args(r, x=data, **params)
+        # return f'ks::Hpi{".diag" if self.diag else ""}({rparams})'
 
     @beartype
     def get_bw(self, data: Numeric2DArray):
@@ -150,10 +151,11 @@ class PluginSelector(BandwidthSelector):
             Plugin Method.
 
         """
-        _, dims = data.shape
-        command = self._build_r_command(data)
-        result = r(command)
-        return np.asarray(result)
+        raise NotImplementedError("R integration is currently disabled. Use RuleOfThumbSelector instead.")
+        # _, dims = data.shape
+        # command = self._build_r_command(data)
+        # result = r(command)
+        # return np.asarray(result)
 
 
 @define

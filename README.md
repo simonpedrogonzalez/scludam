@@ -41,7 +41,7 @@ Included modules and features are:
 --------------------------------------------------------------------------------
 
 ### Requirements
-**Python 3.7.6+** and **R 3.6.3+** are needed to run SCLUDAM. It is recommended to install scludam in a separate environment created with pyenv or conda, to avoid dependencies issues with other preinstalled packages in the base environment. The following dependencies will be installed along with SCLUDAM:
+**Python 3.7.6+**  are needed to run SCLUDAM. It is recommended to install scludam in a separate environment created with pyenv or conda, to avoid dependencies issues with other preinstalled packages in the base environment. The following dependencies will be installed along with SCLUDAM:
 
 - numpy>=1.21.6
 - matplotlib>=3.4.1
@@ -52,7 +52,6 @@ Included modules and features are:
 - hdbscan==0.8.27
 - scikit-learn>=1.0.2
 - scikit-image>=0.18.1
-- rpy2>=3.5.2
 - seaborn>=0.11.0
 - attrs>=21.4.0
 - beartype>=0.10.0

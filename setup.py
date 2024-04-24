@@ -37,7 +37,7 @@ setup(
         "joblib==1.1.0",  # in order to hdbscan to work
         "scikit-learn>=1.0.2",  # "scikit-learn>=0.23.1",
         "scikit-image>=0.18.1",
-        "rpy2>=3.5.2",  # "rpy2>=3.1.0",
+        # "rpy2>=3.5.2",  # "rpy2>=3.1.0",
         "seaborn>=0.11.0",
         "attrs>=21.4.0",
         "beartype>=0.10.0",
