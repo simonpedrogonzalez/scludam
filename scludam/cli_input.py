@@ -43,7 +43,7 @@ def select_columns():
         "pmdec", "pmdec_error", "ra_pmdec_corr", "dec_pmdec_corr", "pmra_pmdec_corr",
         "parallax", "parallax_error", "parallax_pmra_corr", "parallax_pmdec_corr",
         "ra_parallax_corr", "dec_parallax_corr", "parallax_over_error",
-        "phot_g_mean_mag","bp_rp",'astrometric_excess_noise'
+        "phot_g_mean_mag","bp_rp",'astrometric_excess_noise', "astrometric_excess_noise_sig",
         ]
     new_columns = ["ra", "dec", "parallax","parallax_error","pmra","pmra_error","pmdec","pmdec_error","phot_g_mean_mag","bp_rp","radial_velocity","radial_velocity_error","l","b","mh_gspphot","phot_g_mean_flux","phot_g_mean_flux_error","phot_bp_mean_flux","phot_bp_mean_flux_error","phot_rp_mean_flux","phot_rp_mean_flux_error"]
     

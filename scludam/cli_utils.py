@@ -198,7 +198,7 @@ def best_bin_shape_for_known_cluster(data,
 
 def calculate_antonio(df):
     df['e_G']=df['phot_g_mean_flux_error'] / df['phot_g_mean_flux'] * 2.5 * (1/math.log(10))
-    df['e_BP-RP']=2.5 * (1/math.log(10)) * np.sqrt((df['phot_bp_mean_flux_error']/df['phot_bp_mean_flux'])**2 + (df['phot_rp_mean_flux_error']/df['phot_rp_mean_flux'])**2)
+    df['e_BP_RP']=2.5 * (1/math.log(10)) * np.sqrt((df['phot_bp_mean_flux_error']/df['phot_bp_mean_flux'])**2 + (df['phot_rp_mean_flux_error']/df['phot_rp_mean_flux'])**2)
     df['Fe/H']=df['phot_g_mean_flux']
     return df
 
