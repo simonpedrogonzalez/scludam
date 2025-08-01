@@ -7,9 +7,12 @@ from sklearn.datasets import load_iris
 from utils import raises_exception
 
 from scludam import HKDE
-from scludam.hkde import RuleOfThumbSelector #, PluginSelector
+from scludam.hkde import RuleOfThumbSelector  # , PluginSelector
+
 # from scludam.hkde import r as rsession
-# from scludam.rutils import disable_r_console_output, disable_r_warnings, load_r_packages
+# from scludam.rutils import disable_r_console_output,
+# disable_r_warnings,
+# load_r_packages
 from scludam.utils import Colnames
 
 # disable_r_console_output()
@@ -29,20 +32,21 @@ w = np.ones(n)
 
 # @pytest.fixture
 # def kskde():
-    # from rpy2.robjects import default_converter, numpy2ri, r
+# from rpy2.robjects import default_converter, numpy2ri, r
 
-    # from rpy2.robjects.conversion import localconverter
+# from rpy2.robjects.conversion import localconverter
 
-    # load_r_packages(r, ["ks"])
-    # obs, dims = data.shape
-    # with localconverter(default_converter + numpy2ri.converter):
-    #     r.assign("data", data)
-    # r("result <- kde(data, eval.points=data)")
-    # H = np.asarray(r('result["H"]'))
-    # pdf = np.asarray(r('result["estimate"]'))
+# load_r_packages(r, ["ks"])
+# obs, dims = data.shape
+# with localconverter(default_converter + numpy2ri.converter):
+#     r.assign("data", data)
+# r("result <- kde(data, eval.points=data)")
+# H = np.asarray(r('result["H"]'))
+# pdf = np.asarray(r('result["estimate"]'))
 
-    # return pdf.ravel(), H
-    # raise NotImplementedError("R integration was disabled.")
+# return pdf.ravel(), H
+# raise NotImplementedError("R integration was disabled.")
+
 
 @pytest.fixture
 def pdf_with_error_correct():

@@ -1,8 +1,11 @@
-from scludam.cli_utils import *
-from scludam.cli_input import select_input
 from scludam.cli_analysis import main as analysis_menu
+from scludam.cli_input import select_input
+from scludam.cli_utils import (
+    prompt_cli_selector,
+)
 
 di = None
+
 
 def launch():
     global di
@@ -10,11 +13,16 @@ def launch():
     print("----------------------")
     if di is None:
         print("No dataset loaded")
-        option_names = ['Load New Dataset', 'Exit']
+        option_names = ["Load New Dataset", "Exit"]
         options = ["load", "exit"]
     else:
         print(di)
-        option_names = ['Load New Dataset', 'Membership Analysis', 'Clear Console', 'Exit']
+        option_names = [
+            "Load New Dataset",
+            "Membership Analysis",
+            "Clear Console",
+            "Exit",
+        ]
         options = ["load", "analysis", "clear", "exit"]
     print("----------------------")
 
@@ -26,15 +34,17 @@ def launch():
     if selected == "exit":
         return
     if selected == "clear":
-        from os import system, name
+        from os import name, system
+
         def clear():
             # for windows
-            if name == 'nt':
-                _ = system('cls')
-        
+            if name == "nt":
+                _ = system("cls")
+
             # for mac and linux(here, os.name is 'posix')
             else:
-                _ = system('clear')
+                _ = system("clear")
+
         clear()
         launch()
     if selected == "load":
@@ -43,5 +53,3 @@ def launch():
     if selected == "analysis":
         analysis_menu(di)
         launch()
-    
-    

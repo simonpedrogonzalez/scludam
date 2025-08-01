@@ -28,8 +28,7 @@ from typing_extensions import Annotated
 
 def _type(type_hint):
     @beartype
-    def _validate(instance, attribute, value: type_hint):
-        ...
+    def _validate(instance, attribute, value: type_hint): ...
 
     return _validate
 

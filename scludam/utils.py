@@ -191,9 +191,7 @@ class Colnames:
                 corr = (
                     corr1
                     if corr1 in correlations
-                    else corr2
-                    if corr2 in correlations
-                    else ""
+                    else corr2 if corr2 in correlations else ""
                 )
                 corr_matrix[i1, i2] = corr
 

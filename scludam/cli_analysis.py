@@ -1,30 +1,39 @@
 import datetime
-import matplotlib.pyplot as plt
-import re
-import seaborn as sns
-import numpy as np
-import pandas as pd
-from tqdm import tqdm
-from scludam import Query, search_object, search_table
-from scludam import CountPeakDetector, DEP, DBME, RipleysKTest, HopkinsTest, HKDE, SHDBSCAN, PluginSelector, RuleOfThumbSelector
-from astropy.table.table import Table
-from scludam.cli_utils import *
 from copy import deepcopy
+
+import matplotlib.pyplot as plt
+from astropy.table.table import Table
+
+from scludam import (
+    DBME,
+    DEP,
+    HKDE,
+    CountPeakDetector,
+    RuleOfThumbSelector,
+    search_object,
+)
+from scludam.cli_utils import (
+    best_bin_shape,
+    best_bin_shape_for_known_cluster,
+    change_column_names_antonio,
+    prompt_cli_int_input,
+    prompt_cli_float_input,
+    prompt_cli_string_input,
+    prompt_cli_selector,
+)
 
 gaia5params = {
     "label": "Gaia 5 parameters (ra,dec,parallax,pmra,pmdec)",
-    "columns": ["ra", "dec", "parallax", "pmra", "pmdec"]
+    "columns": ["ra", "dec", "parallax", "pmra", "pmdec"],
 }
 
 gaia3params = {
     "label": "Gaia 3 parameters (pmra,pmdec,parallax)",
-    "columns": ["pmra", "pmdec", "parallax"]
+    "columns": ["pmra", "pmdec", "parallax"],
 }
 
-gaia2params = {
-    "label": "Gaia 2 parameters (pmra,pmdec)",
-    "columns": ["pmra", "pmdec"]
-}
+gaia2params = {"label": "Gaia 2 parameters (pmra,pmdec)", "columns": ["pmra", "pmdec"]}
+
 
 def automatic_bin_shape_selection(df, det_cols, method):
 
@@ -36,19 +45,30 @@ def automatic_bin_shape_selection(df, det_cols, method):
             options,
             values,
             default_index=0,
-            custom_prompt="Enter custom bandwidth as comma separated numbers (e.g. 0.1,0.2,0.3):",
+            custom_prompt=("Enter custom bandwidth as comma separated numbers"
+                           "(e.g. 0.1,0.2,0.3):")
         )
-        if type(selected) == str:
+        if isinstance(selected, str):
             return selected.replace(" ", "").split(",")
         else:
             return selected
 
-    pm_bin_shapes_to_try = select_auto_bin_shape_to_try("pm", [.3, .4, .5, .6, .7, .8, .9, 1])
-    parallax_bin_shapes_to_try = select_auto_bin_shape_to_try("parallax", [.01, .02, .03, .04, .05, .06, .07, .08, .09, .1])
+    pm_bin_shapes_to_try = select_auto_bin_shape_to_try(
+        "pm", [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    )
+    parallax_bin_shapes_to_try = select_auto_bin_shape_to_try(
+        "parallax", [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
+    )
 
-    min_score = prompt_cli_int_input("Enter the minimum score to consider a peak:", default=1)
-    max_n_peaks = prompt_cli_int_input("Enter the maximum number of peaks to consider:", default=25)
-    min_count = prompt_cli_int_input("Enter the minimum number of stars to consider a peak:", default=5)
+    min_score = prompt_cli_int_input(
+        "Enter the minimum score to consider a peak:", default=1
+    )
+    max_n_peaks = prompt_cli_int_input(
+        "Enter the maximum number of peaks to consider:", default=25
+    )
+    min_count = prompt_cli_int_input(
+        "Enter the minimum number of stars to consider a peak:", default=5
+    )
 
     if method == "max":
         best_shape, det_res, dfbins, cl_index, cl_star_n = best_bin_shape(
@@ -73,16 +93,20 @@ def automatic_bin_shape_selection(df, det_cols, method):
         cl_index = "unknown"
 
     elif method == "known":
-        
+
         def select_know_values():
             def get_values_from_simbad():
                 cluster_name = prompt_cli_string_input("Enter the name of the cluster:")
                 simbad_result = search_object(cluster_name)
                 if simbad_result.table is not None:
-                    cl_pmra = simbad_result.table['PMRA'][0]
-                    cl_pmdec = simbad_result.table['PMDEC'][0]
-                    cl_parallax = simbad_result.table['PLX_VALUE'][0]
-                    print(f"Found in PMRA: {cl_pmra}, PMDEC: {cl_pmdec}, PLX: {cl_parallax}")
+                    cl_pmra = simbad_result.table["PMRA"][0]
+                    cl_pmdec = simbad_result.table["PMDEC"][0]
+                    cl_parallax = simbad_result.table["PLX_VALUE"][0]
+                    print(
+                        f"Found in PMRA: {cl_pmra}, "
+                        f"PMDEC: {cl_pmdec}, "
+                        f"PLX: {cl_parallax}"
+                    )
                     return cl_pmra, cl_pmdec, cl_parallax
                 else:
                     print("Object not found. Try again.")
@@ -93,7 +117,10 @@ def automatic_bin_shape_selection(df, det_cols, method):
                 ["Find in Simbad"],
                 ["simbad"],
                 default_index=0,
-                custom_prompt="Enter the values separated by commas (e.g. 0.1,0.2,0.3):",
+                custom_prompt=(
+                    "Enter the values separated by commas "
+                    "(e.g. 0.1,0.2,0.3):"
+                ),
             )
             if selected == "simbad":
                 return get_values_from_simbad()
@@ -101,26 +128,30 @@ def automatic_bin_shape_selection(df, det_cols, method):
                 return [float(x) for x in selected.split(",")]
 
         cl_pmra, cl_pmdec, cl_parallax = select_know_values()
-        best_shape, det_res, dfbins, cl_index, cl_star_n = best_bin_shape_for_known_cluster(
-            # datos. El ".values" es para pasarlo a numpy array
-            df[det_cols].values,
-            # ubicación del cúmulo según Simbad
-            [cl_pmra, cl_pmdec, cl_parallax],
-            # todos los tamaños de pm a probar
-            pm_bin_shapes_to_try,
-            # todos los tamaños de plx a probar
-            parallax_bin_shapes_to_try,
-            min_score=min_score,
-            # cuántos picos de densidad buscar
-            max_n_peaks=max_n_peaks,
-            min_count=min_count,
+        best_shape, det_res, dfbins, cl_index, cl_star_n = (
+            best_bin_shape_for_known_cluster(
+                # datos. El ".values" es para pasarlo a numpy array
+                df[det_cols].values,
+                # ubicación del cúmulo según Simbad
+                [cl_pmra, cl_pmdec, cl_parallax],
+                # todos los tamaños de pm a probar
+                pm_bin_shapes_to_try,
+                # todos los tamaños de plx a probar
+                parallax_bin_shapes_to_try,
+                min_score=min_score,
+                # cuántos picos de densidad buscar
+                max_n_peaks=max_n_peaks,
+                min_count=min_count,
+            )
         )
-        distance_to_simbad_data = dfbins[(dfbins.pmra == best_shape[0]) & (dfbins.parallax == best_shape[2])].score.values[0]
+        distance_to_simbad_data = dfbins[
+            (dfbins.pmra == best_shape[0]) & (dfbins.parallax == best_shape[2])
+        ].score.values[0]
         print(f"Best bin shape for cluster: {best_shape}")
         print(f"Initial No stars: {int(cl_star_n)}")
         print(f"Cluster index: {cl_index}")
         print(f"Distance to Cluster values: {distance_to_simbad_data}")
-    
+
         detector = CountPeakDetector(
             bin_shape=best_shape,
             min_score=min_score,
@@ -130,40 +161,53 @@ def automatic_bin_shape_selection(df, det_cols, method):
 
     return detector, cl_index
 
-def configure_detection(df):   
+
+def configure_detection(df):
     # columns
     def select_detection_columns():
         selected = prompt_cli_selector(
             "Select the columns to be used for detection:",
-            [gaia3params['label'], gaia2params['label']],
-            [gaia3params['columns'], gaia2params['columns']],
+            [gaia3params["label"], gaia2params["label"]],
+            [gaia3params["columns"], gaia2params["columns"]],
             default_index=0,
             custom_prompt="Enter columns separated by commas:",
         )
-        if type(selected) == str:
+        if isinstance(selected, str):
             return selected.replace(" ", "").split(",")
         else:
             return selected
+
     det_cols = select_detection_columns()
 
     # parameters
     selected = prompt_cli_selector(
         "Select the bin shape estimation method:",
         [
-            "Estimate bin shape to get max sum of scores on all peaks found (only works for 3 Params solution).",
-            "Estimate bin shape to get good peak near the expected values (only works for 3 Params solution).",
+            "Estimate bin shape to get max sum of scores on all peaks found "
+            "(only works for 3 Params solution).",
+            "Estimate bin shape to get good peak near the expected values "
+            "(only works for 3 Params solution).",
         ],
         ["max", "known"],
-        default_index=2, #default is custom
-        custom_prompt="Enter custom bandwidth as comma separated numbers (e.g. 0.5,0.5,0.05):",
+        default_index=2,  # default is custom
+        custom_prompt=(
+            "Enter custom bandwidth as comma separated numbers "
+            "(e.g. 0.5,0.5,0.05):"
+        ),
     )
     if selected == "max" or selected == "known":
         detector, cl_index = automatic_bin_shape_selection(df, det_cols, selected)
     else:
         bin_shape = [float(x) for x in selected.split(",")]
-        min_score = prompt_cli_int_input("Enter the minimum score to consider a peak:", default=1)
-        max_n_peaks = prompt_cli_int_input("Enter the maximum number of peaks to consider:", default=25)
-        min_count = prompt_cli_int_input("Enter the minimum number of stars to consider a peak:", default=5)
+        min_score = prompt_cli_int_input(
+            "Enter the minimum score to consider a peak:", default=1
+        )
+        max_n_peaks = prompt_cli_int_input(
+            "Enter the maximum number of peaks to consider:", default=25
+        )
+        min_count = prompt_cli_int_input(
+            "Enter the minimum number of stars to consider a peak:", default=5
+        )
         detector = CountPeakDetector(
             bin_shape=bin_shape,
             min_score=min_score,
@@ -171,19 +215,20 @@ def configure_detection(df):
             min_count=min_count,
         )
         cl_index = "unknown"
-    
+
     return det_cols, detector, cl_index
+
 
 def configure_membership():
     def select_membership_columns():
         selected = prompt_cli_selector(
             "Select the columns to be used for membership:",
-            [gaia3params['label'], gaia5params['label']],
-            [gaia3params['columns'], gaia5params['columns']],
+            [gaia3params["label"], gaia5params["label"]],
+            [gaia3params["columns"], gaia5params["columns"]],
             default_index=1,
             custom_prompt="Enter columns separated by commas:",
         )
-        if type(selected) == str:
+        if isinstance(selected, str):
             return selected.split(",").remove(" ")
         else:
             return selected
@@ -200,32 +245,33 @@ def configure_membership():
     )
     estimator = DBME(
         pdf_estimator=HKDE(
-           bw=RuleOfThumbSelector(rule='scott'),
-           error_convolution=error_convolution,
+            bw=RuleOfThumbSelector(rule="scott"),
+            error_convolution=error_convolution,
         ),
     )
     return mem_cols, estimator
+
 
 def print_results(dep):
     proba_df = dep.proba_df()
     print(f"Detected Clusters: {dep.n_detected}")
     print(f"Estimated Clusters: {dep.n_estimated}")
-    n_stars = proba_df[
-        proba_df.columns[proba_df.columns.str.startswith('proba')]
-    ].sum()
+    n_stars = proba_df[proba_df.columns[proba_df.columns.str.startswith("proba")]].sum()
     n_stars_field = n_stars[0]
     n_stars_cl = n_stars[1:]
     print(f"Field stars: {round(n_stars_field)}")
-    for i in range(1, len(n_stars_cl)+1):
+    for i in range(1, len(n_stars_cl) + 1):
         n_stars_cl = n_stars[i]
         print(f"Cluster {i} stars: {round(n_stars_cl)}")
+
 
 def pipeline_run(df, dep):
     dep.fit(df)
     return dep
 
+
 def plot_results(df, dep):
-    
+
     def select_plot_type():
         selected = prompt_cli_selector(
             "Select the plot type:",
@@ -234,18 +280,19 @@ def plot_results(df, dep):
             default_index=1,
         )
         return selected
-    
+
     plot_type = select_plot_type()
     if plot_type == "pos":
         dep.radec_plot()
     elif plot_type == "pm":
-        dep.scatterplot(['pmra', 'pmdec'])
+        dep.scatterplot(["pmra", "pmdec"])
     elif plot_type == "cmd":
         dep.cm_diagram()
     elif plot_type == "gplx":
-        dep.scatterplot(['phot_g_mean_mag', 'parallax'])
+        dep.scatterplot(["phot_g_mean_mag", "parallax"])
 
     plt.show()
+
 
 def print_config(dep):
     print("Detection:")
@@ -256,15 +303,24 @@ def print_config(dep):
     print(f"Columns: {dep.mem_cols}")
     print(f"Estimator: {dep.estimator}")
 
+
 def analyze(df, last_result_config=None):
-    
+
     def new_config(df):
         # Detection
         det_cols, detector, cl_index = configure_detection(df)
         # subsample size config
         sample_sigma_factor = prompt_cli_float_input(
-            f"Enter the sample sigma factor:\n(how big is the region taken to isolate the cluster\nin comparison with bin_shape {detector.bin_shape}). Example: one and a half the size of the bin will be 1.5.",
-            default=1.5)
+            (
+                "Enter the sample sigma factor:\n"
+                "(how big is the region taken to isolate the cluster\n"
+                "in comparison with bin_shape "
+                f"{detector.bin_shape}). Example: one and a half the size "
+                "of the bin will be 1.5."
+            ),
+            default=1.5,
+        )
+
         # Membership
         mem_cols, estimator = configure_membership()
         dep = DEP(
@@ -293,7 +349,7 @@ def analyze(df, last_result_config=None):
                 return new_config(df)
         else:
             return new_config(df)
-        
+
     def select_index(cl_index):
         options = ["No index"]
         values = ["none"]
@@ -313,14 +369,14 @@ def analyze(df, last_result_config=None):
             return selected
 
         # Setup peak selection
-        if selected_index == "auto" and cl_index != "unknown":
-            print(f"Cluster index: {cl_index}")
-            detector.selected_index = cl_index
-            detector.max_n_peaks = cl_index + 1
-        elif selected_index is not None:
-            detector.selected_index = selected_index
-            detector.max_n_peaks = selected_index + 1
-    
+        # if selected_index == "auto" and cl_index != "unknown":
+        #     print(f"Cluster index: {cl_index}")
+        #     detector.selected_index = cl_index
+        #     detector.max_n_peaks = cl_index + 1
+        # elif selected_index is not None:
+        #     detector.selected_index = selected_index
+        #     detector.max_n_peaks = selected_index + 1
+
     dep, cl_index = configure(last_result_config)
 
     selected_index = select_index(cl_index)
@@ -328,12 +384,13 @@ def analyze(df, last_result_config=None):
     if selected_index is not None:
         dep.detector.select_index = selected_index
         dep.detector.max_n_peaks = selected_index + 1
-        
+
     dep_config_copy = deepcopy(dep)
 
     # Run
     dep = pipeline_run(df, dep)
     return dep, dep_config_copy
+
 
 def save_results(dep, di=None):
 
@@ -341,10 +398,10 @@ def save_results(dep, di=None):
     def select_output_format():
         selected = prompt_cli_selector(
             "Select the output file format:",
-            ['FITS', 'CSV'],
+            ["FITS", "CSV"],
             ["fits", "csv"],
             default_index=0,
-            )
+        )
         return selected
 
     def select_output_file_name(di=None):
@@ -358,10 +415,9 @@ def save_results(dep, di=None):
         if name2 == "":
             return name
         return name2
-    
 
     data = dep.proba_df()
-    
+
     data = change_column_names_antonio(data)
 
     data = Table.from_pandas(data)
@@ -369,16 +425,18 @@ def save_results(dep, di=None):
     output_format = select_output_format()
     output_file = select_output_file_name(di)
     file_path = f"{output_file}.{output_format}"
-    
+
     if output_format == "csv":
         data.write(file_path, format="csv", overwrite=True)
     elif output_format == "fits":
         data.write(file_path, format="fits", overwrite=True)
-    
+
     print(f"Results saved in {file_path}")
+
 
 dep = None
 config = None
+
 
 def main(di):
     global dep

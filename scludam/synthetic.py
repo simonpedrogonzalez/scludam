@@ -114,7 +114,7 @@ def is_inside_sphere(
 # Coordinate transformation
 @beartype
 def cartesian_to_polar(
-    coords: Union[Vector3, Vector3Array]
+    coords: Union[Vector3, Vector3Array],
 ) -> Union[Vector3, Vector3Array]:
     """Convert cartesian coordinates to polar coordinates.
 
@@ -162,7 +162,7 @@ def cartesian_to_polar(
 
 @beartype
 def polar_to_cartesian(
-    coords: Union[Vector3, Vector3Array]
+    coords: Union[Vector3, Vector3Array],
 ) -> Union[Vector3, Vector3Array]:
     """Convert polar coordinates to cartesian coordinates.
 
@@ -329,13 +329,7 @@ class EDSD(stats.rv_continuous):
                 0,
                 1,
                 lambda x: (
-                    (
-                        2 * x**2
-                        + (2 * wl - 4 * w0) * x
-                        + 2 * w0**2
-                        - 2 * wl * w0
-                        + wl**2
-                    )
+                    (2 * x**2 + (2 * wl - 4 * w0) * x + 2 * w0**2 - 2 * wl * w0 + wl**2)
                     * np.exp(-wl / (x - w0))
                     / (2 * (x - w0) ** 2)
                 ),

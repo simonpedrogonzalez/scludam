@@ -24,6 +24,7 @@ covariances can be added to the matrices.
 """
 
 from abc import abstractmethod
+from itertools import product
 from numbers import Number
 from typing import List, Optional, Tuple, Union
 
@@ -31,12 +32,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 from attrs import define, field, validators
 from beartype import beartype
-from itertools import product
+
 # from rpy2.robjects import r
 from scipy.stats import multivariate_normal
 from statsmodels.stats.correlation_tools import corr_nearest, cov_nearest
+from tqdm import tqdm
 
 from scludam.plots import bivariate_density_plot, univariate_density_plot
+
 # from scludam.rutils import (
 #     assign_r_args,
 #     clean_r_session,
@@ -55,8 +58,6 @@ from scludam.type_utils import (
     OptionalNumericArray,
     _type,
 )
-
-from tqdm import tqdm
 
 # disable_r_warnings()
 # disable_r_console_output()
@@ -122,7 +123,9 @@ class PluginSelector(BandwidthSelector):
     diag: bool = False
 
     def _build_r_command(self, data: Numeric2DArray):
-        raise NotImplementedError("R integration is currently disabled. Use RuleOfThumbSelector instead.")
+        raise NotImplementedError(
+            "R integration is currently disabled. Use RuleOfThumbSelector instead."
+        )
         # params = {
         #     "nstage": self.nstage,
         #     "pilot": self.pilot,
@@ -151,7 +154,9 @@ class PluginSelector(BandwidthSelector):
             Plugin Method.
 
         """
-        raise NotImplementedError("R integration is currently disabled. Use RuleOfThumbSelector instead.")
+        raise NotImplementedError(
+            "R integration is currently disabled. Use RuleOfThumbSelector instead."
+        )
         # _, dims = data.shape
         # command = self._build_r_command(data)
         # result = r(command)
@@ -274,7 +279,7 @@ class HKDE:
         tree to reduce the number of matrices used, it could be
         problematic for big concentrated datasets.
         *  Default is False.
-    
+
     Examples
     --------
     .. literalinclude:: ../../examples/hkde/hkde.py
@@ -561,9 +566,10 @@ class HKDE:
         )
 
     def _calculate_biggest_hypersphere(self):
-        
+
         def _get_biggest_cov_that_still_contributes(self, percentile):
-            # If sum of diagonal is bigger when correlations are small, then matrix is bigger
+            # If sum of diagonal is bigger when correlations are small,
+            # then matrix is bigger
             # get the self._covariances matrix which diagonal sums the biggest
             sums = np.array([np.diagonal(cc).sum() for cc in self._covariances])
             # get a certain percentile of the sums, because biggest sum tends to be
@@ -573,12 +579,14 @@ class HKDE:
             # account more contributions.
             # the smaller, the more "skips" in the calculation, the faster it runs
             biggest_sum = np.percentile(sums, percentile)
-            # abs(sums - biggest_sum) gets the distance between the biggest_cov and all the sums
+            # abs(sums - biggest_sum) gets the distance between the biggest_cov
+            # and all the sums
             # so as to get the index of the corresponding matrix
             biggest_matrix_index = np.argmin(np.abs(sums - biggest_sum))
             biggest_matrix = self._covariances[biggest_matrix_index]
 
-            # create a multivariate normal around 0 with the biggest matrix, accounting for dims
+            # create a multivariate normal around 0 with the biggest
+            # matrix, accounting for dims
             biggest_kde = multivariate_normal(
                 np.zeros(self._d),
                 biggest_matrix,
@@ -609,7 +617,9 @@ class HKDE:
         # this process should take only a couple of iterations
         while points_above_threshold is None and percentile > 0:
             # todo: maybe throw warn?
-            points_above_threshold = _get_biggest_cov_that_still_contributes(self, percentile)
+            points_above_threshold = _get_biggest_cov_that_still_contributes(
+                self, percentile
+            )
             percentile -= 1
 
         # from the coordinates of the points that are not 0 in pdf
@@ -618,11 +628,14 @@ class HKDE:
         distances = np.linalg.norm(points_above_threshold, axis=1)
         max_distance = np.max(distances)
         # this distance will serve as ball tree radius, defining
-        # the extent of the search of points that will contribute 
+        # the extent of the search of points that will contribute
         return max_distance
 
-    def _build_tree_ball(self, radius: float, neighbours: Numeric2DArray, eval_points: Numeric2DArray):
+    def _build_tree_ball(
+        self, radius: float, neighbours: Numeric2DArray, eval_points: Numeric2DArray
+    ):
         from sklearn.neighbors import BallTree
+
         # build a ball tree with the data
         tree = BallTree(neighbours)
         # get the indexes of the points that are inside the ball
@@ -674,10 +687,7 @@ class HKDE:
                 if not np.allclose(mean, p):
                     # convolve the covariances of the eval and contributting points
                     cov = covariances[idx] + point_cov
-                    k = multivariate_normal(
-                        mean,
-                        cov
-                    )
+                    k = multivariate_normal(mean, cov)
                     # apply the kernel to the point and get the contribution
                     tosum = k.pdf(p) * norm_weigths[idx]
                     # add the contribution to the accumulator
@@ -688,7 +698,7 @@ class HKDE:
         if obs == 1:
             # return as float value
             return pdf[0]
-        
+
         return pdf
 
     def pdf(self, eval_points: Numeric2DArray, leave1out: bool = True):

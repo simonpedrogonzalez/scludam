@@ -285,18 +285,19 @@ class DEP:
         self.estimators.append(estimator)
 
         return estimator.posteriors
-    
+
     def _prepare_data(self, df: pd.DataFrame):
 
         # store original df for output
         self._original_df = df
 
         # get basic needed cols
-        needed_cols = set(self.det_cols +\
-                            self.mem_cols +\
-                            [item for sublist in self.test_cols for item in sublist]
+        needed_cols = set(
+            self.det_cols
+            + self.mem_cols
+            + [item for sublist in self.test_cols for item in sublist]
         )
-        
+
         # check needed cols exist
         self._colnames = Colnames(df.columns)
         self._check_cols(self.det_cols)
@@ -324,7 +325,6 @@ class DEP:
         if self._df.empty:
             raise ValueError("No data to use after dropping nans for needed cols.")
 
-
     @beartype
     def fit(self, df: pd.DataFrame):
         """Perform the detection and membership estimation.
@@ -343,7 +343,7 @@ class DEP:
             Fitted instance of DEP.
 
         """
-        
+
         # this sets self._df, self._colnames, self._needed_cols
         # self._non_nan_mask, self._original_df
         self._prepare_data(df)

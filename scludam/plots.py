@@ -697,15 +697,15 @@ def _select_labels(labels, proba, select_labels):
     new_proba = new_proba[:, np.array([0] + list(selected_cols))]
     return new_labels, new_proba
 
+
 def _select_1(proba, select_1):
     # 0 if proba [select_1] > 0, -1 otherwise
-    new_labels = np.ones(proba.shape[0], dtype=int)*-1
+    new_labels = np.ones(proba.shape[0], dtype=int) * -1
     new_labels[proba[:, select_1] > 0] = 0
     new_proba = np.zeros((proba.shape[0], 2))
     new_proba[:, 1] = proba[:, select_1]
     new_proba[:, 0] = 1 - proba[:, select_1]
     return new_labels, new_proba
-
 
 
 def scatter2dprobaplot(
@@ -788,9 +788,16 @@ def scatter2dprobaplot(
         [
             df.reset_index(drop=True),
             pd.DataFrame(
-                np.vstack((
-                    np.max(proba, axis=1) if select_1 is None else proba[np.arange(proba.shape[0]), labels+1],
-                    labels)).T,
+                np.vstack(
+                    (
+                        (
+                            np.max(proba, axis=1)
+                            if select_1 is None
+                            else proba[np.arange(proba.shape[0]), labels + 1]
+                        ),
+                        labels,
+                    )
+                ).T,
                 columns=["Probability", "Label"],
             ).reset_index(drop=True),
         ],
