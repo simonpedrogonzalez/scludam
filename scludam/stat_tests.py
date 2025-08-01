@@ -35,7 +35,8 @@ from diptest import diptest
 from scipy.stats import beta, ks_2samp
 from sklearn.base import TransformerMixin
 from sklearn.metrics import pairwise_distances
-from sklearn.neighbors import BallTree, DistanceMetric
+from sklearn.neighbors import BallTree
+from sklearn.metrics import DistanceMetric
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import resample
 

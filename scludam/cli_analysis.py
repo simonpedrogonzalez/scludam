@@ -32,7 +32,10 @@ gaia3params = {
     "columns": ["pmra", "pmdec", "parallax"],
 }
 
-gaia2params = {"label": "Gaia 2 parameters (pmra,pmdec)", "columns": ["pmra", "pmdec"]}
+gaia2params = {
+    "label": "Gaia 2 parameters (pmra,pmdec)",
+    "columns": ["pmra", "pmdec"],
+}
 
 
 def automatic_bin_shape_selection(df, det_cols, method):
@@ -45,8 +48,10 @@ def automatic_bin_shape_selection(df, det_cols, method):
             options,
             values,
             default_index=0,
-            custom_prompt=("Enter custom bandwidth as comma separated numbers"
-                           "(e.g. 0.1,0.2,0.3):")
+            custom_prompt=(
+                "Enter custom bandwidth as comma separated numbers"
+                "(e.g. 0.1,0.2,0.3):"
+            ),
         )
         if isinstance(selected, str):
             return selected.replace(" ", "").split(",")
@@ -118,8 +123,7 @@ def automatic_bin_shape_selection(df, det_cols, method):
                 ["simbad"],
                 default_index=0,
                 custom_prompt=(
-                    "Enter the values separated by commas "
-                    "(e.g. 0.1,0.2,0.3):"
+                    "Enter the values separated by commas " "(e.g. 0.1,0.2,0.3):"
                 ),
             )
             if selected == "simbad":
@@ -191,8 +195,7 @@ def configure_detection(df):
         ["max", "known"],
         default_index=2,  # default is custom
         custom_prompt=(
-            "Enter custom bandwidth as comma separated numbers "
-            "(e.g. 0.5,0.5,0.05):"
+            "Enter custom bandwidth as comma separated numbers " "(e.g. 0.5,0.5,0.05):"
         ),
     )
     if selected == "max" or selected == "known":
@@ -275,7 +278,12 @@ def plot_results(df, dep):
     def select_plot_type():
         selected = prompt_cli_selector(
             "Select the plot type:",
-            ["Position", "Proper Motions", "Color-Magnitude Diagram", "G-Parallax"],
+            [
+                "Position",
+                "Proper Motions",
+                "Color-Magnitude Diagram",
+                "G-Parallax",
+            ],
             ["pos", "pm", "cmd", "gplx"],
             default_index=1,
         )
@@ -454,7 +462,12 @@ def main(di):
         print("Results:")
         print_results(dep)
         print("----------------------")
-        options = ["New analysis", "Plot available results", "Save results", "Back"]
+        options = [
+            "New analysis",
+            "Plot available results",
+            "Save results",
+            "Back",
+        ]
         values = ["new", "plot", "save", "Back"]
     selected = prompt_cli_selector(
         "Options:",

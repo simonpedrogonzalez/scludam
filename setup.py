@@ -35,7 +35,7 @@ setup(
         "pandas==1.3.5",  # "pandas>=1.4.2",  # "pandas>=1.1.4",
         "hdbscan>=0.8.40",  # "hdbscan==0.8.33",
         "joblib==1.1.0",  # in order to hdbscan to work
-        "scikit-learn>=1.0.2",  # "scikit-learn>=0.23.1",
+        "scikit-learn>=1.1.3",  # "scikit-learn>=0.23.1",
         "scikit-image>=0.18.1",
         # "rpy2>=3.5.2",  # "rpy2>=3.1.0",
         "seaborn>=0.11.0",
@@ -45,6 +45,7 @@ setup(
         "statsmodels>=0.12.2",
         "diptest>=0.4.2",  # "unidip>=0.1.1",
         "typing_extensions>=4.2.0",
+        "tqdm>=4.67.1",
     ],
     extras_require={
         # dev dependencies

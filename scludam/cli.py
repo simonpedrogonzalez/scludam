@@ -8,6 +8,10 @@ di = None
 
 
 def launch():
+    """Launch the SCLUDAM CLI.
+
+    This function serves as the entry point for the command-line interface of SCLUDAM.
+    """    
     global di
     print("Welcome to SCLUDAM CLI")
     print("----------------------")

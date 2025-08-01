@@ -343,7 +343,6 @@ class DEP:
             Fitted instance of DEP.
 
         """
-
         # this sets self._df, self._colnames, self._needed_cols
         # self._non_nan_mask, self._original_df
         self._prepare_data(df)
