@@ -37,7 +37,6 @@ Simplified API:
       :class:`~scludam.stat_tests.RipleysKTest` from :py:mod:`~scludam.stat_tests`
 """
 
-from .cli import launch
 from .detection import CountPeakDetector, default_mask, extend_1dmask
 from .fetcher import Query, search_object, search_objects_near_data, search_table
 from .hkde import HKDE, PluginSelector, RuleOfThumbSelector
@@ -45,3 +44,4 @@ from .membership import DBME
 from .pipeline import DEP
 from .shdbscan import SHDBSCAN
 from .stat_tests import DipDistTest, HopkinsTest, RipleysKTest
+from .cli import launch
