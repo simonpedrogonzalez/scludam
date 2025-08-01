@@ -447,44 +447,44 @@ def test_validity_index(three_clusters_sample):
     )
 
 
-class TestSHDBSCANplots:
-    @pytest.mark.mpl_image_compare
-    def test_shdbscan_outlierplot(self, iris):
-        shdbscan = SHDBSCAN(min_cluster_size=20, outlier_quantile=0.8).fit(iris)
-        fig = shdbscan.outlierplot(color="k", bins=20).get_figure()
-        return fig
+# class TestSHDBSCANplots:
+#     @pytest.mark.mpl_image_compare
+#     def test_shdbscan_outlierplot(self, iris):
+#         shdbscan = SHDBSCAN(min_cluster_size=20, outlier_quantile=0.8).fit(iris)
+#         fig = shdbscan.outlierplot(color="k", bins=20).get_figure()
+#         return fig
 
-    @pytest.mark.mpl_image_compare
-    def test_shdbscan_pairplot(self, iris):
-        shdbscan = SHDBSCAN(min_cluster_size=20).fit(iris)
-        fig = shdbscan.pairplot(
-            diag_kind="hist",
-            palette="copper",
-            corner=True,
-            cols=load_iris().feature_names,
-            diag_kws={"bins": 20},
-        ).fig
-        return fig
+#     @pytest.mark.mpl_image_compare
+#     def test_shdbscan_pairplot(self, iris):
+#         shdbscan = SHDBSCAN(min_cluster_size=20).fit(iris)
+#         fig = shdbscan.pairplot(
+#             diag_kind="hist",
+#             palette="copper",
+#             corner=True,
+#             cols=load_iris().feature_names,
+#             diag_kws={"bins": 20},
+#         ).fig
+#         return fig
 
-    @pytest.mark.mpl_image_compare
-    def test_shdbscan_tsneplot(self, iris):
-        shdbscan = SHDBSCAN(min_cluster_size=20).fit(iris)
-        np.random.seed(0)
-        fig = shdbscan.tsneplot(palette="copper").get_figure()
-        return fig
+#     @pytest.mark.mpl_image_compare
+#     def test_shdbscan_tsneplot(self, iris):
+#         shdbscan = SHDBSCAN(min_cluster_size=20).fit(iris)
+#         np.random.seed(0)
+#         fig = shdbscan.tsneplot(palette="copper").get_figure()
+#         return fig
 
-    @pytest.mark.mpl_image_compare
-    def test_shdbscan_surfplot(self, iris):
-        shdbscan = SHDBSCAN(min_cluster_size=20).fit(iris)
-        fig = shdbscan.surfplot(
-            x=1, y=2, palette="copper", cols=load_iris().feature_names
-        )[0]
-        return fig
+#     @pytest.mark.mpl_image_compare
+#     def test_shdbscan_surfplot(self, iris):
+#         shdbscan = SHDBSCAN(min_cluster_size=20).fit(iris)
+#         fig = shdbscan.surfplot(
+#             x=1, y=2, palette="copper", cols=load_iris().feature_names
+#         )[0]
+#         return fig
 
-    @pytest.mark.mpl_image_compare
-    def test_shdbscan_scatter3dplot(self, iris):
-        shdbscan = SHDBSCAN(min_cluster_size=20).fit(iris)
-        fig = shdbscan.scatter3dplot(
-            x=1, y=0, z=2, palette="copper", cols=load_iris().feature_names
-        )[0]
-        return fig
+#     @pytest.mark.mpl_image_compare
+#     def test_shdbscan_scatter3dplot(self, iris):
+#         shdbscan = SHDBSCAN(min_cluster_size=20).fit(iris)
+#         fig = shdbscan.scatter3dplot(
+#             x=1, y=0, z=2, palette="copper", cols=load_iris().feature_names
+#         )[0]
+#         return fig

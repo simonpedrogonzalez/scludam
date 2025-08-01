@@ -286,7 +286,7 @@ class HKDE:
 
     # input attrs
     bw: Union[BandwidthSelector, Number, NumericArray, List[Number], str] = field(
-        default=PluginSelector(),
+        default=RuleOfThumbSelector(rule="scott"),
         validator=_type(
             Union[BandwidthSelector, Number, List[Number], NumericArray, str]
         ),

@@ -31,9 +31,9 @@ setup(
         "matplotlib>=3.4.1",
         "scipy>=1.7.3",  # "scipy>=1.4.1",
         "astropy>=4.3.1",  # "astropy>=5.1",  # "astropy>=4.2.1",
-        "astroquery>=0.4.6",  # "astroquery>=0.4.7",  # "astroquery>=0.4.1",
-        "pandas>=1.3.5",  # "pandas>=1.4.2",  # "pandas>=1.1.4",
-        "hdbscan==0.8.28",
+        "astroquery==0.4.6",  # "astroquery>=0.4.7",  # "astroquery>=0.4.1",
+        "pandas==1.3.5",  # "pandas>=1.4.2",  # "pandas>=1.1.4",
+        "hdbscan>=0.8.40",  # "hdbscan==0.8.33",
         "joblib==1.1.0",  # in order to hdbscan to work
         "scikit-learn>=1.0.2",  # "scikit-learn>=0.23.1",
         "scikit-image>=0.18.1",

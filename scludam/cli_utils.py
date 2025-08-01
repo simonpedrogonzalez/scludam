@@ -101,7 +101,7 @@ def best_bin_shape(
         raise Exception("Check input data for bin selection.")
     dfbins = pd.DataFrame({"pmra": np.array(bin_shapes)[:,0], "pmdec":np.array(bin_shapes)[:,1], "parallax": np.array(bin_shapes)[:,2], "score": scores})
 
-    return last_bin_shape, last_result, dfbins
+    return last_bin_shape, last_result, dfbins, None, None
 
 def closest_cluster(det_res, coords):
     all_distances = []

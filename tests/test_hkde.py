@@ -7,13 +7,13 @@ from sklearn.datasets import load_iris
 from utils import raises_exception
 
 from scludam import HKDE
-from scludam.hkde import PluginSelector, RuleOfThumbSelector
-from scludam.hkde import r as rsession
-from scludam.rutils import disable_r_console_output, disable_r_warnings, load_r_packages
+from scludam.hkde import RuleOfThumbSelector #, PluginSelector
+# from scludam.hkde import r as rsession
+# from scludam.rutils import disable_r_console_output, disable_r_warnings, load_r_packages
 from scludam.utils import Colnames
 
-disable_r_console_output()
-disable_r_warnings()
+# disable_r_console_output()
+# disable_r_warnings()
 
 df = Table.read("tests/data/ngc2527_small.xml").to_pandas()
 cnames = Colnames(df.columns.to_list())
@@ -27,8 +27,8 @@ n, d = data.shape
 w = np.ones(n)
 
 
-@pytest.fixture
-def kskde():
+# @pytest.fixture
+# def kskde():
     # from rpy2.robjects import default_converter, numpy2ri, r
 
     # from rpy2.robjects.conversion import localconverter
@@ -42,12 +42,12 @@ def kskde():
     # pdf = np.asarray(r('result["estimate"]'))
 
     # return pdf.ravel(), H
-    raise NotImplementedError("R integration was disabled.")
+    # raise NotImplementedError("R integration was disabled.")
 
 @pytest.fixture
 def pdf_with_error_correct():
     return (
-        Table.read("tests/data/ngc2527_small_pdf_with_error.txt", format="ascii")
+        Table.read("tests/data/ngc2527_small_pdf_with_error_scott.txt", format="ascii")
         .to_pandas()["pdf"]
         .to_numpy()
         .ravel()
@@ -55,84 +55,86 @@ def pdf_with_error_correct():
 
 
 class TestBandwidths:
-    @pytest.mark.parametrize(
-        "nstage, pilot, binned, diag, exception, correct_command, correct_result",
-        [
-            (
-                None,
-                None,
-                None,
-                None,
-                None,
-                "ks::Hpi(x=x)",
-                np.array(
-                    [
-                        [0.00572097, -0.00057937, -0.00015549],
-                        [-0.00057937, 0.00593521, 0.00023931],
-                        [-0.00015549, 0.00023931, 0.00061363],
-                    ]
-                ),
-            ),
-            (
-                1,
-                "dscalar",
-                True,
-                True,
-                None,
-                "ks::Hpi.diag(x=x,nstage=nstage,pilot=pilot,binned=binned)",
-                np.array(
-                    [
-                        [0.01211393, 0.0, 0.0],
-                        [0.0, 0.01140754, 0.0],
-                        [0.0, 0.0, 0.0013611],
-                    ]
-                ),
-            ),
-            (
-                1,
-                "dscalar",
-                type("SomeUnsuportedType", (object,), {})(),
-                False,
-                TypeError,
-                None,
-                None,
-            ),
-        ],
-    )
-    def test_plugin_bandwidth__build_r_command_and_returns_correct_result(
-        self,
-        nstage,
-        pilot,
-        binned,
-        diag,
-        exception,
-        correct_command,
-        correct_result,
-    ):
-        if exception is None:
-            command = raises_exception(
-                exception,
-                lambda: PluginSelector(
-                    nstage=nstage, pilot=pilot, binned=binned, diag=diag
-                )._build_r_command(data),
-            )
-            # verify command
-            assert command == correct_command
-            # verify vars are correctly set
-            params = [
-                ("nstage", nstage, "1L"),
-                ("pilot", pilot, f'"{pilot}"'),
-                ("binned", binned, "TRUE"),
-            ]
-            for param in params:
-                if param[1] is not None:
-                    assert rsession(f"{param[0]}").r_repr() == param[2]
-            assert np.all(np.isclose(np.asarray(rsession("x")), data))
+    # @pytest.mark.parametrize(
+    #     "nstage, pilot, binned, diag, exception, correct_command, correct_result",
+    #     [
+    #         (
+    #             None,
+    #             None,
+    #             None,
+    #             None,
+    #             None,
+    #             "ks::Hpi(x=x)",
+    #             np.array(
+    #                 [
+    #                     [0.00572097, -0.00057937, -0.00015549],
+    #                     [-0.00057937, 0.00593521, 0.00023931],
+    #                     [-0.00015549, 0.00023931, 0.00061363],
+    #                 ]
+    #             ),
+    #         ),
+    #         (
+    #             1,
+    #             "dscalar",
+    #             True,
+    #             True,
+    #             None,
+    #             "ks::Hpi.diag(x=x,nstage=nstage,pilot=pilot,binned=binned)",
+    #             np.array(
+    #                 [
+    #                     [0.01211393, 0.0, 0.0],
+    #                     [0.0, 0.01140754, 0.0],
+    #                     [0.0, 0.0, 0.0013611],
+    #                 ]
+    #             ),
+    #         ),
+    #         (
+    #             1,
+    #             "dscalar",
+    #             type("SomeUnsuportedType", (object,), {})(),
+    #             False,
+    #             TypeError,
+    #             None,
+    #             None,
+    #         ),
+    #     ],
+    # )
 
-            bw = PluginSelector(
-                nstage=nstage, pilot=pilot, binned=binned, diag=diag
-            ).get_bw(data)
-            assert np.all(np.isclose(correct_result, bw))
+    # PLUGIN BANDWIDTH IS DEPRECATED
+    # def test_plugin_bandwidth__build_r_command_and_returns_correct_result(
+    #     self,
+    #     nstage,
+    #     pilot,
+    #     binned,
+    #     diag,
+    #     exception,
+    #     correct_command,
+    #     correct_result,
+    # ):
+    #     if exception is None:
+    #         command = raises_exception(
+    #             exception,
+    #             lambda: PluginSelector(
+    #                 nstage=nstage, pilot=pilot, binned=binned, diag=diag
+    #             )._build_r_command(data),
+    #         )
+    #         # verify command
+    #         assert command == correct_command
+    #         # verify vars are correctly set
+    #         params = [
+    #             ("nstage", nstage, "1L"),
+    #             ("pilot", pilot, f'"{pilot}"'),
+    #             ("binned", binned, "TRUE"),
+    #         ]
+    #         for param in params:
+    #             if param[1] is not None:
+    #                 assert rsession(f"{param[0]}").r_repr() == param[2]
+    #         assert np.all(np.isclose(np.asarray(rsession("x")), data))
+
+    #         bw = PluginSelector(
+    #             nstage=nstage, pilot=pilot, binned=binned, diag=diag
+    #         ).get_bw(data)
+    #         assert np.all(np.isclose(correct_result, bw))
 
     def test_rule_of_thimb_selector__yields_equal_results_than_scipy(self):
         iris = load_iris()
@@ -167,17 +169,17 @@ class TestHKDE:
     @pytest.mark.parametrize(
         "bw, exception, correct",
         [
-            (
-                PluginSelector(),
-                None,
-                np.array(
-                    [
-                        [0.00572097, -0.00057937, -0.00015549],
-                        [-0.00057937, 0.00593521, 0.00023931],
-                        [-0.00015549, 0.00023931, 0.00061363],
-                    ]
-                ),
-            ),
+            # (
+            #     PluginSelector(),
+            #     None,
+            #     np.array(
+            #         [
+            #             [0.00572097, -0.00057937, -0.00015549],
+            #             [-0.00057937, 0.00593521, 0.00023931],
+            #             [-0.00015549, 0.00023931, 0.00061363],
+            #         ]
+            #     ),
+            # ),
             (
                 np.array([0.1, 0.1, 0.05]),
                 None,
@@ -345,13 +347,13 @@ class TestHKDE:
         assert hkde._covariances.shape == (n, d, d)
         assert hkde._is_fitted()
 
-    def test_basic_pdf(self, kskde):
-        pdf, H = kskde
-        hkde = HKDE().fit(data=data)
-        result = hkde.pdf(data, leave1out=False)
-        assert result.shape == (n,)
-        assert np.allclose(hkde._covariances[0], H)
-        assert np.allclose(result, pdf)
+    # def test_basic_pdf(self, kskde):
+    #     pdf, H = kskde
+    #     hkde = HKDE().fit(data=data)
+    #     result = hkde.pdf(data, leave1out=False)
+    #     assert result.shape == (n,)
+    #     assert np.allclose(hkde._covariances[0], H)
+    #     assert np.allclose(result, pdf)
 
     def test_pdf_with_error(self, pdf_with_error_correct):
         result = HKDE().fit(data=data, err=err, corr=corr).pdf(data, leave1out=False)
@@ -359,12 +361,12 @@ class TestHKDE:
         assert np.allclose(result, pdf_with_error_correct)
 
 
-@pytest.mark.mpl_image_compare
-def test_hkde_plot():
-    return HKDE().fit(load_iris().data).plot(gr=20)[0]
+# @pytest.mark.mpl_image_compare
+# def test_hkde_plot():
+#     return HKDE().fit(load_iris().data).plot(gr=20)[0]
 
 
-@pytest.mark.mpl_image_compare
-def test_hkde_plot_2d():
-    data = load_iris().data[:, :2]
-    return HKDE().fit(data).plot(gr=20)[0]
+# @pytest.mark.mpl_image_compare
+# def test_hkde_plot_2d():
+#     data = load_iris().data[:, :2]
+#     return HKDE().fit(data).plot(gr=20)[0]

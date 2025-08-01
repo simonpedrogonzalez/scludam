@@ -58,9 +58,9 @@ def automatic_bin_shape_selection(df, det_cols, method):
             pm_bin_shapes_to_try,
             # todos los tamaños de plx a probar
             parallax_bin_shapes_to_try,
-            min_score=min_score,
+            min_score,
             # cuántos picos de densidad buscar
-            max_n_peaks=max_n_peaks,
+            max_n_peaks,
             min_count=min_count,
         )
         print(f"Best bin shape for max sum score: {best_shape}")
