@@ -320,8 +320,8 @@ class DEP:
         self._needed_cols = needed_cols
 
         # get analysis df only with needed cols and dropping nan
-        self._not_nan_mask = df[needed_cols].notna().all(axis=1)
-        self._df = df[self._not_nan_mask][needed_cols]
+        self._not_nan_mask = df[list(needed_cols)].notna().all(axis=1)
+        self._df = df[self._not_nan_mask][list(needed_cols)]
         if self._df.empty:
             raise ValueError("No data to use after dropping nans for needed cols.")
 
