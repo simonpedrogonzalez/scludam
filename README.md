@@ -60,7 +60,7 @@ Included modules and features are:
 
 
 ### User install in a Conda environment (recommended)
-Create a conda environment named ``myscludamenv`` with python3.8 and ``scludam`` installed
+Create a conda environment named ``myscludamenv`` with python3.11 and ``scludam`` installed
 ```
 conda create --name myscludamenv python=3.11 pip --yes
 conda activate myscludamenv
