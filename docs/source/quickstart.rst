@@ -11,7 +11,9 @@ From version 1.0.10 there's a suggested analysis pipeline in the form of a CLI t
 
 From there, you can download data from GAIA, load a file, run the analysis pipeline, plot and save results.
 
-NOTE: For plotting to display correctly, you need to have the corresponding library installed, such as `PyQt6` in your environment.
+NOTES:
+- For plotting to display correctly, you need to have the corresponding library installed, such as `PyQt6` in your environment.
+- The CLI tool is still rudimentary, it will exit on some incorrect inputs. Follow the directions of the prompts carefully.
 
 Main functionality example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
