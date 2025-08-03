@@ -2,6 +2,17 @@
 Quickstart
 ==========
 
+CLI
+^^^
+
+From version 1.0.10 there's a suggested analysis pipeline in the form of a CLI tool to facilitate usage. To use it, create a script like the following, and run it:
+
+.. literalinclude:: ../../examples/cli/cli.py
+
+From there, you can download data from GAIA, load a file, run the analysis pipeline, plot and save results.
+
+NOTE: For plotting to display correctly, you need to have the corresponding library installed, such as `PyQt6` in your environment.
+
 Main functionality example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
