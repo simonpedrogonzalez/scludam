@@ -16,7 +16,7 @@
 
 """Module for R helper functions. Disabled undefinitely."""
 # import warnings
-# from typing import List, Union
+# from beartype.typing import List, Union
 
 # import numpy as np
 # import rpy2.rinterface_lib.callbacks as rcallbacks

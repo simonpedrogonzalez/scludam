@@ -17,7 +17,7 @@
 """Module for useful Type Annotations and runtime checking functions."""
 
 from numbers import Number
-from typing import List, Tuple, Union
+from beartype.typing import List, Tuple, Union
 
 import numpy as np
 from beartype import beartype

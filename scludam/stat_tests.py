@@ -24,7 +24,7 @@ data is "clusterable") in a n dimensional numerical dataset.
 from abc import abstractmethod
 from copy import deepcopy
 from numbers import Number
-from typing import Union
+from beartype.typing import Union
 from warnings import warn
 
 import numpy as np
@@ -352,7 +352,7 @@ class DipDistTest(StatTest):
         if obs > self.max_samples:
             data = resample(data, n_samples=self.max_samples, replace=False)
         dist = np.ravel(np.tril(pairwise_distances(data, metric=self.metric)))
-        dist = np.msort(dist[dist > 0])
+        dist = np.sort(dist[dist > 0], axis=0)
         dip, pval = diptest(dist, sort_x=False, *args, **kwargs)
         rejectH0 = pval < self.pvalue_threshold
         return DipDistTestResult(value=dip, pvalue=pval, rejectH0=rejectH0, dist=dist)

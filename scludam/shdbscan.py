@@ -38,7 +38,7 @@ References
 """
 
 from itertools import permutations
-from typing import Callable, Optional, Union
+from beartype.typing import Callable, Optional, Union
 
 import numpy as np
 import seaborn as sns

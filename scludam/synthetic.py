@@ -22,7 +22,7 @@ synthetic sky region samples with an star field and star clusters.
 """
 
 from numbers import Number
-from typing import List, Union
+from beartype.typing import List, Union
 
 import astropy.units as u
 import numpy as np

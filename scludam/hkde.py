@@ -26,7 +26,7 @@ covariances can be added to the matrices.
 from abc import abstractmethod
 from itertools import product
 from numbers import Number
-from typing import List, Optional, Tuple, Union
+from beartype.typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np

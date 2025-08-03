@@ -32,7 +32,7 @@ Examples
 
 import copy
 import warnings
-from typing import List, Optional
+from beartype.typing import List, Optional
 
 import numpy as np
 import pandas as pd

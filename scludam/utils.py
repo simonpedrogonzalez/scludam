@@ -15,7 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """Module for helper functions."""
-from typing import List, Union
+from beartype.typing import List, Union
 
 import numpy as np
 from attrs import define

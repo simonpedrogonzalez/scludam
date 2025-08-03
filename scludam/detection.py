@@ -28,7 +28,7 @@ imported from ``scludam.detection``.
 from copy import deepcopy
 from decimal import Decimal
 from numbers import Number
-from typing import List, Union
+from beartype.typing import List, Union
 from warnings import warn
 
 import numpy as np

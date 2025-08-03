@@ -17,7 +17,7 @@
 """Module for helper masking functions."""
 
 from abc import abstractmethod
-from typing import Union
+from beartype.typing import Union
 
 import numpy as np
 from attrs import define

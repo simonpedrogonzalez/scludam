@@ -18,7 +18,7 @@
 """Module for Density Based Membership Estimation."""
 
 from copy import deepcopy
-from typing import List, Union
+from beartype.typing import List, Union
 
 import numpy as np
 from attrs import Factory, define, field, validators

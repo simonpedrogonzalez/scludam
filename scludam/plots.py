@@ -18,7 +18,7 @@
 
 import warnings
 from numbers import Number
-from typing import List, Optional, Tuple, Union
+from beartype.typing import List, Optional, Tuple, Union
 
 # import matplotlib.patches as mp
 import matplotlib.pyplot as plt
