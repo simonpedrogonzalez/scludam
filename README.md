@@ -3,8 +3,9 @@
 [![Build Status](https://travis-ci.com/simonpedrogonzalez/scludam.svg?branch=main)](https://travis-ci.com/simonpedrogonzalez/scludam)
 [![Documentation Status](https://img.shields.io/badge/docs-passing-success)](https://simonpedrogonzalez.github.io/scludam-docs/index.html)
 [![PyPI](https://img.shields.io/pypi/v/scludam)](https://pypi.org/project/scludam/)
-[![Python 3.7.6+](https://img.shields.io/badge/python-3.7.6+-blue.svg)](https://github.com/simonpedrogonzalez/scludam)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://github.com/simonpedrogonzalez/scludam)
+[![Python 3.9.21+](https://img.shields.io/badge/python-3.9.21+-blue.svg)](https://github.com/simonpedrogonzalez/scludam)
+[![Python  3.10.16+](https://img.shields.io/badge/python-3.10.16+-blue.svg)](https://github.com/simonpedrogonzalez/scludam)
+[![Python  3.11.11+](https://img.shields.io/badge/python-3.11.11+-blue.svg)](https://github.com/simonpedrogonzalez/scludam)
 [![License](https://img.shields.io/badge/License-GNU-blue.svg)](https://tldrlegal.com/license/gnu-lesser-general-public-license-v3-(lgpl-3))
 
 
@@ -41,29 +42,27 @@ Included modules and features are:
 --------------------------------------------------------------------------------
 
 ### Requirements
-**Python 3.7.6+**  are needed to run SCLUDAM. It is recommended to install scludam in a separate environment created with pyenv or conda, to avoid dependencies issues with other preinstalled packages in the base environment. The following dependencies will be installed along with SCLUDAM:
+**Python 3.9+**  is needed to run SCLUDAM. It is recommended to install scludam in a separate environment created to avoid dependencies issues with other preinstalled packages in the base environment. The following dependencies will be installed along with SCLUDAM:
 
-- numpy>=1.21.6
-- matplotlib>=3.4.1
-- scipy>=1.7.3
-- astropy>=4.3.1
-- astroquery>=0.4.6
-- pandas>=1.3.5
-- hdbscan==0.8.27
-- scikit-learn>=1.0.2
-- scikit-image>=0.18.1
-- seaborn>=0.11.0
-- attrs>=21.4.0
-- beartype>=0.10.0
-- ordered_set>=4.0.2
+- numpy>=1.26.4,<2.0
+- matplotlib>=3.9.4,<4.0
+- scipy>=1.13.1,<2.0
+- astropy>=6.0.1,<7.0
+- astroquery==0.4.6
+- pandas>=2.3.1,< 3.0
+- hdbscan>=0.8.40
+- joblib>=1.1.0
+- scikit-learn>=1.1.3
+- scikit-image>=0.24.0
+- seaborn>=0.13.2,<0.14
 - statsmodels>=0.12.2
-- diptest>=0.4.2
-- typing_extensions>=4.2.0
+- diptest>=0.10.0,<0.11.0
+
 
 ### User install in a Conda environment (recommended)
 Create a conda environment named ``myscludamenv`` with python3.8 and ``scludam`` installed
 ```
-conda create --name myscludamenv python=3.8 pip --yes
+conda create --name myscludamenv python=3.11 pip --yes
 conda activate myscludamenv
 python -m pip install scludam
 ```
