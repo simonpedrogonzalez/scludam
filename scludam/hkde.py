@@ -18,7 +18,7 @@
 
 The module provides a class for multivariate Kernel Density Estimation with a bandwidth
 matrix per observation. Such matrices are created from a baseline bandwidth calculated
-from the Plugin or Rule Of Thumb (scott or silverman) methods. Variable errors and
+with a Rule Of Thumb (scott or silverman) method. Variable errors and
 covariances can be added to the matrices.
 
 """
@@ -80,87 +80,87 @@ class BandwidthSelector:
         pass
 
 
-@define
-class PluginSelector(BandwidthSelector):
-    """Bandwidth selector based on the Plugin method.
+# @define
+# class PluginSelector(BandwidthSelector):
+#     """Bandwidth selector based on the Plugin method.
 
-    It uses the Plugin method with unconstraned pilot bandwidth
-    [1]_ [2]_ implementation in the
-    `ks` R package [3]_. See the `ks` package documentation for
-    more information on
-    parameter values. All attributes are passed
-    to ``ks::Hpi`` function.
+#     It uses the Plugin method with unconstraned pilot bandwidth
+#     [1]_ [2]_ implementation in the
+#     `ks` R package [3]_. See the `ks` package documentation for
+#     more information on
+#     parameter values. All attributes are passed
+#     to ``ks::Hpi`` function.
 
-    Attributes
-    ----------
-    nstage : int, optional
-        Number of calculation stages, can be
-        1 or 2, by default 2.
-    pilot: str, optional
-        Kind of pilot bandwidth.
-    binned: bool, optional
-        Use binned estimation, by default False.
-    diag: bool, optional
-        Whether to use the diagonal bandwidth,
-        by default False. If true, ``ks::Hpi.diag``
-        is used.
+#     Attributes
+#     ----------
+#     nstage : int, optional
+#         Number of calculation stages, can be
+#         1 or 2, by default 2.
+#     pilot: str, optional
+#         Kind of pilot bandwidth.
+#     binned: bool, optional
+#         Use binned estimation, by default False.
+#     diag: bool, optional
+#         Whether to use the diagonal bandwidth,
+#         by default False. If true, ``ks::Hpi.diag``
+#         is used.
 
-    References
-    ----------
-    .. [1] Chacon, J.E., Duong, T. (2010) Multivariate plug-in bandwidth
-        selection with unconstrained pilot
-        matrices. Test, 19, 375-398.
-    .. [2] Chacon, J.E., Duong, T. (2018) Multivariate Kernel Smoothing
-        and Its Applications (pp. 43-66).
-    .. [3] Duong, T. (2013). ks: Kernel Smoothing. R package version 1.13.3.
-        https://CRAN.R-project.org/package=ks
+#     References
+#     ----------
+#     .. [1] Chacon, J.E., Duong, T. (2010) Multivariate plug-in bandwidth
+#         selection with unconstrained pilot
+#         matrices. Test, 19, 375-398.
+#     .. [2] Chacon, J.E., Duong, T. (2018) Multivariate Kernel Smoothing
+#         and Its Applications (pp. 43-66).
+#     .. [3] Duong, T. (2013). ks: Kernel Smoothing. R package version 1.13.3.
+#         https://CRAN.R-project.org/package=ks
 
-    """
+#     """
 
-    nstage: int = None
-    pilot: str = None
-    binned: bool = None
-    diag: bool = False
+#     nstage: int = None
+#     pilot: str = None
+#     binned: bool = None
+#     diag: bool = False
 
-    def _build_r_command(self, data: Numeric2DArray):
-        raise NotImplementedError(
-            "R integration is currently disabled. Use RuleOfThumbSelector instead."
-        )
-        # params = {
-        #     "nstage": self.nstage,
-        #     "pilot": self.pilot,
-        #     "binned": self.binned,
-        # }
-        # # delete all previous session variables
-        # clean_r_session(r, "var")
-        # _, rparams = assign_r_args(r, x=data, **params)
-        # return f'ks::Hpi{".diag" if self.diag else ""}({rparams})'
+#     def _build_r_command(self, data: Numeric2DArray):
+#         raise NotImplementedError(
+#             "R integration is currently disabled. Use RuleOfThumbSelector instead."
+#         )
+#         # params = {
+#         #     "nstage": self.nstage,
+#         #     "pilot": self.pilot,
+#         #     "binned": self.binned,
+#         # }
+#         # # delete all previous session variables
+#         # clean_r_session(r, "var")
+#         # _, rparams = assign_r_args(r, x=data, **params)
+#         # return f'ks::Hpi{".diag" if self.diag else ""}({rparams})'
 
-    @beartype
-    def get_bw(self, data: Numeric2DArray):
-        """Get the bandwidth for the given data.
+#     @beartype
+#     def get_bw(self, data: Numeric2DArray):
+#         """Get the bandwidth for the given data.
 
-        Builds R ``ks::Hpi`` command and executes it.
+#         Builds R ``ks::Hpi`` command and executes it.
 
-        Parameters
-        ----------
-        data : Numeric2DArray
-            Data.
+#         Parameters
+#         ----------
+#         data : Numeric2DArray
+#             Data.
 
-        Returns
-        -------
-        Numeric2DArray
-            Optimal bandwidth matrix H acoording to the
-            Plugin Method.
+#         Returns
+#         -------
+#         Numeric2DArray
+#             Optimal bandwidth matrix H acoording to the
+#             Plugin Method.
 
-        """
-        raise NotImplementedError(
-            "R integration is currently disabled. Use RuleOfThumbSelector instead."
-        )
-        # _, dims = data.shape
-        # command = self._build_r_command(data)
-        # result = r(command)
-        # return np.asarray(result)
+#         """
+#         raise NotImplementedError(
+#             "R integration is currently disabled. Use RuleOfThumbSelector instead."
+#         )
+#         # _, dims = data.shape
+#         # command = self._build_r_command(data)
+#         # result = r(command)
+#         # return np.asarray(result)
 
 
 @define

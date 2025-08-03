@@ -27,7 +27,6 @@ Simplified API:
       :func:`~scludam.fetcher.search_objects_near_data`,
       :func:`~scludam.fetcher.search_table` from :py:mod:`~scludam.fetcher`
     - :class:`~scludam.hkde.HKDE`,
-      :class:`~scludam.hkde.PluginSelector`,
       :class:`~scludam.hkde.RuleOfThumbSelector` from :py:mod:`~scludam.hkde`
     - :class:`~scludam.membership.DBME` from :py:mod:`~scludam.membership`
     - :class:`~scludam.pipeline.DEP` from :py:mod:`~scludam.pipeline`
